@@ -75,6 +75,17 @@ Use [template.md](template.md) to create the feature spec:
 - Use the PROJ-X ID already in INDEX.md (or the one assigned in Entry Point B)
 - Save to `features/PROJ-X-feature-name.md` (kebab-case filename)
 
+**Populate Out of Scope, Decision Log, and Open Questions while the interview is fresh:**
+
+- **Out of Scope** — explicitly list everything that came up in the interview but was consciously excluded from this feature. Reference other features by ID where relevant (e.g. "Bulk delete — deferred to PROJ-5"). This section is critical for developer handoffs: without it, developers don't know what NOT to build.
+
+
+
+- **Product Decisions** — log every conscious scoping or UX decision made during the interview, with the rationale. Examples: "Why limit to X items?", "Why this user role and not another?", "Why include/exclude this edge case?"
+- **Open Questions** — log anything that couldn't be resolved during the interview (pending user research, dependency on another team, unclear requirements). Mark as `- [ ]` so they're visible as unresolved.
+
+Do not skip these sections — they are the memory of the spec interview.
+
 Present the draft spec to the user for review. Apply feedback, then save.
 
 ## After Saving: Update Tracking Files
@@ -112,9 +123,26 @@ Each spec = ONE testable, deployable unit.
 - NEVER make technical decisions — that is for the Architecture skill
 - Focus: WHAT the feature does (not HOW)
 
+## Acceptance Criteria Format
+Always write acceptance criteria in Given/When/Then format:
+
+```
+- [ ] Given [precondition], when [action], then [expected result]
+```
+
+Examples:
+- [ ] Given the user is logged in, when they submit an empty form, then a validation error is shown for each required field
+- [ ] Given a task exists, when the user clicks "Delete", then a confirmation dialog appears before the task is removed
+- [ ] Given the API is unavailable, when the user submits the form, then an error message is shown and their input is preserved
+
+This format ensures every criterion is unambiguous and directly testable by QA.
+
 ## Checklist Before Completion
 - [ ] At least 3–5 user stories defined
-- [ ] Every acceptance criterion is testable (not vague)
+- [ ] Out of Scope filled in (everything discussed but excluded, with references to other features where applicable)
+- [ ] Every acceptance criterion uses Given/When/Then format
+- [ ] Product Decisions logged with rationale
+- [ ] Open Questions logged for anything unresolved
 - [ ] At least 3–5 edge cases documented
 - [ ] Feature ID assigned (PROJ-X)
 - [ ] File saved to `features/PROJ-X-feature-name.md`

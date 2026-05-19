@@ -36,6 +36,7 @@ Run a targeted interview on the affected areas only:
 - Which acceptance criteria need to be updated or removed?
 - Do any edge cases change?
 - Do dependencies change?
+- Does the Out of Scope section need updating? (something previously excluded is now included, or vice versa)
 
 ### Path 2: Implementation Revealed Gaps
 *Trigger: "during implementation we found...", "the backend doesn't support...", "we didn't think about X scenario"*
@@ -55,6 +56,7 @@ Challenge the entire spec from first principles:
 - Should this feature be split? If so, what are the two features?
 - Should it be merged with another feature?
 - What would the absolute minimal version of this feature look like?
+- What moves to Out of Scope as a result of this challenge?
 
 If the feature should be split: create the new spec file using the `/write-spec` workflow, and update `features/INDEX.md` accordingly.
 
@@ -70,6 +72,20 @@ Same as in `/init` and `/write-spec`:
 
 Make the changes to `features/PROJ-X-*.md`. After saving, re-read the file to verify the changes are present.
 
+### Maintain the Decision Log and Open Questions
+
+**Close resolved Open Questions:**
+For any `- [ ]` items in Open Questions that are now answered, mark them as `- [x]` and add a brief resolution note:
+```
+- [x] Should we support bulk delete? → No, deferred to P1 (2026-05-19)
+```
+
+**Log new decisions:**
+Any decision made during this refinement session belongs in the Decision Log. Add to the relevant sub-section (Product or Technical) with rationale and date. Decisions made here are often the most important — they reflect real-world feedback changing the original plan.
+
+**Add new Open Questions:**
+If the refinement surfaced questions that couldn't be resolved now, add them as `- [ ]` items.
+
 ## Update Tracking Files
 - Update `features/INDEX.md` if status or dependencies changed
 - Update `docs/PRD.md` if the roadmap is affected
@@ -78,6 +94,10 @@ Make the changes to `features/PROJ-X-*.md`. After saving, re-read the file to ve
 - [ ] Opening question asked and path determined
 - [ ] All interview questions resolved
 - [ ] Spec file updated and verified (re-read after editing)
+- [ ] Out of Scope updated if scope boundaries changed
+- [ ] Resolved Open Questions marked as `- [x]` with resolution note
+- [ ] New decisions logged in Decision Log with rationale
+- [ ] New Open Questions added if anything remains unresolved
 - [ ] `features/INDEX.md` updated if status or dependencies changed
 - [ ] `docs/PRD.md` updated if roadmap affected
 - [ ] User has reviewed the changes

@@ -1,10 +1,12 @@
-import { ModuleStub } from "@/components/shell/ModuleStub";
+import type { Metadata } from "next";
+import { listReservierungen } from "@/lib/data/reservierungen";
+import { ReservierungenListView } from "@/components/reservierung/ReservierungenListView";
 
-export default function ReservierungenPage() {
-  return (
-    <ModuleStub
-      title="Reservierungen"
-      description="Aktive Vorgänge — wird im Migrations-Schritt PROJ-5 portiert."
-    />
-  );
+export const metadata: Metadata = {
+  title: "Reservierungen · Objektpilot",
+};
+
+export default async function ReservierungenPage() {
+  const reservierungen = await listReservierungen();
+  return <ReservierungenListView reservierungen={reservierungen} />;
 }

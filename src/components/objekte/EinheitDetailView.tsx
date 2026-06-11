@@ -31,6 +31,8 @@ import { CompletenessCard } from "@/components/objekte/CompletenessCard";
 import { BankDatenCard } from "@/components/objekte/BankDatenCard";
 import { KarteTab } from "@/components/objekte/KarteTab";
 import { KundenPickerModal } from "@/components/objekte/KundenPickerModal";
+import { KalkulationsTab } from "@/components/objekte/KalkulationsTab";
+import type { KalkulationsContext } from "@/lib/data/kalkulation-context";
 
 const DOK_KAT_LABEL: Record<string, string> = {
   grundriss: "Grundriss",
@@ -43,7 +45,13 @@ const DOK_KAT_LABEL: Record<string, string> = {
   sonstiges: "Sonstiges",
 };
 
-export function EinheitDetailView({ einheit }: { einheit: EinheitDetail }) {
+export function EinheitDetailView({
+  einheit,
+  kalkContext,
+}: {
+  einheit: EinheitDetail;
+  kalkContext: KalkulationsContext;
+}) {
   const e = einheit;
   const router = useRouter();
   const ppsm = pricePerSqm(e.kaufpreis, e.wohnflaeche);
@@ -99,6 +107,7 @@ export function EinheitDetailView({ einheit }: { einheit: EinheitDetail }) {
       <Tabs defaultValue="uebersicht">
         <TabsList className="flex-wrap">
           <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
+          <TabsTrigger value="kalkulation">Kalkulation</TabsTrigger>
           <TabsTrigger value="bilder">Bilder</TabsTrigger>
           <TabsTrigger value="dokumente">Dokumente</TabsTrigger>
           <TabsTrigger value="bankdaten">Bankdaten</TabsTrigger>
@@ -118,6 +127,11 @@ export function EinheitDetailView({ einheit }: { einheit: EinheitDetail }) {
               <ZuweisungenCard zuweisungen={e.zuweisungen} einheitId={e.einheit_id} />
             </div>
           </div>
+        </TabsContent>
+
+        {/* Kalkulation */}
+        <TabsContent value="kalkulation" className="space-y-4">
+          <KalkulationsTab einheit={e} kalkContext={kalkContext} />
         </TabsContent>
 
         {/* Bilder */}

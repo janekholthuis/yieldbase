@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getEinheitDetail } from "@/lib/data/objekte";
+import { getKalkulationsContext } from "@/lib/data/kalkulation-context";
 import { Button } from "@/components/ui/button";
 import { EinheitDetailView } from "@/components/objekte/EinheitDetailView";
 
@@ -14,7 +15,10 @@ export default async function EinheitDetailPage({
   params: Promise<{ einheitId: string }>;
 }) {
   const { einheitId } = await params;
-  const { einheit, error } = await getEinheitDetail(einheitId);
+  const [{ einheit, error }, kalkContext] = await Promise.all([
+    getEinheitDetail(einheitId),
+    getKalkulationsContext(),
+  ]);
 
   if (error || !einheit) {
     return (
@@ -31,5 +35,5 @@ export default async function EinheitDetailPage({
     );
   }
 
-  return <EinheitDetailView einheit={einheit} />;
+  return <EinheitDetailView einheit={einheit} kalkContext={kalkContext} />;
 }

@@ -4,12 +4,9 @@
 
 ## Secrets / Env-Variablen
 
-- [ ] **`SUPABASE_SERVICE_ROLE_KEY`** in Vercel setzen (Settings → Environment Variables → Production) **und** in lokaler `.env.local`.
-  - Wert: Supabase Dashboard → Project Settings → API → `service_role` key (GEHEIM, niemals ins Frontend).
+- [x] **`SUPABASE_SERVICE_ROLE_KEY`** in Vercel gesetzt ✅ (ggf. auch lokal in `.env.local` für `npm run dev`).
   - Wird gebraucht für: Einladungen, Kunden-Portal-Aktivierung, Reservierungen, Demo-Seed — alle Server-Actions mit Admin-Client.
-- [ ] **`NEXT_PUBLIC_MAPBOX_TOKEN`** in Vercel + `.env.local` setzen.
-  - Wert: https://account.mapbox.com → Access Tokens.
-  - Wird gebraucht für: Karten-Tab in Objekt-Detail, Karten in Präsentation/Objekte-Map-View.
+- [x] **`NEXT_PUBLIC_MAPBOX_TOKEN`** gesetzt ✅ (greift live ab dem nächsten Deploy; lokal für `npm run dev` ebenfalls eintragen).
 - [ ] **`RESEND_API_KEY`** in Supabase Edge Functions Secrets setzen (für Reservierungs-Emails).
   - Wert: https://resend.com → API Keys. Setzen via `supabase secrets set RESEND_API_KEY=...`.
 - [ ] **`SUPABASE_SERVICE_ROLE_KEY` rotieren** — der alte stand evtl. in der Lovable-`.env`. Sicherheitshalber neu generieren.

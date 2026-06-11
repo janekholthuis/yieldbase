@@ -1,6 +1,7 @@
 # Feature Index
 
 > Central tracking for all features. Updated by skills automatically.
+> Migration context: features below are being ported from `/OLD APP` (Lovable / TanStack Start) into Next.js. See `docs/MIGRATION.md`.
 
 ## Status Legend
 - **Roadmap** - `/init` done, feature identified in feature map, no spec file yet
@@ -15,7 +16,18 @@
 
 | ID | Feature | Status | Spec | Created |
 |----|---------|--------|------|---------|
+| PROJ-1 | Auth, invites & role-based access (8 roles) | Roadmap | — | 2026-06-11 |
+| PROJ-2 | App shell (sidebar, topbar, command palette, notifications) | Roadmap | — | 2026-06-11 |
+| PROJ-3 | Objekte (projects/units, calculation, images, docs, map) | Roadmap | — | 2026-06-11 |
+| PROJ-4 | Kunden (pipeline, Bonität scoring, documents) | Roadmap | — | 2026-06-11 |
+| PROJ-5 | Reservierungen (signed PDF, expiry, email) | Roadmap | — | 2026-06-11 |
+| PROJ-6 | Finanzierungen (lender cases, offers, finanzierer pool) | Roadmap | — | 2026-06-11 |
+| PROJ-7 | Customer portal (dashboard, dokumente, Selbstauskunft, profil) | Roadmap | — | 2026-06-11 |
+| PROJ-8 | Präsentation / Exposé PDF generation | Roadmap | — | 2026-06-11 |
+| PROJ-9 | Provisionen, Team, Tickets (stubs → full) | Roadmap | — | 2026-06-11 |
+| PROJ-10 | Investagon API sync (mirror project/unit data into Supabase) | Roadmap | — | 2026-06-11 |
+| PROJ-11 | Domain structure audit (compare entity diagram vs. existing schema) | Roadmap | — | 2026-06-11 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-1
+## Next Available ID: PROJ-12

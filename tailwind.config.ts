@@ -9,62 +9,129 @@ const config: Config = {
   ],
   theme: {
   	extend: {
+  		fontFamily: {
+  			sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+  			display: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+  		},
   		colors: {
-  			background: 'hsl(var(--background))',
-  			foreground: 'hsl(var(--foreground))',
+  			background: 'oklch(var(--background) / <alpha-value>)',
+  			foreground: 'oklch(var(--foreground) / <alpha-value>)',
+  			surface: 'oklch(var(--surface) / <alpha-value>)',
+  			highlight: {
+  				bg: 'oklch(var(--highlight-bg) / <alpha-value>)',
+  				fg: 'oklch(var(--highlight-fg) / <alpha-value>)'
+  			},
   			card: {
-  				DEFAULT: 'hsl(var(--card))',
-  				foreground: 'hsl(var(--card-foreground))'
+  				DEFAULT: 'oklch(var(--card) / <alpha-value>)',
+  				foreground: 'oklch(var(--card-foreground) / <alpha-value>)'
   			},
   			popover: {
-  				DEFAULT: 'hsl(var(--popover))',
-  				foreground: 'hsl(var(--popover-foreground))'
+  				DEFAULT: 'oklch(var(--popover) / <alpha-value>)',
+  				foreground: 'oklch(var(--popover-foreground) / <alpha-value>)'
   			},
   			primary: {
-  				DEFAULT: 'hsl(var(--primary))',
-  				foreground: 'hsl(var(--primary-foreground))'
+  				DEFAULT: 'oklch(var(--primary) / <alpha-value>)',
+  				foreground: 'oklch(var(--primary-foreground) / <alpha-value>)',
+  				light: 'oklch(var(--primary-light) / <alpha-value>)'
   			},
+  			'primary-light': 'oklch(var(--primary-light) / <alpha-value>)',
   			secondary: {
-  				DEFAULT: 'hsl(var(--secondary))',
-  				foreground: 'hsl(var(--secondary-foreground))'
+  				DEFAULT: 'oklch(var(--secondary) / <alpha-value>)',
+  				foreground: 'oklch(var(--secondary-foreground) / <alpha-value>)'
   			},
   			muted: {
-  				DEFAULT: 'hsl(var(--muted))',
-  				foreground: 'hsl(var(--muted-foreground))'
+  				DEFAULT: 'oklch(var(--muted) / <alpha-value>)',
+  				foreground: 'oklch(var(--muted-foreground) / <alpha-value>)'
   			},
   			accent: {
-  				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
+  				DEFAULT: 'oklch(var(--accent) / <alpha-value>)',
+  				foreground: 'oklch(var(--accent-foreground) / <alpha-value>)'
   			},
   			destructive: {
-  				DEFAULT: 'hsl(var(--destructive))',
-  				foreground: 'hsl(var(--destructive-foreground))'
+  				DEFAULT: 'oklch(var(--destructive) / <alpha-value>)',
+  				foreground: 'oklch(var(--destructive-foreground) / <alpha-value>)'
   			},
-  			border: 'hsl(var(--border))',
-  			input: 'hsl(var(--input))',
-  			ring: 'hsl(var(--ring))',
+  			success: {
+  				DEFAULT: 'oklch(var(--success) / <alpha-value>)',
+  				foreground: 'oklch(var(--success-foreground) / <alpha-value>)'
+  			},
+  			warning: {
+  				DEFAULT: 'oklch(var(--warning) / <alpha-value>)',
+  				foreground: 'oklch(var(--warning-foreground) / <alpha-value>)'
+  			},
+  			info: {
+  				DEFAULT: 'oklch(var(--info) / <alpha-value>)',
+  				foreground: 'oklch(var(--info-foreground) / <alpha-value>)'
+  			},
+  			border: 'oklch(var(--border) / <alpha-value>)',
+  			input: 'oklch(var(--input) / <alpha-value>)',
+  			ring: 'oklch(var(--ring) / <alpha-value>)',
   			chart: {
-  				'1': 'hsl(var(--chart-1))',
-  				'2': 'hsl(var(--chart-2))',
-  				'3': 'hsl(var(--chart-3))',
-  				'4': 'hsl(var(--chart-4))',
-  				'5': 'hsl(var(--chart-5))'
+  				'1': 'oklch(var(--chart-1) / <alpha-value>)',
+  				'2': 'oklch(var(--chart-2) / <alpha-value>)',
+  				'3': 'oklch(var(--chart-3) / <alpha-value>)',
+  				'4': 'oklch(var(--chart-4) / <alpha-value>)',
+  				'5': 'oklch(var(--chart-5) / <alpha-value>)'
   			},
   			sidebar: {
-  				DEFAULT: 'hsl(var(--sidebar-background))',
-  				foreground: 'hsl(var(--sidebar-foreground))',
-  				primary: 'hsl(var(--sidebar-primary))',
-  				'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-  				accent: 'hsl(var(--sidebar-accent))',
-  				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-  				border: 'hsl(var(--sidebar-border))',
-  				ring: 'hsl(var(--sidebar-ring))'
+  				DEFAULT: 'oklch(var(--sidebar) / <alpha-value>)',
+  				foreground: 'oklch(var(--sidebar-foreground) / <alpha-value>)',
+  				primary: 'oklch(var(--sidebar-primary) / <alpha-value>)',
+  				'primary-foreground': 'oklch(var(--sidebar-primary-foreground) / <alpha-value>)',
+  				accent: 'oklch(var(--sidebar-accent) / <alpha-value>)',
+  				'accent-foreground': 'oklch(var(--sidebar-accent-foreground) / <alpha-value>)',
+  				border: 'oklch(var(--sidebar-border) / <alpha-value>)',
+  				ring: 'oklch(var(--sidebar-ring) / <alpha-value>)'
+  			},
+  			/* Brand tokens (DealOS palette) — CONSTANT hex, theme-independent */
+  			brand: {
+  				bg: '#FFFFFF',
+  				surface: '#FFFFFF',
+  				surfaceMuted: '#F7F8FA',
+  				primary: '#0A2E4F',
+  				primaryHover: '#0E3B66',
+  				primaryDark: '#061E36',
+  				primaryTint: '#EEF3F8',
+  				accent: '#B8893E',
+  				accentHover: '#A0762F',
+  				accentSoft: '#F5EBD6',
+  				accentTint: '#FBF3E2',
+  				accentText: '#8A6420',
+  				ink: '#0F172A',
+  				body: '#334155',
+  				muted: '#64748B',
+  				subtle: '#94A3B8',
+  				border: '#E5E7EB',
+  				borderSoft: '#EEF1F5',
+  				divider: '#F1F4F8',
+  				success: '#0F7B4F',
+  				successSoft: '#E4F2EC',
+  				danger: '#C0392B',
+  				dangerSoft: '#FBEAE7',
+  				warning: '#B8893E',
+  				warningSoft: '#F5EBD6',
+  				info: '#3E7CB1',
+  				infoSoft: '#E8F0F8'
   			}
   		},
   		borderRadius: {
-  			lg: 'var(--radius)',
+  			sm: 'calc(var(--radius) - 4px)',
   			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			lg: 'var(--radius)',
+  			xl: 'calc(var(--radius) + 4px)',
+  			'2xl': 'calc(var(--radius) + 8px)',
+  			'3xl': 'calc(var(--radius) + 12px)',
+  			'4xl': 'calc(var(--radius) + 16px)'
+  		},
+  		boxShadow: {
+  			xs: '0 1px 2px 0 oklch(0.32 0.07 250 / 0.04)',
+  			sm: '0 1px 3px 0 oklch(0.32 0.07 250 / 0.06), 0 1px 2px -1px oklch(0.32 0.07 250 / 0.04)',
+  			md: '0 4px 6px -1px oklch(0.32 0.07 250 / 0.07), 0 2px 4px -2px oklch(0.32 0.07 250 / 0.05)',
+  			lg: '0 10px 15px -3px oklch(0.32 0.07 250 / 0.08), 0 4px 6px -4px oklch(0.32 0.07 250 / 0.06)',
+  			card: '0 1px 2px 0 oklch(0.32 0.07 250 / 0.04)',
+  			'card-hover': '0 4px 6px -1px oklch(0.32 0.07 250 / 0.07), 0 2px 4px -2px oklch(0.32 0.07 250 / 0.05)',
+  			popover: '0 10px 15px -3px oklch(0.32 0.07 250 / 0.08), 0 4px 6px -4px oklch(0.32 0.07 250 / 0.06)',
+  			modal: '0 20px 35px -8px oklch(0.32 0.07 250 / 0.18), 0 8px 16px -4px oklch(0.32 0.07 250 / 0.10)'
   		},
   		keyframes: {
   			'accordion-down': {
@@ -82,11 +149,22 @@ const config: Config = {
   				to: {
   					height: '0'
   				}
+  			},
+  			'page-fade': {
+  				from: {
+  					opacity: '0',
+  					transform: 'translateY(4px)'
+  				},
+  				to: {
+  					opacity: '1',
+  					transform: 'translateY(0)'
+  				}
   			}
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+  			'page-fade': 'page-fade 180ms ease-out both'
   		}
   	}
   },

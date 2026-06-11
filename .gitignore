@@ -37,3 +37,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.mcp.json
+
+# Lovable reference source (read-only, has its own secrets)
+OLD APP/

@@ -1,10 +1,22 @@
-import { ModuleStub } from "@/components/shell/ModuleStub";
+import { listObjekte } from "@/lib/data/objekte";
+import { ObjekteListView } from "@/components/objekte/ObjekteListView";
 
-export default function ObjektePage() {
-  return (
-    <ModuleStub
-      title="Objekte"
-      description="Projekte und Einheiten — wird im Migrations-Schritt PROJ-3 portiert."
-    />
-  );
+export const metadata = {
+  title: "Objekte · Objektpilot",
+};
+
+export default async function ObjektePage() {
+  const { items, error } = await listObjekte();
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-4 md:p-6">
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          Fehler beim Laden: {error}
+        </div>
+      </div>
+    );
+  }
+
+  return <ObjekteListView items={items} />;
 }

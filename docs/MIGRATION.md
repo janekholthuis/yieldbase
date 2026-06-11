@@ -78,6 +78,17 @@ Each `src/api/X.functions.ts` → `src/lib/actions/X.ts`. Keep Zod schemas verba
 | 10 | Edge functions (cron, email, seed) + deploy config | ⏳ |
 | 11 | QA pass (RLS audit, role tests, security) + cleanup `/OLD APP` | ⏳ |
 
+## Deployment
+
+- **Vercel project:** `i-want-money-5691s-projects/yieldbase` (CLI-deployed).
+- **Production URL:** https://objelt-pilot.vercel.app (public; deployment protection disabled)
+- **Env vars set (Vercel, Production):** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable key — public/safe).
+- **Open action items for a fully working live login:**
+  1. **Vercel Deployment Protection** is ON → site returns 401 for the public. Disable in Vercel → Project → Settings → Deployment Protection if public access is wanted.
+  2. **Supabase Auth URL config**: add the Vercel domain to Authentication → URL Configuration (Site URL + Redirect URLs) so magic-link / email redirects work. (Password login works without it.)
+  3. Add `SUPABASE_SERVICE_ROLE_KEY` (secret) in Vercel later — needed only for admin-client features (invites, portal activation).
+- First build failed because the `/_not-found` prerender constructs the Supabase browser client at build time and env vars were missing → fixed by setting the Vercel env vars.
+
 ## Portability notes
 
 **Copy ~verbatim (framework-agnostic):** `lib/bonitaet.ts`, `kalkulation.ts`, `kunden-dokumente.ts`, `objekte-filter.ts`, `objekt-format.ts`, `status-colors.ts`, `user-initial.ts`, `password.ts`, `portal-finanzierung-hint.ts`, `praesentation-navigation.ts`, and `integrations/supabase/types.ts`. Most shadcn `components/ui/*`.

@@ -29,6 +29,8 @@ import type {
 } from "@/lib/data/objekte";
 import { CompletenessCard } from "@/components/objekte/CompletenessCard";
 import { BankDatenCard } from "@/components/objekte/BankDatenCard";
+import { KarteTab } from "@/components/objekte/KarteTab";
+import { KundenPickerModal } from "@/components/objekte/KundenPickerModal";
 
 const DOK_KAT_LABEL: Record<string, string> = {
   grundriss: "Grundriss",
@@ -113,7 +115,7 @@ export function EinheitDetailView({ einheit }: { einheit: EinheitDetail }) {
 
             <div className="space-y-4">
               <CompletenessCard einheit={e} />
-              <ZuweisungenCard zuweisungen={e.zuweisungen} />
+              <ZuweisungenCard zuweisungen={e.zuweisungen} einheitId={e.einheit_id} />
             </div>
           </div>
         </TabsContent>
@@ -135,7 +137,7 @@ export function EinheitDetailView({ einheit }: { einheit: EinheitDetail }) {
 
         {/* Karte */}
         <TabsContent value="karte" className="space-y-4">
-          <KarteStub adresse={e.adresse} plz={e.plz} stadt={e.stadt} />
+          <KarteTab adresse={e.adresse} plz={e.plz} stadt={e.stadt} />
         </TabsContent>
       </Tabs>
     </div>
@@ -246,13 +248,27 @@ function GeschwisterCard({ geschwister }: { geschwister: ObjektListItem[] }) {
 
 function ZuweisungenCard({
   zuweisungen,
+  einheitId,
 }: {
   zuweisungen: EinheitDetail["zuweisungen"];
+  einheitId: string;
 }) {
+  const router = useRouter();
+  const [pickerOpen, setPickerOpen] = useState(false);
   return (
     <Card className="p-4 space-y-3">
-      <h3 className="font-semibold">Zugewiesene Kunden</h3>
-      {/* TODO(migration): KundenPickerModal — assign/unassign customers (write). */}
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">Zugewiesene Kunden</h3>
+        <Button size="sm" variant="outline" onClick={() => setPickerOpen(true)}>
+          Objekt zuweisen
+        </Button>
+      </div>
+      <KundenPickerModal
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        einheitId={einheitId}
+        onAssigned={() => router.refresh()}
+      />
       {zuweisungen.length === 0 ? (
         <p className="text-sm text-muted-foreground">Noch kein Kunde zugewiesen.</p>
       ) : (

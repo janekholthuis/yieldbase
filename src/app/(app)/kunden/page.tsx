@@ -1,10 +1,11 @@
-import { ModuleStub } from "@/components/shell/ModuleStub";
+import { listKunden } from "@/lib/data/kunden";
+import { KundenListView } from "@/components/kunden/KundenListView";
 
-export default function KundenPage() {
-  return (
-    <ModuleStub
-      title="Kunden"
-      description="Pipeline und Stammdaten — wird im Migrations-Schritt PROJ-4 portiert."
-    />
-  );
+export const metadata = {
+  title: "Kunden · Objektpilot",
+};
+
+export default async function KundenPage() {
+  const kunden = await listKunden();
+  return <KundenListView kunden={kunden} />;
 }

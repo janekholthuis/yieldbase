@@ -48,9 +48,14 @@ export interface PortalDashboard {
     adresse: string | null;
     plz: string | null;
     stadt: string | null;
+    kaufpreis: number | null;
+    wohnflaeche: number | null;
+    zimmer: number | null;
     reservierung_status: string | null;
     reservierung_id: string | null;
   }>;
+  /** Distinct (non-deleted) document categories the kunde has uploaded. */
+  dokumentKategorien: string[];
 }
 
 /** Portal dashboard for the signed-in kunde: own profile, assigned VP, einheiten + status. */
@@ -68,16 +73,17 @@ export async function getPortalDashboard(): Promise<PortalDashboard> {
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (!kunde) return { kunde: null, vp: null, einheiten: [] };
+  if (!kunde)
+    return { kunde: null, vp: null, einheiten: [], dokumentKategorien: [] };
 
-  const [vpRes, zuwRes, resRes] = await Promise.all([
+  const [vpRes, zuwRes, resRes, dokRes] = await Promise.all([
     supabase.rpc("get_my_vp"),
     supabase
       .from("objekt_kunde_zuweisungen")
       .select(
         `einheit_id, status,
          einheit:einheit_id (
-           id, wohnungsnummer, status,
+           id, wohnungsnummer, status, kaufpreis, wohnflaeche, zimmer,
            projekt:projekt_id ( name, adresse, plz, stadt, cover_image_url )
          )`,
       )
@@ -87,7 +93,20 @@ export async function getPortalDashboard(): Promise<PortalDashboard> {
       .select("id, einheit_id, status")
       .eq("kunde_id", kunde.id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("kunden_dokumente")
+      .select("kategorie")
+      .eq("kunde_id", kunde.id)
+      .is("deleted_at", null),
   ]);
+
+  const dokumentKategorien = [
+    ...new Set(
+      ((dokRes.data ?? []) as Array<{ kategorie: string }>)
+        .map((d) => d.kategorie)
+        .filter(Boolean),
+    ),
+  ];
 
   const resByEinheit = new Map<string, { id: string; status: string }>();
   for (const r of (resRes.data ?? []) as Array<{
@@ -107,6 +126,9 @@ export async function getPortalDashboard(): Promise<PortalDashboard> {
       einheit: {
         wohnungsnummer?: string;
         status?: string;
+        kaufpreis?: number | null;
+        wohnflaeche?: number | null;
+        zimmer?: number | null;
         projekt?: {
           name?: string | null;
           adresse?: string | null;
@@ -129,6 +151,9 @@ export async function getPortalDashboard(): Promise<PortalDashboard> {
       adresse: p?.adresse ?? null,
       plz: p?.plz ?? null,
       stadt: p?.stadt ?? null,
+      kaufpreis: e.kaufpreis ?? null,
+      wohnflaeche: e.wohnflaeche ?? null,
+      zimmer: e.zimmer ?? null,
       reservierung_status: r?.status ?? null,
       reservierung_id: r?.id ?? null,
     };
@@ -138,5 +163,6 @@ export async function getPortalDashboard(): Promise<PortalDashboard> {
     kunde: kunde as PortalDashboard["kunde"],
     vp: ((vpRes.data ?? [])[0] ?? null) as PortalDashboard["vp"],
     einheiten,
+    dokumentKategorien,
   };
 }

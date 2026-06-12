@@ -45,6 +45,28 @@ const fmtEUR0 = (n: number) =>
     maximumFractionDigits: 0,
   }).format(n);
 
+// Customer-friendly labels — never show raw enum values in the portal.
+const STATUS_LABEL: Record<string, string> = {
+  // einheit_status
+  frei: "Verfügbar",
+  auf_anfrage: "Auf Anfrage",
+  reserviert: "Reserviert",
+  notarvorbereitung: "Notarvorbereitung",
+  notartermin: "Notartermin",
+  verkauft: "Verkauft",
+  // reservierung_status
+  entwurf: "In Vorbereitung",
+  angefragt: "Angefragt",
+  abgelaufen: "Abgelaufen",
+  storniert: "Storniert",
+  beurkundet: "Beurkundet",
+};
+
+function statusLabel(value: string | null | undefined): string {
+  if (!value) return "—";
+  return STATUS_LABEL[value] ?? value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 export function PortalDashboardView({
   data,
   cases,
@@ -66,9 +88,10 @@ export function PortalDashboardView({
   const berufStatus = data.kunde?.beruf_status ?? null;
   const kategorien = unterlagenFor(berufStatus);
   const benoetigt = kategorien.length;
-  // TODO(migration): kunden documents storage — live „eingereicht" count once
-  // uploads land. Until then we show the required count and a CTA.
-  const eingereicht = 0;
+  // Real count: required categories that have at least one uploaded document.
+  const eingereicht = kategorien.filter((u) =>
+    data.dokumentKategorien.includes(u.slug),
+  ).length;
   const dokPct = benoetigt === 0 ? 0 : Math.round((eingereicht / benoetigt) * 100);
   const dokHint =
     eingereicht === 0
@@ -126,8 +149,10 @@ export function PortalDashboardView({
                     reservierteEinheit.status,
                 )}
               >
-                {reservierteEinheit.reservierung_status ??
-                  reservierteEinheit.status}
+                {statusLabel(
+                  reservierteEinheit.reservierung_status ??
+                    reservierteEinheit.status,
+                )}
               </Badge>
             </div>
           ) : (
@@ -252,12 +277,31 @@ export function PortalDashboardView({
                         e.reservierung_status ?? e.zuweisung_status ?? e.status,
                       )}
                     >
-                      {e.reservierung_status ?? e.zuweisung_status ?? e.status}
+                      {statusLabel(
+                        e.reservierung_status ?? e.zuweisung_status ?? e.status,
+                      )}
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Details und Unterlagen folgen in Kürze in deinem Portal.
-                  </p>
+                  {(() => {
+                    const facts = [
+                      e.wohnflaeche != null
+                        ? `${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 }).format(e.wohnflaeche)} m²`
+                        : null,
+                      e.zimmer != null ? `${e.zimmer} Zi.` : null,
+                    ].filter(Boolean);
+                    return (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        {facts.map((f) => (
+                          <span key={f}>{f}</span>
+                        ))}
+                        {e.kaufpreis != null && (
+                          <span className="ml-auto font-display text-sm font-semibold text-brand-primary">
+                            {fmtEUR0(e.kaufpreis)}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </SectionCard>
             ))}

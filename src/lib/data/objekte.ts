@@ -108,6 +108,8 @@ export interface EinheitDetail extends ObjektListItem {
   energieklasse: string | null;
   heizungsart: string | null;
   extras: string | null;
+  /** True when the parent projekt has bank details (for completeness). */
+  bank_complete: boolean;
   bilder: ObjektBild[];
   dokumente: ObjektDokument[];
   zuweisungen: ObjektKundenZuweisung[];
@@ -207,7 +209,7 @@ export async function getEinheitDetail(einheitId: string): Promise<{
        miteigentumsanteil, vermietet_seit, energieklasse, heizungsart, extras,
        projekte:projekt_id (
          id, name, projekt_typ, bautraeger, cover_image_url, adresse, baujahr,
-         stadt, plz, bundesland, mietrendite_brutto
+         stadt, plz, bundesland, mietrendite_brutto, bank_iban
        )`,
     )
     .eq("id", einheitId)
@@ -272,6 +274,7 @@ export async function getEinheitDetail(einheitId: string): Promise<{
     energieklasse: (e as any).energieklasse ?? null,
     heizungsart: (e as any).heizungsart ?? null,
     extras: (e as any).extras ?? null,
+    bank_complete: Boolean((e as any).projekte?.bank_iban),
     bilder: (bildersR.data ?? []) as ObjektBild[],
     dokumente: (dokR.data ?? []) as ObjektDokument[],
     zuweisungen: zuweisungenRaw.map((z) => ({

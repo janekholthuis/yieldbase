@@ -23,9 +23,8 @@ const ITEMS: { key: keyof Completeness; label: string }[] = [
   { key: "bank", label: "Bank-Daten" },
 ];
 
-// NOTE(migration): OLD APP fetched completeness via the `get_projekt_completeness`
-// RPC. For the read-only port we derive it directly from the loaded einheit data.
-// TODO(migration): wire up server-side completeness (incl. "Sichtbarkeit geprüft").
+// Completeness is derived directly from the loaded einheit data (deterministic,
+// known fields). `bank` reflects the parent projekt's bank details.
 function deriveCompleteness(e: EinheitDetail): Completeness {
   return {
     eckdaten:
@@ -33,7 +32,7 @@ function deriveCompleteness(e: EinheitDetail): Completeness {
     kalkulation: e.kalkulation != null && Object.keys(e.kalkulation).length > 0,
     bilder: e.bilder.length > 0,
     dokumente: e.dokumente.length > 0,
-    bank: false, // TODO(migration): bank data is on the projekt, not loaded here.
+    bank: e.bank_complete,
   };
 }
 

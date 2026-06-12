@@ -307,7 +307,7 @@ export function EinheitDetailView({
 
         {/* Bankdaten */}
         <TabsContent value="bankdaten" className="space-y-4">
-          <BankDatenCard />
+          <BankDatenCard projektId={e.projekt_id} />
         </TabsContent>
 
         {/* Karte */}

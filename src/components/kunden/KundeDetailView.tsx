@@ -41,6 +41,7 @@ import type {
   EmpfehlungItem,
 } from "@/lib/data/objekte-extra-types";
 import { EmpfehlungCard } from "@/components/kunden/EmpfehlungCard";
+import { KundenDokumenteListe } from "@/components/kunden-dokumente/KundenDokumenteListe";
 
 const STATUS_LABEL: Record<string, string> = {
   lead: "Lead",
@@ -66,7 +67,13 @@ function num(v: string) {
   return Number.isFinite(n) ? n : 0;
 }
 
-export function KundeDetailView({ kunde }: { kunde: KundeDetail }) {
+export function KundeDetailView({
+  kunde,
+  currentUserId,
+}: {
+  kunde: KundeDetail;
+  currentUserId: string;
+}) {
   const router = useRouter();
   const [activating, setActivating] = useState(false);
   const k = kunde;
@@ -156,7 +163,13 @@ export function KundeDetailView({ kunde }: { kunde: KundeDetail }) {
         </TabsContent>
 
         <TabsContent value="dokumente">
-          <DokumenteTab />
+          <KundenDokumenteListe
+            kundeId={k.id}
+            berufStatus={k.beruf_status}
+            canUpload
+            currentUserId={currentUserId}
+            showUploader
+          />
         </TabsContent>
       </Tabs>
     </div>
@@ -537,15 +550,3 @@ function ZuweisungRow({ z }: { z: KundeZuweisungItem }) {
   );
 }
 
-function DokumenteTab() {
-  // TODO(migration): kunden documents storage actions — uploads not yet ported.
-  return (
-    <section className="rounded-lg border border-dashed bg-card p-8 text-center">
-      <h3 className="mb-1 font-medium">Dokumente</h3>
-      <p className="text-sm text-muted-foreground">
-        Die Dokumentenverwaltung (Upload, Selbstauskunft, Nachweise) wird in
-        einem späteren Migrations-Schritt portiert.
-      </p>
-    </section>
-  );
-}

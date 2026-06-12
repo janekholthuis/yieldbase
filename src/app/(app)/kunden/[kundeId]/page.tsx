@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getKunde } from "@/lib/data/kunden";
+import { requireUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { KundeDetailView } from "@/components/kunden/KundeDetailView";
 
@@ -14,6 +15,7 @@ export default async function KundeDetailPage({
   params: Promise<{ kundeId: string }>;
 }) {
   const { kundeId } = await params;
+  const { userId } = await requireUser();
 
   let kunde;
   try {
@@ -34,5 +36,5 @@ export default async function KundeDetailPage({
     );
   }
 
-  return <KundeDetailView kunde={kunde} />;
+  return <KundeDetailView kunde={kunde} currentUserId={userId} />;
 }

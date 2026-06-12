@@ -3,10 +3,28 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { StatRow } from "@/components/ui/stat-row";
+import { FileUpload } from "@/components/dokumente/FileUpload";
+import {
+  recordObjektBild,
+  deleteObjektBild,
+  recordObjektDokument,
+  deleteObjektDokument,
+  listObjektDokumenteSignedUrls,
+} from "@/lib/actions/dokumente";
+import { sanitizeFilename } from "@/lib/kunden-dokumente";
 import {
   STATUS_BADGE_CLASS,
   STATUS_LABELS,
@@ -21,6 +39,7 @@ import {
   FileText,
   MapPin,
   Presentation,
+  Trash2,
   UserCheck,
 } from "lucide-react";
 import type {
@@ -170,12 +189,21 @@ export function EinheitDetailView({
 
         {/* Bilder */}
         <TabsContent value="bilder" className="space-y-4">
-          <BilderGallery bilder={e.bilder} dokumente={e.dokumente} />
+          <BilderGallery
+            bilder={e.bilder}
+            dokumente={e.dokumente}
+            einheitId={e.einheit_id}
+            projektId={e.projekt_id}
+          />
         </TabsContent>
 
         {/* Dokumente */}
         <TabsContent value="dokumente" className="space-y-4">
-          <DokumenteList dokumente={e.dokumente} />
+          <DokumenteList
+            dokumente={e.dokumente}
+            einheitId={e.einheit_id}
+            projektId={e.projekt_id}
+          />
         </TabsContent>
 
         {/* Bankdaten */}
@@ -372,21 +400,63 @@ function ZuweisungenCard({
   );
 }
 
-// Display-only gallery ported from OLD APP BilderTab (lightbox + grundriss).
-// TODO(migration): image upload/delete server action.
+// Gallery ported from OLD APP BilderTab (lightbox + grundriss) with upload +
+// delete wired to the objekt-bilder (public) bucket.
 function BilderGallery({
   bilder,
   dokumente,
+  einheitId,
+  projektId,
 }: {
   bilder: ObjektBild[];
   dokumente: ObjektDokument[];
+  einheitId: string;
+  projektId: string;
 }) {
   const [lightbox, setLightbox] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const grundriss = dokumente.filter((d) => d.kategorie === "grundriss");
+  const maxSort = bilder.reduce((m, b) => Math.max(m, b.sort_order ?? 0), -1);
+
+  async function handleDeleteBild(id: string) {
+    setDeletingId(id);
+    try {
+      await deleteObjektBild({ id });
+      toast.success("Bild gelöscht");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Löschen fehlgeschlagen");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Galerie ({bilder.length})</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-lg font-semibold">Galerie ({bilder.length})</h3>
+      </div>
+
+      <FileUpload
+        bucket="objekt-bilder"
+        multiple
+        acceptedMime={["image/jpeg", "image/png", "image/webp"]}
+        accept="image/jpeg,image/png,image/webp"
+        label="Bilder hierher ziehen oder klicken (JPG, PNG, WebP)"
+        buildPath={({ id, file }) => {
+          const ext = file.name.split(".").pop() ?? "jpg";
+          return `${einheitId}/${id}.${ext}`;
+        }}
+        onUploaded={async (meta) => {
+          if (!meta.publicUrl) throw new Error("Keine öffentliche URL erhalten");
+          await recordObjektBild({
+            einheitId,
+            projektId,
+            url: meta.publicUrl,
+            alt: meta.dateiname,
+            sortOrder: maxSort + 1,
+          });
+        }}
+      />
 
       {bilder.length === 0 ? (
         <Card className="p-10 text-center text-sm text-muted-foreground">
@@ -395,19 +465,35 @@ function BilderGallery({
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
           {bilder.map((b, i) => (
-            <button
+            <div
               key={b.id}
-              onClick={() => setLightbox(i)}
-              className="group block aspect-square w-full overflow-hidden rounded-lg bg-muted"
+              className="group relative aspect-square w-full overflow-hidden rounded-lg bg-muted"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={b.url}
-                alt={b.alt ?? "Bild"}
-                loading="lazy"
-                className="h-full w-full object-cover transition-transform group-hover:scale-105"
-              />
-            </button>
+              <button
+                onClick={() => setLightbox(i)}
+                className="block h-full w-full"
+                aria-label="Bild vergrößern"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={b.url}
+                  alt={b.alt ?? "Bild"}
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                />
+              </button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                className="absolute right-1.5 top-1.5 h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                disabled={deletingId === b.id}
+                onClick={() => handleDeleteBild(b.id)}
+                aria-label="Bild löschen"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           ))}
         </div>
       )}
@@ -455,9 +541,33 @@ function BilderGallery({
   );
 }
 
-// Display-only list ported from OLD APP DokumenteTab, grouped by kategorie.
-// TODO(migration): document upload/delete + signed-URL preview server action.
-function DokumenteList({ dokumente }: { dokumente: ObjektDokument[] }) {
+const DOK_KAT_OPTIONS: { value: string; label: string }[] = [
+  { value: "grundriss", label: "Grundriss" },
+  { value: "expose", label: "Exposé" },
+  { value: "energieausweis", label: "Energieausweis" },
+  { value: "teilungserklaerung", label: "Teilungserklärung" },
+  { value: "mietvertrag", label: "Mietvertrag" },
+  { value: "kaufvertrag", label: "Kaufvertrag" },
+  { value: "protokoll_eigentuemerversammlung", label: "Protokoll Eigentümerversammlung" },
+  { value: "wirtschaftsplan", label: "Wirtschaftsplan" },
+  { value: "sonstiges", label: "Sonstiges" },
+];
+
+// Document list grouped by kategorie, with upload (objekt-dokumente, private),
+// signed-URL open (resolved on click) and delete. Ported from OLD APP DokumenteTab.
+function DokumenteList({
+  dokumente,
+  einheitId,
+  projektId,
+}: {
+  dokumente: ObjektDokument[];
+  einheitId: string;
+  projektId: string;
+}) {
+  const [kategorie, setKategorie] = useState<string>("sonstiges");
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const groups = new Map<string, ObjektDokument[]>();
   for (const d of dokumente) {
     const arr = groups.get(d.kategorie) ?? [];
@@ -465,9 +575,80 @@ function DokumenteList({ dokumente }: { dokumente: ObjektDokument[] }) {
     groups.set(d.kategorie, arr);
   }
 
+  async function handleOpen(d: ObjektDokument) {
+    setOpeningId(d.id);
+    try {
+      // If the stored url is already an http link (legacy public URL), open it
+      // directly; otherwise resolve a fresh signed URL (private bucket).
+      if (/^https?:\/\//.test(d.url)) {
+        window.open(d.url, "_blank", "noopener,noreferrer");
+        return;
+      }
+      const urls = await listObjektDokumenteSignedUrls({ ids: [d.id] });
+      const signed = urls[d.id];
+      if (!signed) {
+        toast.error("Link konnte nicht erzeugt werden");
+        return;
+      }
+      window.open(signed, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Öffnen fehlgeschlagen");
+    } finally {
+      setOpeningId(null);
+    }
+  }
+
+  async function handleDelete(d: ObjektDokument) {
+    setDeletingId(d.id);
+    try {
+      await deleteObjektDokument({ id: d.id });
+      toast.success("Dokument gelöscht");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Löschen fehlgeschlagen");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">Dokumente ({dokumente.length})</h3>
+
+      <Card className="space-y-3 p-4">
+        <div className="max-w-xs space-y-1.5">
+          <Label>Kategorie</Label>
+          <Select value={kategorie} onValueChange={setKategorie}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DOK_KAT_OPTIONS.map((k) => (
+                <SelectItem key={k.value} value={k.value}>
+                  {k.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <FileUpload
+          bucket="objekt-dokumente"
+          label="Dokument hierher ziehen oder klicken"
+          buildPath={({ id, safeName }) =>
+            `einheit/${einheitId}/${id}-${sanitizeFilename(safeName)}`
+          }
+          onUploaded={async (meta) => {
+            await recordObjektDokument({
+              einheitId,
+              projektId: undefined,
+              url: meta.storagePath,
+              dateiname: meta.dateiname,
+              kategorie: kategorie as never,
+              mimeType: meta.mimeType,
+              sizeBytes: meta.sizeBytes,
+            });
+          }}
+        />
+      </Card>
 
       {dokumente.length === 0 ? (
         <Card className="p-10 text-center text-sm text-muted-foreground">
@@ -484,10 +665,23 @@ function DokumenteList({ dokumente }: { dokumente: ObjektDokument[] }) {
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium">{d.dateiname}</div>
                   </div>
-                  <Button variant="ghost" size="sm" asChild>
-                    <a href={d.url} target="_blank" rel="noopener noreferrer">
-                      Öffnen
-                    </a>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={openingId === d.id}
+                    onClick={() => handleOpen(d)}
+                  >
+                    Öffnen
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    disabled={deletingId === d.id}
+                    onClick={() => handleDelete(d)}
+                    aria-label="Dokument löschen"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               ))}

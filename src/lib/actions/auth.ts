@@ -232,11 +232,20 @@ export async function acceptInvite(input: z.infer<typeof acceptInviteInput>) {
     });
     if (hErr) throw new Error(`Hierarchie konnte nicht gesetzt werden: ${hErr.message}`);
   } else if (inv.role === "kunde" && inv.parent_vp_id) {
+    // The admin client has no auth.uid(), so the org-default trigger can't fire.
+    // Mirror the inviting VP's active org so the new kunde stays visible to them.
+    // (organisation_id is not yet in the generated kunden types — see _org.ts.)
+    const { data: vpProfile } = await admin
+      .from("profiles")
+      .select("active_organisation_id")
+      .eq("id", inv.parent_vp_id)
+      .maybeSingle();
     const { error: kErr } = await admin.from("kunden").insert({
       vp_id: inv.parent_vp_id,
       user_id: newUserId,
       persoenliche_daten: { name: data.name ?? inv.email },
-    });
+      organisation_id: vpProfile?.active_organisation_id ?? null,
+    } as Database["public"]["Tables"]["kunden"]["Insert"]);
     if (kErr) throw new Error(`Kunde konnte nicht angelegt werden: ${kErr.message}`);
   }
 

@@ -13,6 +13,7 @@ import { z } from "zod";
 
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { activeOrgId } from "@/lib/actions/_org";
 import type { Database } from "@/lib/supabase/types";
 
 // Internal roles allowed to manage projects/units.
@@ -122,6 +123,10 @@ export async function createProjekt(
   const session = await requireRole(...INTERNAL_ROLES);
   const data = createProjektSchema.parse(input);
 
+  // The admin client has no auth.uid(), so the org-default trigger can't fire.
+  // Resolve the caller's active org via the authed client and set it explicitly.
+  const organisationId = await activeOrgId(session.supabase, session.userId);
+
   const insert: ProjektInsert = {
     adresse: data.adresse,
     name: data.name ?? data.adresse,
@@ -133,6 +138,7 @@ export async function createProjekt(
     bautraeger: data.bautraeger ?? null,
     instandhaltungsruecklage_gesamt:
       data.instandhaltungsruecklage_gesamt ?? null,
+    organisation_id: organisationId,
     created_by: session.userId,
   };
 
@@ -259,13 +265,28 @@ type EinheitUpdate = Database["public"]["Tables"]["einheiten"]["Update"];
 export async function createEinheit(
   input: CreateEinheitInput,
 ): Promise<{ id: string }> {
-  await requireRole(...INTERNAL_ROLES);
+  const session = await requireRole(...INTERNAL_ROLES);
   const data = createEinheitSchema.parse(input);
+
+  const admin = createAdminClient();
+
+  // A unit must share its project's org. Prefer the parent projekt's
+  // organisation_id (read via the admin client, since the projekt may belong to
+  // another caller's active org); fall back to the caller's active org.
+  const { data: parentProjekt } = await admin
+    .from("projekte")
+    .select("organisation_id")
+    .eq("id", data.projekt_id)
+    .maybeSingle();
+  const organisationId =
+    parentProjekt?.organisation_id ??
+    (await activeOrgId(session.supabase, session.userId));
 
   const insert: EinheitInsert = {
     projekt_id: data.projekt_id,
     wohnungsnummer: data.wohnungsnummer,
     status: data.status ?? "verfuegbar",
+    organisation_id: organisationId,
     ...compact({
       etage: data.etage,
       wohnflaeche: data.wohnflaeche,
@@ -297,7 +318,6 @@ export async function createEinheit(
     }),
   };
 
-  const admin = createAdminClient();
   const { data: row, error } = await admin
     .from("einheiten")
     .insert(insert)

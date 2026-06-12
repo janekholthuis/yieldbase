@@ -342,6 +342,7 @@ export type Database = {
           notiz_finanzierer: string | null
           offer_accepted_at: string | null
           offer_filled_at: string | null
+          organisation_id: string | null
           sondertilgung_pa: number | null
           status: Database["public"]["Enums"]["case_status"]
           tilgung_initial: number | null
@@ -365,6 +366,7 @@ export type Database = {
           notiz_finanzierer?: string | null
           offer_accepted_at?: string | null
           offer_filled_at?: string | null
+          organisation_id?: string | null
           sondertilgung_pa?: number | null
           status?: Database["public"]["Enums"]["case_status"]
           tilgung_initial?: number | null
@@ -388,6 +390,7 @@ export type Database = {
           notiz_finanzierer?: string | null
           offer_accepted_at?: string | null
           offer_filled_at?: string | null
+          organisation_id?: string | null
           sondertilgung_pa?: number | null
           status?: Database["public"]["Enums"]["case_status"]
           tilgung_initial?: number | null
@@ -415,6 +418,13 @@ export type Database = {
             columns: ["kunde_id"]
             isOneToOne: false
             referencedRelation: "kunden"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finanzierungs_cases_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisationen"
             referencedColumns: ["id"]
           },
         ]
@@ -619,6 +629,7 @@ export type Database = {
           max_finanzierbar: number | null
           max_monatsrate: number | null
           nachname: string | null
+          organisation_id: string | null
           persoenliche_daten: Json
           persoenlicher_steuersatz: number | null
           plz: string | null
@@ -653,6 +664,7 @@ export type Database = {
           max_finanzierbar?: number | null
           max_monatsrate?: number | null
           nachname?: string | null
+          organisation_id?: string | null
           persoenliche_daten?: Json
           persoenlicher_steuersatz?: number | null
           plz?: string | null
@@ -687,6 +699,7 @@ export type Database = {
           max_finanzierbar?: number | null
           max_monatsrate?: number | null
           nachname?: string | null
+          organisation_id?: string | null
           persoenliche_daten?: Json
           persoenlicher_steuersatz?: number | null
           plz?: string | null
@@ -702,7 +715,15 @@ export type Database = {
           vorname?: string | null
           vp_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "kunden_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisationen"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       kunden_dokumente: {
         Row: {
@@ -1352,6 +1373,7 @@ export type Database = {
           id: string
           ip: unknown
           kunde_id: string
+          organisation_id: string | null
           pdf_url: string | null
           reminder_3d_sent_at: string | null
           reminder_7d_sent_at: string | null
@@ -1377,6 +1399,7 @@ export type Database = {
           id?: string
           ip?: unknown
           kunde_id: string
+          organisation_id?: string | null
           pdf_url?: string | null
           reminder_3d_sent_at?: string | null
           reminder_7d_sent_at?: string | null
@@ -1402,6 +1425,7 @@ export type Database = {
           id?: string
           ip?: unknown
           kunde_id?: string
+          organisation_id?: string | null
           pdf_url?: string | null
           reminder_3d_sent_at?: string | null
           reminder_7d_sent_at?: string | null
@@ -1426,6 +1450,13 @@ export type Database = {
             columns: ["kunde_id"]
             isOneToOne: false
             referencedRelation: "kunden"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservierungen_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisationen"
             referencedColumns: ["id"]
           },
           {
@@ -1725,6 +1756,7 @@ export type Database = {
           projekt_id: string
         }[]
       }
+      current_org_id: { Args: never; Returns: string }
       finanzierer_sees_einheit: {
         Args: { _einheit_id: string }
         Returns: boolean

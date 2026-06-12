@@ -63,6 +63,8 @@ import {
 import {
   getInvestagonStatus,
   syncInvestagon,
+  saveInvestagonCredentials,
+  removeInvestagonCredentials,
   type InvestagonStatus,
 } from "@/lib/actions/investagon";
 
@@ -520,10 +522,30 @@ function formatDateTime(value: string | null): string {
   return Number.isNaN(d.getTime()) ? "—" : DATE_FMT.format(d);
 }
 
+async function runSyncRoute(full: boolean): Promise<{
+  projects: number;
+  properties: number;
+  photos: number;
+  documents: number;
+}> {
+  const res = await fetch("/api/investagon/sync", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ full }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json?.error ?? "Synchronisierung fehlgeschlagen");
+  return json;
+}
+
 function InvestagonSyncCard() {
   const [status, setStatus] = useState<InvestagonStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [fullSyncing, setFullSyncing] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [orgId, setOrgId] = useState("");
+  const [apiKey, setApiKey] = useState("");
 
   const loadStatus = useCallback(async () => {
     try {
@@ -539,11 +561,31 @@ function InvestagonSyncCard() {
     void loadStatus();
   }, [loadStatus]);
 
+  const last = status?.lastSync ?? null;
+  const hasCreds = status?.hasCredentials ?? false;
+
   async function handleSync() {
     setSyncing(true);
     try {
       const res = await syncInvestagon({ incremental: true });
-      toast.success("Synchronisierung abgeschlossen", {
+      toast.success("Abgleich abgeschlossen", {
+        description: `${res.projects} Projekte · ${res.properties} Einheiten · ${res.photos} Fotos · ${res.documents} Dokumente`,
+      });
+      await loadStatus();
+    } catch (e) {
+      toast.error("Abgleich fehlgeschlagen", {
+        description: e instanceof Error ? e.message : "Unbekannter Fehler",
+      });
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function handleFullSync() {
+    setFullSyncing(true);
+    try {
+      const res = await runSyncRoute(true);
+      toast.success("Vollständige Synchronisierung abgeschlossen", {
         description: `${res.projects} Projekte · ${res.properties} Einheiten · ${res.photos} Fotos · ${res.documents} Dokumente`,
       });
       await loadStatus();
@@ -552,12 +594,68 @@ function InvestagonSyncCard() {
         description: e instanceof Error ? e.message : "Unbekannter Fehler",
       });
     } finally {
-      setSyncing(false);
+      setFullSyncing(false);
     }
   }
 
-  const last = status?.lastSync ?? null;
-  const hasCreds = status?.hasCredentials ?? false;
+  async function handleConnect() {
+    if (!orgId.trim() || !apiKey.trim() || connecting) return;
+    setConnecting(true);
+    try {
+      await saveInvestagonCredentials({
+        organizationId: orgId.trim(),
+        apiKey: apiKey.trim(),
+      });
+      toast.success("Verbunden", {
+        description: "Erstsynchronisierung wird gestartet – das kann einige Minuten dauern.",
+      });
+      setApiKey("");
+      await loadStatus();
+      // Kick off the initial full backfill right away.
+      setFullSyncing(true);
+      try {
+        const res = await runSyncRoute(true);
+        toast.success("Erstsynchronisierung abgeschlossen", {
+          description: `${res.projects} Projekte · ${res.properties} Einheiten · ${res.photos} Fotos · ${res.documents} Dokumente`,
+        });
+        await loadStatus();
+      } catch (e) {
+        toast.error("Erstsynchronisierung fehlgeschlagen", {
+          description: e instanceof Error ? e.message : "Bitte später erneut versuchen.",
+        });
+      } finally {
+        setFullSyncing(false);
+      }
+    } catch (e) {
+      toast.error("Verbindung fehlgeschlagen", {
+        description: e instanceof Error ? e.message : "Bitte Zugangsdaten prüfen.",
+      });
+    } finally {
+      setConnecting(false);
+    }
+  }
+
+  async function handleDisconnect() {
+    if (
+      !window.confirm(
+        "Investagon-Verbindung trennen? Bereits synchronisierte Daten bleiben erhalten.",
+      )
+    )
+      return;
+    try {
+      await removeInvestagonCredentials();
+      toast.success("Verbindung getrennt");
+      setOrgId("");
+      setApiKey("");
+      await loadStatus();
+    } catch (e) {
+      toast.error("Trennen fehlgeschlagen", {
+        description: e instanceof Error ? e.message : "Unbekannter Fehler",
+      });
+    }
+  }
+
+  const busy = syncing || fullSyncing || connecting;
 
   return (
     <Card className="rounded-xl">
@@ -567,9 +665,8 @@ function InvestagonSyncCard() {
           Investagon-Synchronisierung
         </CardTitle>
         <CardDescription>
-          Projekte, Einheiten, Fotos und Dokumente aus Investagon übernehmen.
-          Dieser Button gleicht Änderungen seit dem letzten Lauf ab; der
-          vollständige Erstimport läuft über das Seed-Skript.
+          Projekte, Einheiten, Fotos und Dokumente automatisch aus Investagon
+          übernehmen.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -578,66 +675,132 @@ function InvestagonSyncCard() {
             <Loader2 className="h-4 w-4 animate-spin" /> Status wird geladen …
           </div>
         ) : !hasCreds ? (
-          <div className="flex items-start gap-2 rounded-lg border border-brand-border bg-brand-surfaceMuted p-3 text-sm text-brand-muted">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            Für diese Organisation sind keine Investagon-Zugangsdaten hinterlegt.
+          /* ── Onboarding: Zugangsdaten eingeben ── */
+          <div className="space-y-4">
+            <p className="text-sm text-brand-muted">
+              Verbinde dein Investagon-Konto. Den API-Key findest du in Investagon
+              unter <strong>Verwaltung → Add-Ons → Open-API</strong>.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="iv-org-id">Organisation-ID</Label>
+              <Input
+                id="iv-org-id"
+                value={orgId}
+                onChange={(e) => setOrgId(e.target.value)}
+                placeholder="organization_id"
+                autoComplete="off"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="iv-api-key">API-Key</Label>
+              <Input
+                id="iv-api-key"
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="api_key"
+                autoComplete="off"
+                className="font-mono"
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button
+                onClick={handleConnect}
+                disabled={!orgId.trim() || !apiKey.trim() || busy}
+              >
+                {connecting || fullSyncing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <DatabaseZap className="mr-2 h-4 w-4" />
+                )}
+                {fullSyncing ? "Synchronisiere …" : "Verbinden & synchronisieren"}
+              </Button>
+            </div>
           </div>
         ) : (
-          <div className="rounded-lg border border-brand-border bg-brand-surface p-3 text-sm">
-            <div className="mb-2 flex items-center gap-2 font-medium text-brand-primary">
-              {last?.status === "success" ? (
-                <CheckCircle2 className="h-4 w-4 text-brand-success" />
-              ) : last?.status === "error" ? (
-                <AlertCircle className="h-4 w-4 text-destructive" />
-              ) : last?.status === "running" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <DatabaseZap className="h-4 w-4 text-brand-muted" />
+          /* ── Verbunden: Status + Sync ── */
+          <>
+            <div className="rounded-lg border border-brand-border bg-brand-surface p-3 text-sm">
+              <div className="mb-2 flex items-center gap-2 font-medium text-brand-primary">
+                {last?.status === "success" ? (
+                  <CheckCircle2 className="h-4 w-4 text-brand-success" />
+                ) : last?.status === "error" ? (
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                ) : last?.status === "running" || fullSyncing || syncing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 text-brand-success" />
+                )}
+                {fullSyncing || syncing
+                  ? "Synchronisierung läuft …"
+                  : last
+                    ? `Letzter Lauf: ${
+                        last.status === "success"
+                          ? "erfolgreich"
+                          : last.status === "error"
+                            ? "fehlgeschlagen"
+                            : (last.status ?? "—")
+                      }`
+                    : "Verbunden – noch keine Synchronisierung durchgeführt."}
+              </div>
+              {last && (
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-brand-muted">
+                  <dt>Zeitpunkt</dt>
+                  <dd className="text-right tabular-nums text-brand-primary">
+                    {formatDateTime(last.finishedAt ?? last.startedAt)}
+                  </dd>
+                  <dt>Projekte</dt>
+                  <dd className="text-right tabular-nums text-brand-primary">
+                    {last.projectsSynced ?? "—"}
+                  </dd>
+                  <dt>Einheiten</dt>
+                  <dd className="text-right tabular-nums text-brand-primary">
+                    {last.propertiesSynced ?? "—"}
+                  </dd>
+                </dl>
               )}
-              {last
-                ? `Letzter Lauf: ${
-                    last.status === "success"
-                      ? "erfolgreich"
-                      : last.status === "error"
-                        ? "fehlgeschlagen"
-                        : (last.status ?? "—")
-                  }`
-                : "Noch keine Synchronisierung durchgeführt."}
+              {last?.status === "error" && last.error && (
+                <p className="mt-2 break-words text-xs text-destructive">
+                  {last.error}
+                </p>
+              )}
             </div>
-            {last && (
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-brand-muted">
-                <dt>Zeitpunkt</dt>
-                <dd className="text-right tabular-nums text-brand-primary">
-                  {formatDateTime(last.finishedAt ?? last.startedAt)}
-                </dd>
-                <dt>Projekte</dt>
-                <dd className="text-right tabular-nums text-brand-primary">
-                  {last.projectsSynced ?? "—"}
-                </dd>
-                <dt>Einheiten</dt>
-                <dd className="text-right tabular-nums text-brand-primary">
-                  {last.propertiesSynced ?? "—"}
-                </dd>
-              </dl>
-            )}
-            {last?.status === "error" && last.error && (
-              <p className="mt-2 break-words text-xs text-destructive">
-                {last.error}
-              </p>
-            )}
-          </div>
-        )}
 
-        <div className="flex justify-end">
-          <Button onClick={handleSync} disabled={syncing || !hasCreds}>
-            {syncing ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-2 h-4 w-4" />
-            )}
-            Jetzt synchronisieren
-          </Button>
-        </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDisconnect}
+                disabled={busy}
+                className="text-brand-muted hover:text-destructive"
+              >
+                <Trash2 className="mr-1.5 h-4 w-4" /> Verbindung trennen
+              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleFullSync}
+                  disabled={busy}
+                >
+                  {fullSyncing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <DatabaseZap className="mr-2 h-4 w-4" />
+                  )}
+                  Vollständig
+                </Button>
+                <Button onClick={handleSync} disabled={busy}>
+                  {syncing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                  )}
+                  Abgleichen
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

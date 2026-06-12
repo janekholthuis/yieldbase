@@ -228,6 +228,26 @@ async function* paginate<T>(
   }
 }
 
+/**
+ * Lightweight credential check: hit the projects collection (page 1) and report
+ * whether the API accepts the org id + key. Used by the onboarding flow before
+ * persisting credentials.
+ */
+export async function pingInvestagon(
+  creds: InvestagonCredentials,
+): Promise<boolean> {
+  try {
+    const res = await fetch(buildUrl(creds, "api_projects", { page: 1 }), {
+      method: "GET",
+      headers: { Accept: "application/ld+json, application/json" },
+      cache: "no-store",
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** Format a Date as the `Y-m-d H:i:s` string Investagon expects. */
 export function formatUpdatedAfter(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");

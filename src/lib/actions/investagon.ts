@@ -10,7 +10,7 @@
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runInvestagonSync } from "@/lib/investagon/sync-core";
-import { formatUpdatedAfter } from "@/lib/investagon/client";
+import { formatUpdatedAfter, pingInvestagon } from "@/lib/investagon/client";
 
 /** Resolve the caller's target organisation (explicit arg or active org). */
 async function resolveOrganisationId(
@@ -81,6 +81,55 @@ export async function getInvestagonStatus(input?: {
         }
       : null,
   };
+}
+
+/**
+ * Validate Investagon credentials (live test call) and persist them on the
+ * organisation. Admin/support only. Throws a clear error when the credentials
+ * are rejected by the API, so the onboarding UI never saves a broken key.
+ */
+export async function saveInvestagonCredentials(input: {
+  organizationId: string;
+  apiKey: string;
+  organisationId?: string;
+}): Promise<{ ok: true }> {
+  const session = await requireRole("admin", "support");
+  const organisationId = await resolveOrganisationId(session, input.organisationId);
+
+  const orgId = input.organizationId.trim();
+  const apiKey = input.apiKey.trim();
+  if (!orgId || !apiKey) {
+    throw new Error("Bitte Organisation-ID und API-Key angeben.");
+  }
+
+  const ok = await pingInvestagon({ orgId, apiKey });
+  if (!ok) {
+    throw new Error(
+      "Verbindung fehlgeschlagen — bitte Organisation-ID und API-Key prüfen.",
+    );
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("organisationen")
+    .update({ investagon_org_id: orgId, investagon_api_key: apiKey })
+    .eq("id", organisationId);
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
+
+/** Remove the organisation's Investagon credentials. Admin/support only. */
+export async function removeInvestagonCredentials(input?: {
+  organisationId?: string;
+}): Promise<void> {
+  const session = await requireRole("admin", "support");
+  const organisationId = await resolveOrganisationId(session, input?.organisationId);
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("organisationen")
+    .update({ investagon_org_id: null, investagon_api_key: null })
+    .eq("id", organisationId);
+  if (error) throw new Error(error.message);
 }
 
 export async function syncInvestagon(input?: {

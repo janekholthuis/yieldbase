@@ -38,3 +38,28 @@ export function pricePerSqm(kp: number | null, fl: number | null): number | null
   if (!kp || !fl || fl === 0) return null;
   return kp / fl;
 }
+
+/**
+ * Joins address parts into one line, dropping any part already represented in an
+ * earlier part. `adresse` often already contains PLZ + Stadt, so a naive
+ * `[adresse, plz, stadt].join(", ")` produces duplicates like
+ * "Schonensche Straße 13, 10439 Berlin, 10439, Berlin". This collapses them to
+ * "Schonensche Straße 13, 10439 Berlin".
+ */
+export function formatAddress(
+  adresse?: string | null,
+  plz?: string | null,
+  stadt?: string | null,
+  bundesland?: string | null,
+): string {
+  const out: string[] = [];
+  let acc = "";
+  for (const raw of [adresse, plz, stadt, bundesland]) {
+    const s = (raw ?? "").trim();
+    if (!s) continue;
+    if (acc.includes(s.toLowerCase())) continue; // already represented
+    out.push(s);
+    acc += " " + s.toLowerCase();
+  }
+  return out.join(", ");
+}

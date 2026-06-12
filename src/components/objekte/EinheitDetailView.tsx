@@ -38,6 +38,7 @@ import {
   STATUS_LABELS,
   formatEUR,
   formatNumber,
+  formatAddress,
   pricePerSqm,
 } from "@/lib/objekt-format";
 import {
@@ -225,7 +226,7 @@ export function EinheitDetailView({
             )}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {[e.adresse, e.plz, e.stadt].filter(Boolean).join(", ") || "—"}
+            {formatAddress(e.adresse, e.plz, e.stadt) || "—"}
           </p>
         </div>
         <span
@@ -488,57 +489,47 @@ function DetailsGrid({
         {has(e.baujahr) && <StatRow label="Baujahr" value={e.baujahr} />}
       </SectionCard>
 
-      {/* Wirtschaftlich */}
-      <SectionCard
-        title="Wirtschaftlich"
-        contentClassName="space-y-2"
-      >
-        {has(e.kaufpreis) && (
-          <StatRow label="Kaufpreis" value={formatEUR(e.kaufpreis)} />
-        )}
-        {has(e.miete) && (
-          <StatRow label="Kaltmiete (mtl.)" value={formatEUR(e.miete)} />
-        )}
-        {ppsm != null && (
-          <StatRow label="€/m²" value={formatEUR(Math.round(ppsm))} />
-        )}
-        {has(e.mietrendite_brutto) && (
-          <StatRow
-            label="Mietrendite (brutto)"
-            value={formatNumber(e.mietrendite_brutto, " %")}
-          />
-        )}
-        {has(e.stellplatz_preis) && (
-          <StatRow
-            label="Stellplatz-Preis"
-            value={formatEUR(e.stellplatz_preis)}
-          />
-        )}
-        {has(e.hausgeld_umlagefaehig) && (
-          <StatRow
-            label="Hausgeld umlagefähig"
-            value={formatEUR(e.hausgeld_umlagefaehig)}
-          />
-        )}
-        {has(e.hausgeld_nicht_umlagefaehig) && (
-          <StatRow
-            label="Hausgeld nicht umlagefähig"
-            value={formatEUR(e.hausgeld_nicht_umlagefaehig)}
-          />
-        )}
-        {has(e.instandhaltungsruecklage) && (
-          <StatRow
-            label="Instandhaltungsrücklage"
-            value={formatEUR(e.instandhaltungsruecklage)}
-          />
-        )}
-        {has(e.sondereigentumsverwaltung) && (
-          <StatRow
-            label="SE-Verwaltung"
-            value={formatEUR(e.sondereigentumsverwaltung)}
-          />
-        )}
-      </SectionCard>
+      {/* Wirtschaftlich — Kaufpreis/Miete/€m²/Rendite stehen bereits oben als
+          Key-Stats; hier nur die nicht-redundanten Bewirtschaftungskosten.
+          Karte ausgeblendet, wenn keine dieser Angaben vorliegt. */}
+      {(has(e.stellplatz_preis) ||
+        has(e.hausgeld_umlagefaehig) ||
+        has(e.hausgeld_nicht_umlagefaehig) ||
+        has(e.instandhaltungsruecklage) ||
+        has(e.sondereigentumsverwaltung)) && (
+        <SectionCard title="Bewirtschaftung" contentClassName="space-y-2">
+          {has(e.stellplatz_preis) && (
+            <StatRow
+              label="Stellplatz-Preis"
+              value={formatEUR(e.stellplatz_preis)}
+            />
+          )}
+          {has(e.hausgeld_umlagefaehig) && (
+            <StatRow
+              label="Hausgeld umlagefähig"
+              value={formatEUR(e.hausgeld_umlagefaehig)}
+            />
+          )}
+          {has(e.hausgeld_nicht_umlagefaehig) && (
+            <StatRow
+              label="Hausgeld nicht umlagefähig"
+              value={formatEUR(e.hausgeld_nicht_umlagefaehig)}
+            />
+          )}
+          {has(e.instandhaltungsruecklage) && (
+            <StatRow
+              label="Instandhaltungsrücklage"
+              value={formatEUR(e.instandhaltungsruecklage)}
+            />
+          )}
+          {has(e.sondereigentumsverwaltung) && (
+            <StatRow
+              label="SE-Verwaltung"
+              value={formatEUR(e.sondereigentumsverwaltung)}
+            />
+          )}
+        </SectionCard>
+      )}
 
       {/* Steuerlich */}
       <SectionCard title="Steuerlich" contentClassName="space-y-2">
@@ -1023,7 +1014,7 @@ function KarteStub({
       <MapPin className="h-8 w-8 text-muted-foreground" />
       <h3 className="font-semibold">Karte folgt — Mapbox-Integration</h3>
       <p className="text-sm text-muted-foreground">
-        {[adresse, plz, stadt].filter(Boolean).join(", ") || "—"}
+        {formatAddress(adresse, plz, stadt) || "—"}
       </p>
     </Card>
   );

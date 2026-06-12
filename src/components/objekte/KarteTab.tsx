@@ -6,6 +6,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { Card } from "@/components/ui/card";
 import { MapPin, AlertCircle } from "lucide-react";
 import { MAPBOX_TOKEN, hasMapbox, geocodeAddressParts } from "@/lib/mapbox";
+import { formatAddress } from "@/lib/objekt-format";
 
 interface Props {
   adresse: string;
@@ -58,7 +59,7 @@ export function KarteTab({ adresse, stadt, plz }: Props) {
         <AlertCircle className="mx-auto mb-2 h-6 w-6" />
         {error}
         <p className="mt-1 text-xs">
-          {[adresse, plz, stadt].filter(Boolean).join(", ") || "—"}
+          {formatAddress(adresse, plz, stadt) || "—"}
         </p>
       </Card>
     );

@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
-import { formatEUR } from "@/lib/objekt-format";
+import { formatEUR, formatAddress } from "@/lib/objekt-format";
 import { CASE_STATUS_LABEL, type CaseStatus } from "@/lib/finanzierung-status";
 import type { CaseDetail, CaseKommentar } from "@/lib/data/finanzierung";
 import {
@@ -198,7 +198,7 @@ function EinheitCard({ c }: { c: AnyCase }) {
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         <KV label="Projekt" value={p.name ?? "—"} />
         <KV label="Wohnung" value={e.wohnungsnummer ?? "—"} />
-        <KV label="Adresse" value={[p.adresse, p.plz, p.stadt].filter(Boolean).join(", ") || "—"} />
+        <KV label="Adresse" value={formatAddress(p.adresse, p.plz, p.stadt) || "—"} />
         <KV label="Etage" value={e.etage ?? "—"} />
         <KV label="Wohnfläche" value={e.wohnflaeche ? `${e.wohnflaeche} m²` : "—"} />
         <KV label="Zimmer" value={e.zimmer ?? "—"} />

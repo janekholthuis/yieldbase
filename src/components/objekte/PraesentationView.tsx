@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { calculate, type CalcInputs } from "@/lib/kalkulation";
-import { formatEUR, formatNumber } from "@/lib/objekt-format";
+import { formatEUR, formatNumber, formatAddress } from "@/lib/objekt-format";
 import { MAPBOX_TOKEN, hasMapbox, geocodeAddressParts } from "@/lib/mapbox";
 import type { EinheitDetail } from "@/lib/data/objekte";
 import type { KalkulationsContext } from "@/lib/data/kalkulation-context";
@@ -298,9 +298,7 @@ function SlideCover({
           {begruessung}
         </h1>
         <p className="mt-3 font-display text-lg text-white/80 md:text-2xl">
-          {[einheit.adresse, einheit.plz, einheit.stadt]
-            .filter(Boolean)
-            .join(", ")}
+          {formatAddress(einheit.adresse, einheit.plz, einheit.stadt)}
         </p>
         <div className="mt-8 flex items-center gap-3 border-t border-white/15 pt-5">
           {vp?.avatar_url ? (

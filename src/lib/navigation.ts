@@ -8,6 +8,7 @@ import {
   Wallet,
   UsersRound,
   UserCircle,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 
@@ -64,6 +65,12 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/team",
     icon: UsersRound,
     roles: ["vertriebsleiter", "vp_l1", "vp_l2"],
+  },
+  {
+    title: "Einstellungen",
+    to: "/einstellungen",
+    icon: Settings,
+    roles: [...ALL_INTERNAL, "finanzierer"],
   },
   {
     title: "Profil",

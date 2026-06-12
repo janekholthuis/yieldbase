@@ -55,5 +55,10 @@
 ## Deine offenen Punkte (Dashboard / Secrets)
 
 - [ ] **Edge Functions deployen**: `supabase functions deploy reservierungen-cron send-reservation-email seed-demo-users reset-demo-passwords` + `RESEND_API_KEY` als Secret.
-- [ ] **`INVESTAGON_API_KEY`** in Vercel + `.env.local` (für die Investagon-Sync, sobald gebaut).
+- [ ] **Investagon-Sync aktivieren** (Code ist fertig, siehe `docs/INVESTAGON-PLAN.md`):
+  1. Migration anwenden: `supabase/migrations/20260612000000_investagon_sync.sql` (fügt `investagon_id`+`raw` zu projekte/einheiten + `investagon_sync_log` hinzu). Via `supabase db push` oder Dashboard SQL-Editor. _(Konnte ich nicht selbst anwenden — lokaler Supabase-MCP ist read-only.)_
+  2. Danach Supabase-Typen neu generieren und `src/lib/supabase/types.ts` ersetzen (dann können die `as never`-Casts in `src/lib/actions/investagon.ts` raus).
+  3. Env-Vars setzen (Vercel + `.env.local`): **`INVESTAGON_ORG_ID`** (deine Organisations-ID — war in deiner Nachricht leer!) und **`INVESTAGON_API_KEY`** (`d7540…` — rotieren, war im Chat sichtbar).
+  4. Sync auslösen: `syncInvestagon()` aus `@/lib/actions/investagon` (admin-only) — z. B. über einen Admin-Button oder eine Route. Ergebnis landet in `investagon_sync_log`.
+  5. Offene Frage: Preis-/Flächen-Felder waren in der API-Spec-Zusammenfassung nicht enthalten — gegen eine echte API-Antwort prüfen und das Mapping in `investagon.ts` ergänzen (Rohdaten liegen sicher in `raw`).
 - [ ] Struktur-Gaps entscheiden (`docs/STRUCTURE-AUDIT.md`): Projektentwickler-Tabelle? Datenraum-Tabelle?

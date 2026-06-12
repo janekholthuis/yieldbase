@@ -150,7 +150,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
               <Sparkles className="h-6 w-6" />
             </div>
             <DialogTitle className="font-display text-2xl">
-              Schön, dass du da bist 👋
+              Schön, dass du da bist
             </DialogTitle>
             <DialogDescription className="pt-2 text-sm leading-relaxed text-muted-foreground">
               Hier kannst du deine Unterlagen einreichen und den Status deiner

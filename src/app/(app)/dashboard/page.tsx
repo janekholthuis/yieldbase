@@ -44,11 +44,7 @@ export default function DashboardPage() {
     (user?.user_metadata?.name as string | undefined) ?? user?.email ?? "";
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
-      <span className="inline-flex items-center gap-2 rounded-full border border-brand-accent/30 bg-brand-accentSoft px-3 py-1 text-[11px] font-medium tracking-wide text-brand-accentText">
-        <span className="h-1.5 w-1.5 rounded-full bg-brand-accent" />
-        Vertriebsplattform
-      </span>
-      <h1 className="mt-4 font-display text-4xl font-semibold leading-[1.1] tracking-tight text-brand-primary md:text-5xl">
+      <h1 className="font-display text-4xl font-semibold leading-[1.1] tracking-tight text-brand-primary md:text-5xl">
         Hallo <span className="text-brand-accent">{name}</span>
       </h1>
       <p className="mt-3 max-w-xl text-base text-brand-body">

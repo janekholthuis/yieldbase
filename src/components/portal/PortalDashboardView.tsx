@@ -93,7 +93,7 @@ export function PortalDashboardView({
         </div>
         <div className="min-w-0">
           <h1 className="font-display text-3xl font-bold tracking-tight">
-            Hey {vorname || "schön, dass du da bist"} 👋
+            Hey {vorname || "schön, dass du da bist"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Hier siehst du deinen aktuellen Stand auf einen Blick.

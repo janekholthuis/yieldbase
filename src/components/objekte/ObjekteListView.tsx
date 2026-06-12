@@ -117,14 +117,9 @@ export function ObjekteListView({ items: allItems }: { items: ObjektListItem[] }
     <div className="container mx-auto space-y-4 p-4 md:p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent backdrop-blur">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            Vertriebsplattform
-          </div>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
             Objekte
           </h1>
-          <div className="mt-1 h-[2px] w-10 rounded-full bg-accent" />
           <p className="mt-2 text-sm text-muted-foreground">
             {view === "grid"
               ? `${countProjects(items)} Projekte · ${items.length} Einheiten`

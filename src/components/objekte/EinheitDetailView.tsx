@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { SectionCard } from "@/components/ui/section-card";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,13 @@ import {
   formatNumber,
   pricePerSqm,
 } from "@/lib/objekt-format";
+import {
+  grunderwerbsteuer,
+  grunderwerbsteuerSatz,
+  notarGerichtskosten,
+  gebaeudeanteil,
+  NOTAR_GERICHT_SATZ_DEFAULT,
+} from "@/lib/objekt-kosten";
 import {
   ArrowLeft,
   Building2,
@@ -325,6 +333,44 @@ function KeyStat({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+const NUTZUNGSART_LABELS: Record<string, string> = {
+  wohnen: "Wohnung",
+  gewerbe: "Gewerbe",
+};
+
+const OBJEKTZUSTAND_LABELS: Record<string, string> = {
+  bestand: "Bestand",
+  neubau: "Neubau",
+};
+
+/** Kleiner Chip/Badge für boolesche bzw. kategoriale Werte. */
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-md border border-brand-borderSoft bg-brand-accentSoft px-2 py-0.5 text-xs font-medium text-brand-accent">
+      {children}
+    </span>
+  );
+}
+
+/** Hat einen Wert (nicht null/undefined/leer)? */
+function has(v: unknown): boolean {
+  if (v == null) return false;
+  if (typeof v === "string") return v.trim().length > 0;
+  return true;
+}
+
+/** Deutsches Datum aus ISO-String (yyyy-mm-dd / ISO timestamp). */
+function formatDate(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(d);
+}
+
 function DetailsGrid({
   einheit: e,
   ppsm,
@@ -332,56 +378,228 @@ function DetailsGrid({
   einheit: EinheitDetail;
   ppsm: number | null;
 }) {
+  // --- Technisch ---
+  const ausstattung: string[] = [];
+  if (e.balkon) ausstattung.push("Balkon");
+  if (e.keller) ausstattung.push("Keller");
+  if (e.aufzug) ausstattung.push("Aufzug");
+
+  const vermietetSeit = formatDate(e.vermietet_seit);
+  const mietvertragEnde = formatDate(e.mietvertrag_ende);
+
+  // --- Steuerlich (abgeleitete Kaufnebenkosten) ---
+  const grestSatz = grunderwerbsteuerSatz(e.bundesland);
+  const grestBetrag = grunderwerbsteuer(e.kaufpreis, e.bundesland);
+  const notar = notarGerichtskosten(e.kaufpreis);
+  const gebaeude = gebaeudeanteil(e.kaufpreis, e.grundstueckswert_anteil);
+  const hasKaufnebenkosten =
+    has(grestBetrag) || has(notar) || has(gebaeude);
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <Card className="p-4 space-y-1.5">
-        <h3 className="mb-2 font-semibold">Stammdaten</h3>
-        <StatRow label="Adresse" value={e.adresse || "—"} />
-        <StatRow label="PLZ" value={e.plz ?? "—"} />
-        <StatRow label="Stadt" value={e.stadt ?? "—"} />
-        <StatRow label="Bundesland" value={e.bundesland ?? "—"} />
-        <StatRow label="Bauträger" value={e.bautraeger ?? "—"} />
-        <StatRow label="Baujahr" value={e.baujahr ?? "—"} />
-        <StatRow label="Etage" value={e.etage ?? "—"} />
-        <StatRow label="Wohnfläche" value={formatNumber(e.wohnflaeche, " m²")} />
-        <StatRow label="Zimmer" value={formatNumber(e.zimmer)} />
-        <StatRow label="Balkon" value={e.balkon ? "Ja" : "Nein"} />
-        <StatRow label="Keller" value={e.keller ? "Ja" : "Nein"} />
-        <StatRow label="Aufzug" value={e.aufzug ? "Ja" : "Nein"} />
-      </Card>
+      {/* Technisch */}
+      <SectionCard
+        title="Technisch"
+        className="md:col-span-2"
+        contentClassName="grid gap-x-6 gap-y-2 sm:grid-cols-2"
+      >
+        <StatRow label="Wohnungsnummer" value={e.wohnungsnummer || "—"} />
+        {has(e.etage) && <StatRow label="Etage" value={e.etage} />}
+        {has(e.wohnflaeche) && (
+          <StatRow label="Wohnfläche" value={formatNumber(e.wohnflaeche, " m²")} />
+        )}
+        {has(e.zimmer) && (
+          <StatRow label="Zimmer" value={formatNumber(e.zimmer)} />
+        )}
+        {has(e.nutzungsart) && (
+          <StatRow
+            label="Nutzungsart"
+            value={
+              <Chip>
+                {NUTZUNGSART_LABELS[e.nutzungsart as string] ?? e.nutzungsart}
+              </Chip>
+            }
+          />
+        )}
+        {has(e.objektzustand) && (
+          <StatRow
+            label="Zustand"
+            value={
+              <Chip>
+                {OBJEKTZUSTAND_LABELS[e.objektzustand as string] ??
+                  e.objektzustand}
+              </Chip>
+            }
+          />
+        )}
+        {has(e.heizungsart) && (
+          <StatRow label="Heizung" value={e.heizungsart} />
+        )}
+        {has(e.energieklasse) && (
+          <StatRow
+            label="Energieklasse"
+            value={<Chip>{e.energieklasse}</Chip>}
+          />
+        )}
+        {has(e.stellplaetze_anzahl) && (
+          <StatRow
+            label="Stellplätze"
+            value={formatNumber(e.stellplaetze_anzahl)}
+          />
+        )}
+        {ausstattung.length > 0 && (
+          <StatRow
+            label="Ausstattung"
+            value={
+              <span className="flex flex-wrap justify-end gap-1">
+                {ausstattung.map((a) => (
+                  <Chip key={a}>{a}</Chip>
+                ))}
+              </span>
+            }
+          />
+        )}
+        <StatRow
+          label="Status"
+          value={<Chip>{STATUS_LABELS[e.status]}</Chip>}
+        />
+        <StatRow
+          label="Vermietet"
+          value={
+            e.vermietet ? (
+              <span className="flex flex-wrap items-center justify-end gap-1">
+                <Chip>Ja</Chip>
+                {vermietetSeit && (
+                  <span className="text-xs text-muted-foreground">
+                    seit {vermietetSeit}
+                  </span>
+                )}
+                {mietvertragEnde && (
+                  <span className="text-xs text-muted-foreground">
+                    bis {mietvertragEnde}
+                  </span>
+                )}
+              </span>
+            ) : (
+              <Chip>Nein</Chip>
+            )
+          }
+        />
+        {has(e.baujahr) && <StatRow label="Baujahr" value={e.baujahr} />}
+      </SectionCard>
 
-      <Card className="p-4 space-y-1.5">
-        <h3 className="mb-2 font-semibold">Wirtschaftliche Daten</h3>
-        <StatRow label="Kaufpreis" value={formatEUR(e.kaufpreis)} />
-        <StatRow
-          label="€/m²"
-          value={ppsm != null ? formatEUR(Math.round(ppsm)) : "—"}
-        />
-        <StatRow
-          label="Mietrendite (brutto)"
-          value={formatNumber(e.mietrendite_brutto, " %")}
-        />
-        <StatRow
-          label="Hausgeld umlagef."
-          value={formatEUR(e.hausgeld_umlagefaehig)}
-        />
-        <StatRow
-          label="Hausgeld nicht umlagef."
-          value={formatEUR(e.hausgeld_nicht_umlagefaehig)}
-        />
-        <StatRow
-          label="Instandhaltungsrücklage"
-          value={formatEUR(e.instandhaltungsruecklage)}
-        />
-        <StatRow
-          label="Grundstücksanteil"
-          value={formatEUR(e.grundstueckswert_anteil)}
-        />
-        <StatRow label="AfA-Satz" value={formatNumber(e.afa_satz, " %")} />
-        <StatRow label="Vermietet" value={e.vermietet ? "Ja" : "Nein"} />
-        <StatRow label="Mietzins (mtl.)" value={formatEUR(e.miete)} />
-        <StatRow label="Mietvertragsende" value={e.mietvertrag_ende ?? "—"} />
-      </Card>
+      {/* Wirtschaftlich */}
+      <SectionCard
+        title="Wirtschaftlich"
+        contentClassName="space-y-2"
+      >
+        {has(e.kaufpreis) && (
+          <StatRow label="Kaufpreis" value={formatEUR(e.kaufpreis)} />
+        )}
+        {has(e.miete) && (
+          <StatRow label="Kaltmiete (mtl.)" value={formatEUR(e.miete)} />
+        )}
+        {ppsm != null && (
+          <StatRow label="€/m²" value={formatEUR(Math.round(ppsm))} />
+        )}
+        {has(e.mietrendite_brutto) && (
+          <StatRow
+            label="Mietrendite (brutto)"
+            value={formatNumber(e.mietrendite_brutto, " %")}
+          />
+        )}
+        {has(e.stellplatz_preis) && (
+          <StatRow
+            label="Stellplatz-Preis"
+            value={formatEUR(e.stellplatz_preis)}
+          />
+        )}
+        {has(e.hausgeld_umlagefaehig) && (
+          <StatRow
+            label="Hausgeld umlagefähig"
+            value={formatEUR(e.hausgeld_umlagefaehig)}
+          />
+        )}
+        {has(e.hausgeld_nicht_umlagefaehig) && (
+          <StatRow
+            label="Hausgeld nicht umlagefähig"
+            value={formatEUR(e.hausgeld_nicht_umlagefaehig)}
+          />
+        )}
+        {has(e.instandhaltungsruecklage) && (
+          <StatRow
+            label="Instandhaltungsrücklage"
+            value={formatEUR(e.instandhaltungsruecklage)}
+          />
+        )}
+        {has(e.sondereigentumsverwaltung) && (
+          <StatRow
+            label="SE-Verwaltung"
+            value={formatEUR(e.sondereigentumsverwaltung)}
+          />
+        )}
+      </SectionCard>
+
+      {/* Steuerlich */}
+      <SectionCard title="Steuerlich" contentClassName="space-y-2">
+        {has(e.grundstueckswert_anteil) && (
+          <StatRow
+            label="Grundstückswertanteil"
+            value={formatEUR(e.grundstueckswert_anteil)}
+          />
+        )}
+        {has(e.grundstuecksanteil_qm) && (
+          <StatRow
+            label="Grundstücksanteil"
+            value={formatNumber(e.grundstuecksanteil_qm, " m²")}
+          />
+        )}
+        {has(e.miteigentumsanteil) && (
+          <StatRow label="Miteigentumsanteil" value={e.miteigentumsanteil} />
+        )}
+        {has(e.afa_satz) && (
+          <StatRow label="AfA-Satz" value={formatNumber(e.afa_satz, " %")} />
+        )}
+
+        {hasKaufnebenkosten && (
+          <div className="mt-3 space-y-2 rounded-lg border border-brand-borderSoft bg-muted/40 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Kaufnebenkosten
+            </div>
+            {has(grestBetrag) && (
+              <StatRow
+                label={
+                  grestSatz != null
+                    ? `Grunderwerbsteuer (${formatNumber(grestSatz, " %")})`
+                    : "Grunderwerbsteuer"
+                }
+                value={formatEUR(grestBetrag)}
+              />
+            )}
+            {has(notar) && (
+              <StatRow
+                label={`Notar/Gericht (${formatNumber(
+                  NOTAR_GERICHT_SATZ_DEFAULT,
+                  " %",
+                )})`}
+                value={formatEUR(notar)}
+              />
+            )}
+            {has(gebaeude) && (
+              <StatRow
+                label="Gebäudeanteil (AfA-Basis)"
+                value={formatEUR(gebaeude)}
+              />
+            )}
+          </div>
+        )}
+      </SectionCard>
+
+      {has(e.extras) && (
+        <SectionCard title="Extras" className="md:col-span-2">
+          <p className="text-sm text-muted-foreground">{e.extras}</p>
+        </SectionCard>
+      )}
     </div>
   );
 }

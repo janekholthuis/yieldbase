@@ -174,6 +174,21 @@ updates it with `projects_synced` / `properties_synced` and
 `status='success'` or `status='error'` (+ `error` message). The table is
 admin-only via RLS.
 
+## Scheduled incremental sync (Vercel Cron)
+
+`vercel.json` registers a daily cron (`0 4 * * *`) hitting
+`GET /api/cron/investagon-sync`. The route:
+
+- is protected by **`CRON_SECRET`** — it requires `Authorization: Bearer <CRON_SECRET>`
+  (Vercel Cron sends this automatically when the env var is set). **Add
+  `CRON_SECRET` to the Vercel project env** (and `.env.local` for local testing).
+- runs an **incremental** sync for every org with Investagon credentials, using
+  `updated_after` = last successful sync − 1h overlap;
+- **skips** orgs with no prior successful sync (the long initial backfill must be
+  run once via `scripts/seed-investagon.ts`), so the cron never times out.
+
+Adjust the cadence in `vercel.json` as needed.
+
 ## Before it works: apply the migration
 
 `supabase/migrations/20260612000000_investagon_sync.sql` adds:

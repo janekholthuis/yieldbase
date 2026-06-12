@@ -30,6 +30,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { calculate, type CalcInputs } from "@/lib/kalkulation";
 import { formatEUR, formatNumber, formatAddress } from "@/lib/objekt-format";
 import { MAPBOX_TOKEN, hasMapbox, geocodeAddressParts } from "@/lib/mapbox";
+import { formatDistance } from "@/lib/standort-highlights";
+import {
+  useStandortHighlights,
+  CATEGORY_ICONS,
+} from "@/components/objekte/StandortHighlights";
 import type { EinheitDetail } from "@/lib/data/objekte";
 import type { KalkulationsContext } from "@/lib/data/kalkulation-context";
 import type { VPProfile } from "@/lib/data/objekte-extra-types";
@@ -395,6 +400,11 @@ function SlideUebersicht({ einheit }: { einheit: EinheitDetail }) {
 // ──────────────── Slide 3: Lage ────────────────
 function SlideLage({ einheit }: { einheit: EinheitDetail }) {
   const ref = useRef<HTMLDivElement>(null);
+  const { loading, highlights } = useStandortHighlights({
+    adresse: einheit.adresse,
+    plz: einheit.plz,
+    stadt: einheit.stadt,
+  });
   useEffect(() => {
     if (!hasMapbox()) return;
     let cancelled = false;
@@ -446,9 +456,41 @@ function SlideLage({ einheit }: { einheit: EinheitDetail }) {
               .join(", ")}
           </p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-          Standort-Highlights folgen. ÖPNV, Schulen und Versorgung werden mit dem
-          Standort-Modul personalisiert.
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <div className="mb-3 text-xs uppercase tracking-wider text-white/60">
+            Standort-Highlights
+          </div>
+          {loading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-8 w-full rounded-md bg-white/10" />
+              ))}
+            </div>
+          ) : highlights.length === 0 ? (
+            <p className="text-sm text-white/60">
+              Für diese Adresse sind keine Standortdaten verfügbar.
+            </p>
+          ) : (
+            <ul className="space-y-2.5">
+              {highlights.map((h) => {
+                const Icon = CATEGORY_ICONS[h.category];
+                return (
+                  <li key={h.category} className="flex items-center gap-3">
+                    <Icon className="h-4 w-4 shrink-0 text-[#C99B4D]" />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-white">
+                        {h.name}
+                      </div>
+                      <div className="text-xs text-white/50">{h.label}</div>
+                    </div>
+                    <div className="shrink-0 text-sm font-semibold tabular-nums text-white/80">
+                      {formatDistance(h.distanceMeters)}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       </div>
     </div>

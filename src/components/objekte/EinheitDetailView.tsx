@@ -70,6 +70,7 @@ import type {
 import { CompletenessCard } from "@/components/objekte/CompletenessCard";
 import { BankDatenCard } from "@/components/objekte/BankDatenCard";
 import { KarteTab } from "@/components/objekte/KarteTab";
+import { StandortHighlights } from "@/components/objekte/StandortHighlights";
 import { KundenPickerModal } from "@/components/objekte/KundenPickerModal";
 import { ReservierungModal } from "@/components/reservierung/ReservierungModal";
 import { KalkulationsTab } from "@/components/objekte/KalkulationsTab";
@@ -312,6 +313,7 @@ export function EinheitDetailView({
         {/* Karte */}
         <TabsContent value="karte" className="space-y-4">
           <KarteTab adresse={e.adresse} plz={e.plz} stadt={e.stadt} />
+          <StandortHighlights adresse={e.adresse} plz={e.plz} stadt={e.stadt} />
         </TabsContent>
 
         {/* Finanzierer-Pool (admin/support only) */}

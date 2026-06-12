@@ -20,19 +20,14 @@ Reaktivierung später: Wiring liegt als Kommentar in den jeweiligen Page-Dateien
 - [ ] **Resend für echten Versand konfigurieren** (deine Seite): eigene Domain in Resend verifizieren + `RESERVATION_FROM_EMAIL`/`INVITE_FROM_EMAIL` als Supabase-Edge-Secrets setzen — sonst liefert `onboarding@resend.dev` nur an den Resend-Account-Owner
 
 ## 🟡 Optional / später
+- [ ] **Leaked-Password-Schutz aktivieren** (Supabase → Auth → Passwords; HaveIBeenPwned-Check) — Advisor-Hinweis
+- [ ] **Öffentlichen Storage-Bucket prüfen** (Advisor: „public bucket allows listing") — Listing ggf. einschränken
 - [ ] Eigene Domain verbinden (statt `objekt-pilot.vercel.app`)
 - [ ] Auth-Email-Templates anpassen (Vorlagen: `OLD APP/docs/email-templates/`)
 - [ ] RLS-Policies gegen das cookie-basierte `@supabase/ssr`-Auth gegenprüfen
 - [ ] Struktur-Gaps entscheiden ([STRUCTURE-AUDIT.md](STRUCTURE-AUDIT.md)): Projektentwickler-Tabelle? Datenraum-Tabelle?
 - [ ] Reaktivierung Provisionen/Finanzierungen/KI (V2)
 
-## ✅ Erledigt (2026-06-12)
-- [x] Sicherheit: `SUPABASE_SERVICE_ROLE_KEY`, `INVESTAGON_API_KEY`, MCP-Token **rotiert**
-- [x] `NEXT_PUBLIC_MAPBOX_TOKEN` in Vercel gesetzt → Karte in PROD funktioniert
-- [x] **Provisionen** + **Team** (PROJ-9) gebaut, deployed (Modell: nur abschließender VP)
-- [x] **Multi-Tenant 13.2** abgeschlossen (Org-Isolation auf allen scoped Tabellen + App-Layer-Filter)
-- [x] **Mapbox** v5→v6-Geocoding migriert
-- [x] **V1-Scoping** (Provisionen/Finanzierungen/KI ausgegraut + gegated)
 
 ## ℹ️ Offene Frage (Investagon)
 Die Investagon-API liefert **keine** echten Preise/Flächen/Mieten → aktuell **synthetische Sample-Werte**. Falls es einen erweiterten API-Zugang mit diesen Feldern gibt: Bescheid geben, dann erweitere ich das Mapping (Rohdaten liegen in `raw`).

@@ -7,13 +7,19 @@
 // of per-row visibility/RLS policies — the same pattern the Investagon sync
 // uses (see `src/lib/actions/investagon.ts`). NEVER call createAdminClient()
 // before the requireRole gate.
+//
+// Because the admin client BYPASSES the per-org RLS, the role gate alone does
+// not enforce tenant isolation: every write that targets an existing row must
+// additionally call assertOrgAccess(session, <row's organisation_id>) so a
+// caller from org A cannot mutate org B's data. admin/support keep cross-org
+// access (platform operators); VP/Vertriebsleiter are scoped to their active org.
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { activeOrgId } from "@/lib/actions/_org";
+import { activeOrgId, assertOrgAccess } from "@/lib/actions/_org";
 import type { Database } from "@/lib/supabase/types";
 
 // Internal roles allowed to manage projects/units.
@@ -125,7 +131,14 @@ export async function createProjekt(
 
   // The admin client has no auth.uid(), so the org-default trigger can't fire.
   // Resolve the caller's active org via the authed client and set it explicitly.
+  // A null org would create an orphaned projekt invisible to everyone under the
+  // restrictive RLS — reject instead of writing unisolated (BUG-002).
   const organisationId = await activeOrgId(session.supabase, session.userId);
+  if (!organisationId) {
+    throw new Error(
+      "Keine aktive Organisation gesetzt — bitte zuerst eine Organisation auswählen.",
+    );
+  }
 
   const insert: ProjektInsert = {
     adresse: data.adresse,
@@ -161,8 +174,19 @@ type UpdateProjektInput = z.input<typeof updateProjektSchema>;
 export async function updateProjekt(
   input: UpdateProjektInput,
 ): Promise<{ id: string }> {
-  await requireRole(...INTERNAL_ROLES);
+  const session = await requireRole(...INTERNAL_ROLES);
   const { id, ...rest } = updateProjektSchema.parse(input);
+
+  const admin = createAdminClient();
+
+  // Tenant isolation: only mutate a projekt the caller's org owns.
+  const { data: existing } = await admin
+    .from("projekte")
+    .select("organisation_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!existing) throw new Error("Projekt nicht gefunden");
+  await assertOrgAccess(session, existing.organisation_id);
 
   const patch: ProjektUpdate = compact({
     name: rest.name,
@@ -176,7 +200,6 @@ export async function updateProjekt(
     instandhaltungsruecklage_gesamt: rest.instandhaltungsruecklage_gesamt,
   });
 
-  const admin = createAdminClient();
   const { error } = await admin.from("projekte").update(patch).eq("id", id);
 
   if (error) throw new Error(error.message);
@@ -189,6 +212,8 @@ export async function updateProjekt(
 export async function deleteProjekt(input: {
   id: string;
 }): Promise<{ id: string }> {
+  // Restricted to platform operators (admin/support), who have cross-org access
+  // by convention — no per-org assertOrgAccess needed here.
   await requireRole("admin", "support");
   const { id } = z.object({ id: uuid }).parse(input);
 
@@ -270,16 +295,19 @@ export async function createEinheit(
 
   const admin = createAdminClient();
 
-  // A unit must share its project's org. Prefer the parent projekt's
-  // organisation_id (read via the admin client, since the projekt may belong to
-  // another caller's active org); fall back to the caller's active org.
+  // A unit must share its project's org. Load the parent projekt's
+  // organisation_id and enforce tenant isolation: a caller may only add units to
+  // a projekt owned by their org (admin/support excepted).
   const { data: parentProjekt } = await admin
     .from("projekte")
     .select("organisation_id")
     .eq("id", data.projekt_id)
     .maybeSingle();
+  if (!parentProjekt) throw new Error("Projekt nicht gefunden");
+  await assertOrgAccess(session, parentProjekt.organisation_id);
+
   const organisationId =
-    parentProjekt?.organisation_id ??
+    parentProjekt.organisation_id ??
     (await activeOrgId(session.supabase, session.userId));
 
   const insert: EinheitInsert = {
@@ -334,8 +362,19 @@ export async function createEinheit(
 export async function updateEinheit(
   input: UpdateEinheitInput,
 ): Promise<{ id: string }> {
-  await requireRole(...INTERNAL_ROLES);
+  const session = await requireRole(...INTERNAL_ROLES);
   const { id, ...rest } = updateEinheitSchema.parse(input);
+
+  const admin = createAdminClient();
+
+  // Tenant isolation: only mutate an einheit the caller's org owns.
+  const { data: existing } = await admin
+    .from("einheiten")
+    .select("organisation_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!existing) throw new Error("Einheit nicht gefunden");
+  await assertOrgAccess(session, existing.organisation_id);
 
   const patch: EinheitUpdate = compact({
     wohnungsnummer: rest.wohnungsnummer,
@@ -369,7 +408,6 @@ export async function updateEinheit(
     extras: rest.extras,
   });
 
-  const admin = createAdminClient();
   const { data: row, error } = await admin
     .from("einheiten")
     .update(patch)
@@ -387,10 +425,20 @@ export async function updateEinheit(
 export async function deleteEinheit(input: {
   id: string;
 }): Promise<{ id: string }> {
-  await requireRole(...INTERNAL_ROLES);
+  const session = await requireRole(...INTERNAL_ROLES);
   const { id } = z.object({ id: uuid }).parse(input);
 
   const admin = createAdminClient();
+
+  // Tenant isolation: only delete an einheit the caller's org owns.
+  const { data: existing } = await admin
+    .from("einheiten")
+    .select("organisation_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!existing) throw new Error("Einheit nicht gefunden");
+  await assertOrgAccess(session, existing.organisation_id);
+
   const { data: row, error } = await admin
     .from("einheiten")
     .delete()

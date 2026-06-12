@@ -16,6 +16,9 @@
 
 > **Status-Audit 2026-06-12 (PROJ-11):** Stati an die Realität angeglichen — die V1-Kernmodule sind live auf objekt-pilot.vercel.app. **V1-Scope:** aktiv sind Objekte, Kunden, Reservierungen, Team, Profil, Einstellungen/Org-Branding. **V2-zurückgestellt** (im Front-End ausgegraut/gegated, Code bleibt): Provisionen, Finanzierungen, KI. Supabase-Advisors: **keine ERROR-Level-Befunde** (RLS intakt); offene Tuning-/Config-Punkte siehe `docs/USER-TODO.md`. Formale Per-Feature-QA (E2E) steht noch aus.
 
+> **QA-Pass 2026-06-12:** Unit-Tests für finanzkritische Kernlogik angelegt (`npm test` → **107/107 grün**, 10 Dateien), Build (Typecheck) grün, Security-Audit der Server-Action-Autorisierung durchgeführt. Voller Bericht: `docs/QA-RESULTS-2026-06-12.md`.
+> **Fixes 2026-06-12:** **BUG-001 (High)** — Objekt-CRUD umging Mandanten-Isolation (Admin-Client-Writes per id ohne Org-Check) → neuer Guard `assertOrgAccess()` in `src/lib/actions/_org.ts`, in allen Objekt-CRUD-Writes erzwungen (admin/support: Cross-Org per Konvention). **BUG-002 (Low)** — `createProjekt` lehnt jetzt null-Org ab. Regressionstest `src/lib/actions/_org.test.ts`. **Offen:** E2E (Playwright, braucht Staging+Seed), Advisor-WARN-Tuning (`docs/USER-TODO.md`), `npm run lint` repo-weit defekt (Next 16 entfernte `next lint` → auf `eslint .` umstellen).
+
 | ID | Feature | Status | Spec | Created |
 |----|---------|--------|------|---------|
 | PROJ-1 | Auth, invites & role-based access (8 roles) | Deployed | — | 2026-06-11 |

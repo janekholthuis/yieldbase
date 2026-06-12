@@ -12,6 +12,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
+      // `server-only` throws outside an RSC bundle; stub it so server-side
+      // logic helpers (e.g. lib/actions/_org) can be unit-tested.
+      'server-only': resolve(__dirname, './src/test/server-only-stub.ts'),
     },
   },
 })

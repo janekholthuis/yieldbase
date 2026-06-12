@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Plus, LogOut, UserCircle } from "lucide-react";
+import { Search, Plus, LogOut, UserCircle, Settings } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
+import { OrgSwitcher } from "@/components/organisation/OrgSwitcher";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -85,6 +86,10 @@ export function Topbar() {
           <Search className="h-4 w-4" />
         </button>
 
+        <div className="ml-2">
+          <OrgSwitcher />
+        </div>
+
         <div className="ml-auto flex items-center gap-2">
           {showNewCustomer && (
             <Button asChild size="default" className="hidden md:inline-flex" variant="default">
@@ -123,6 +128,11 @@ export function Topbar() {
               <DropdownMenuItem asChild>
                 <Link href="/profil">
                   <UserCircle className="mr-2 h-4 w-4" /> Profil
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/einstellungen">
+                  <Settings className="mr-2 h-4 w-4" /> Einstellungen
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

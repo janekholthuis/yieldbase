@@ -96,11 +96,13 @@ const config: Config = {
   				bg: '#FFFFFF',
   				surface: '#FFFFFF',
   				surfaceMuted: '#F7F8FA',
-  				primary: '#0A2E4F',
+  				/* primary + accent are CSS-var-backed so the active organisation can
+  				   re-theme them at runtime; default channels (navy/gold) live in globals.css */
+  				primary: 'rgb(var(--brand-primary) / <alpha-value>)',
   				primaryHover: '#0E3B66',
   				primaryDark: '#061E36',
   				primaryTint: '#EEF3F8',
-  				accent: '#B8893E',
+  				accent: 'rgb(var(--brand-accent) / <alpha-value>)',
   				accentHover: '#A0762F',
   				accentSoft: '#F5EBD6',
   				accentTint: '#FBF3E2',

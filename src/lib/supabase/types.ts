@@ -971,8 +971,92 @@ export type Database = {
           },
         ]
       }
+      organisation_members: {
+        Row: {
+          created_at: string
+          organisation_id: string
+          rolle: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          organisation_id: string
+          rolle?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          organisation_id?: string
+          rolle?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisation_members_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisationen"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organisation_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organisationen: {
+        Row: {
+          accent_color: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string
+          owner_id: string | null
+          primary_color: string | null
+          settings: Json
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          owner_id?: string | null
+          primary_color?: string | null
+          settings?: Json
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          owner_id?: string | null
+          primary_color?: string | null
+          settings?: Json
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisationen_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
+          active_organisation_id: string | null
           address: string | null
           anrede: Database["public"]["Enums"]["anrede_typ"] | null
           avatar_url: string | null
@@ -1000,6 +1084,7 @@ export type Database = {
           vorname: string | null
         }
         Insert: {
+          active_organisation_id?: string | null
           address?: string | null
           anrede?: Database["public"]["Enums"]["anrede_typ"] | null
           avatar_url?: string | null
@@ -1027,6 +1112,7 @@ export type Database = {
           vorname?: string | null
         }
         Update: {
+          active_organisation_id?: string | null
           address?: string | null
           anrede?: Database["public"]["Enums"]["anrede_typ"] | null
           avatar_url?: string | null
@@ -1053,7 +1139,15 @@ export type Database = {
           updated_at?: string
           vorname?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_active_organisation_id_fkey"
+            columns: ["active_organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisationen"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       projekte: {
         Row: {
@@ -1668,6 +1762,8 @@ export type Database = {
       }
       is_in_my_subtree: { Args: { _target: string }; Returns: boolean }
       is_internal_non_kunde: { Args: { _user_id: string }; Returns: boolean }
+      is_org_admin: { Args: { _org_id: string }; Returns: boolean }
+      is_org_member: { Args: { _org_id: string }; Returns: boolean }
       list_bautraeger_suggest: {
         Args: never
         Returns: {

@@ -18,6 +18,11 @@
     /* design: radius dialed back — base 0.75rem (12px), leicht kantig */
     --radius: 0.75rem;
 
+    /* Brand primary/accent as RGB channels — default = Objektpilot navy/gold.
+       The active organisation overrides these at runtime (see lib/branding.ts). */
+    --brand-primary: 10 46 79;
+    --brand-accent: 184 137 62;
+
     --background: 1 0 0;
     --surface: 0.985 0.003 247;
     --foreground: 0.21 0.03 257;

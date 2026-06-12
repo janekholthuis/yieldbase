@@ -1,6 +1,10 @@
+"use client";
+
+import { useActiveOrg } from "@/components/providers";
+
 /**
- * Objektpilot logo — abstract mark: navy chevron rising under a gold dot.
- * Symbolisiert Aufwärtsentwicklung über einem soliden Fundament.
+ * Objektpilot fallback mark — navy chevron rising under a gold dot.
+ * Used when the active organisation has no custom logo.
  */
 export function ObjektpilotLogo({
   size = 32,
@@ -34,6 +38,10 @@ export function ObjektpilotLogo({
   );
 }
 
+/**
+ * Brand wordmark. Shows the active organisation's logo + name when set,
+ * otherwise the default Objektpilot mark. Colors follow the active theme.
+ */
 export function ObjektpilotWordmark({
   className,
   logoSize = 28,
@@ -43,6 +51,32 @@ export function ObjektpilotWordmark({
   logoSize?: number;
   textClassName?: string;
 }) {
+  const org = useActiveOrg();
+
+  if (org) {
+    return (
+      <span className={`inline-flex items-center gap-2.5 ${className ?? ""}`}>
+        {org.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={org.logoUrl}
+            alt=""
+            style={{ height: logoSize, width: "auto" }}
+            className="object-contain"
+          />
+        ) : (
+          <ObjektpilotLogo size={logoSize} />
+        )}
+        <span
+          className={`font-bold tracking-tight text-brand-primary ${textClassName}`}
+          style={{ letterSpacing: "-0.02em" }}
+        >
+          {org.name}
+        </span>
+      </span>
+    );
+  }
+
   return (
     <span className={`inline-flex items-center gap-2.5 ${className ?? ""}`}>
       <ObjektpilotLogo size={logoSize} />

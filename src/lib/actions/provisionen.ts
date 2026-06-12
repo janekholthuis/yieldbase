@@ -1,9 +1,10 @@
 "use server";
 
 // Server actions for the Provisionen module: generate commission rows from
-// reservierungen along the VP hierarchy, and update a provision's status.
-// Generation walks reservierung.vp_id up the parent_vp_id chain; each VP earns
-// commission_rate % of the einheit.kaufpreis. Idempotent (re-run updates amounts).
+// reservierungen, and update a provision's status.
+// Commission goes to the CLOSING VP only — the VP on the reservierung earns
+// their own commission_rate % of einheit.kaufpreis; no upline participation.
+// Idempotent (re-run refreshes amounts, preserves status).
 // Admin/Vertriebsleiter only; mutations use the admin client.
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
@@ -20,10 +21,6 @@ const PROVISION_STATUSES = [
   "ausgezahlt",
   "storniert",
 ] as const satisfies readonly ProvisionStatus[];
-
-// Default "open" status for freshly generated provisionen.
-const OPEN_STATUS: ProvisionStatus = "pipeline";
-const MAX_CHAIN_DEPTH = 10;
 
 // ──────────────────────────── generateProvisionen ────────────────────────────
 export async function generateProvisionen(): Promise<{
@@ -46,15 +43,12 @@ export async function generateProvisionen(): Promise<{
     scopeVpIds.add(userId);
   }
 
-  // Pre-load the full hierarchy chain map: vp_id -> { parent, rate }.
+  // Pre-load each VP's own commission rate: vp_id -> rate.
   const { data: hierarchy } = await admin
     .from("vp_hierarchy")
-    .select("vp_id, parent_vp_id, commission_rate");
-  const hierById = new Map(
-    (hierarchy ?? []).map((h) => [
-      h.vp_id,
-      { parent: h.parent_vp_id, rate: Number(h.commission_rate) },
-    ]),
+    .select("vp_id, commission_rate");
+  const rateByVp = new Map(
+    (hierarchy ?? []).map((h) => [h.vp_id, Number(h.commission_rate)]),
   );
 
   // Load candidate reservierungen (not storniert) with their einheit kaufpreis.
@@ -78,29 +72,24 @@ export async function generateProvisionen(): Promise<{
   for (const r of reservierungen ?? []) {
     const einheit = r.einheit as { kaufpreis: number | null } | null;
     const kaufpreis = einheit?.kaufpreis;
-    if (kaufpreis == null) continue;
+    if (kaufpreis == null || !r.vp_id) continue;
 
-    // Walk the VP chain up to the top, guarding against cycles / runaway loops.
-    let currentVp: string | null = r.vp_id;
-    let depth = 0;
-    const seen = new Set<string>();
-    while (currentVp && depth < MAX_CHAIN_DEPTH && !seen.has(currentVp)) {
-      seen.add(currentVp);
-      const node = hierById.get(currentVp);
-      if (!node) break;
-      if (node.rate > 0) {
-        upserts.push({
-          deal_id: r.id,
-          vp_id: currentVp,
-          provisionssatz: node.rate,
-          betrag: (node.rate / 100) * kaufpreis,
-          status: OPEN_STATUS,
-        });
-        provisionCount += 1;
-      }
-      currentVp = node.parent;
-      depth += 1;
-    }
+    // Closing VP only — the VP on the reservierung earns their own rate; no
+    // upline participation. Skip if they have no hierarchy entry or a 0 % rate.
+    const rate = rateByVp.get(r.vp_id);
+    if (rate == null || rate <= 0) continue;
+
+    // NB: `status` is intentionally omitted. On INSERT the DB default
+    // ('pipeline') applies; on CONFLICT the existing status is preserved — so
+    // re-running generation refreshes amounts WITHOUT reverting a provision
+    // that is already verdient/in_auszahlung/ausgezahlt/storniert.
+    upserts.push({
+      deal_id: r.id,
+      vp_id: r.vp_id,
+      provisionssatz: rate,
+      betrag: (rate / 100) * kaufpreis,
+    });
+    provisionCount += 1;
   }
 
   if (upserts.length > 0) {

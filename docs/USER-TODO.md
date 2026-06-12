@@ -16,7 +16,11 @@
 ## 🛠️ Claude baut auf Anfrage (kein User-Input nötig)
 - [x] **Provisionen**-Modul (% vom Kaufpreis entlang VP-Hierarchie) — PROJ-9, deployed 2026-06-12 (Modell: nur abschließender VP)
 - [x] **Team**-Modul (Hierarchie, Sub-VP-Einladung, Provisionssätze verwalten) — PROJ-9, deployed 2026-06-12
-- [ ] **Multi-Tenant 13.2** — echte Daten-Trennung pro Organisation (RLS-Umbau) · _13.2a/13.2b committed — Abschluss/Verifikation offen_
+- [x] **Multi-Tenant 13.2** — echte Daten-Trennung pro Organisation (RLS-Umbau) · 13.2c (2026-06-12) schließt Team/Invites/Provisionen an die Org-Isolation an + App-Layer-Filter (QA Note-7); alle scoped Tabellen sind nun org-getrennt
+
+## 🎯 V1-Scope (2026-06-12)
+Front-End ausgegraut/gegated (Code bleibt): **Provisionen**, **Finanzierungen**, **KI-Features**.
+V1 aktiv: Objekte (inkl. Kalkulation/Bilder/Dokumente/Karte), Kunden, Reservierungen, **Mein Team** (VP-Verwaltung), Profil, Mailing.
 
 ## ⚙️ Nach dem Provisionen-Deploy (2026-06-12)
 - [ ] **`NEXT_PUBLIC_MAPBOX_TOKEN` in Vercel** setzen (Settings → Environment Variables), sonst bleibt die Karte in Production leer

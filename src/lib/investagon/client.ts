@@ -38,8 +38,12 @@ export interface InvestagonProperty {
   object_street?: string | null;
   object_house_number?: string | null;
   object_apartment_number?: string | null;
-  /** Parent project ref/IRI, e.g. "/api/api_projects/abc". */
-  project?: string | null;
+  /**
+   * Parent project reference. The API returns this EITHER as a string IRI
+   * ("/api/api_projects/abc") OR as an embedded object
+   * ({ "@id": "/api/api_projects/abc", id: "abc" }). Handle both.
+   */
+  project?: string | { "@id"?: string | null; id?: string | null } | null;
   updated?: string | null;
   commission?: unknown;
   selling_price_commission?: unknown;

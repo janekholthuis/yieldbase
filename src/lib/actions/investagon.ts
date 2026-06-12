@@ -51,6 +51,19 @@ function iriToId(iri?: string | null): string | null {
   return seg ? decodeURIComponent(seg) : null;
 }
 
+/**
+ * Resolves a property's parent-project Investagon id. The API returns
+ * `project` either as a string IRI or as an embedded object
+ * ({ "@id": "...", id: "..." }) — handle both shapes.
+ */
+function resolveProjectInvId(
+  project: InvestagonProperty["project"],
+): string | null {
+  if (!project) return null;
+  if (typeof project === "string") return iriToId(project);
+  return project.id ?? iriToId(project["@id"] ?? null);
+}
+
 /** Build a single-line German address string from Investagon address parts. */
 function buildAdresse(p: InvestagonProperty): string {
   const street = [p.object_street, p.object_house_number]
@@ -154,7 +167,7 @@ export async function syncInvestagon(input?: {
     // (e.g. incremental sync where the project wasn't in this batch).
     const missingProjectIds = new Set<string>();
     for (const prop of properties) {
-      const projInvId = iriToId(prop.project);
+      const projInvId = resolveProjectInvId(prop.project);
       if (projInvId && !projektIdByInvestagonId.has(projInvId)) {
         missingProjectIds.add(projInvId);
       }
@@ -176,7 +189,7 @@ export async function syncInvestagon(input?: {
 
     const einheitRows = properties
       .map((prop) => {
-        const projInvId = iriToId(prop.project);
+        const projInvId = resolveProjectInvId(prop.project);
         if (!projInvId) return null;
         const projektId = projektIdByInvestagonId.get(projInvId);
         if (!projektId) {

@@ -16,9 +16,13 @@
 
 - [x] **Migration angewendet** (`investagon_sync`) — Spalten `investagon_id`/`raw` + Tabelle `investagon_sync_log` sind live in der DB
 - [x] **Typen neu generiert** (`src/lib/supabase/types.ts`) + `as never`-Casts in `investagon.ts` entfernt
-- [ ] **Env-Vars** (Vercel + `.env.local`): `INVESTAGON_ORG_ID` (deine Org-ID — fehlte!) + `INVESTAGON_API_KEY`
-- [ ] **Sync auslösen:** `syncInvestagon()` (admin-only), z. B. via Admin-Button — Ergebnis in `investagon_sync_log`
-- [ ] **Mapping prüfen:** Preis-/Flächen-Felder gegen echte API-Antwort abgleichen (Rohdaten liegen sicher in `raw`)
+- [x] **Env-Vars** gesetzt (Vercel + `.env.local`) — API getestet: **funktioniert** (222 Projekte abrufbar)
+- [x] **Mapping geprüft** (echte API-Antwort) + **Bug gefixt** (`project` kommt als Objekt, nicht als IRI-String → Einheiten wären sonst alle übersprungen worden)
+- [ ] **Sync auslösen:** `syncInvestagon()` (admin-only) — Ergebnis in `investagon_sync_log`. ⚠️ Erst die 2 Punkte unten klären/umbauen.
+
+> **⚠️ Erkenntnisse aus dem API-Test:**
+> 1. **Die Investagon-API liefert KEINE Finanz-/Flächendaten.** Properties enthalten nur Adresse (Land/PLZ/Stadt/Straße inkl. Hausnr., Wohnungsnummer), `statusName`, Makler, Provisions-Flags — **kein Kaufpreis, keine Wohnfläche, keine Zimmer, keine Miete** (auch nicht im Einzel-Endpoint). Nach dem Sync sind in `einheiten` nur `wohnungsnummer`, `status`, `adresse` (am Projekt) + `raw` gefüllt; Preis/Fläche/Miete bleiben leer. **Klären: erweiterter Investagon-API-Zugang mit diesen Feldern?**
+> 2. **`api_properties` (ungefiltert) ist sehr langsam** (>40 s, ignoriert `itemsPerPage`) → ein Voll-Sync läuft so in den **Vercel-Serverless-Timeout**. Empfehlung: Properties **pro Projekt** abrufen (Filter `project=<id>` lieferte 76 Einheiten sofort) oder als Hintergrund-Job. → vor dem Live-Voll-Sync umzubauen.
 
 ## 🔒 Sicherheit — bald erledigen
 

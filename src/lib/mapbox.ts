@@ -4,8 +4,21 @@
 export const MAPBOX_TOKEN =
   (process.env.NEXT_PUBLIC_MAPBOX_TOKEN as string | undefined) ?? "";
 
+/**
+ * A valid Mapbox token is `pk.<payload>.<signature>` (public) or
+ * `sk.<payload>.<signature>` (secret) — three non-empty, dot-separated parts.
+ * A bare JWT payload (`eyJ…In0`) or a prefix-only value would make every API
+ * call return 401, so we treat anything malformed as "no token" and degrade
+ * gracefully instead of spamming the network/console.
+ */
+export function isValidMapboxToken(token: string): boolean {
+  if (!/^(pk|sk)\./.test(token)) return false;
+  const parts = token.split(".");
+  return parts.length >= 3 && parts.every((p) => p.length > 0);
+}
+
 export function hasMapbox() {
-  return MAPBOX_TOKEN.length > 0;
+  return isValidMapboxToken(MAPBOX_TOKEN);
 }
 
 const cache = new Map<string, Promise<[number, number] | null>>();
@@ -19,12 +32,15 @@ export async function geocodeAddress(
 
   const p = (async () => {
     try {
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+      // Geocoding API v6 — forward search. Coordinates live on
+      // features[].geometry.coordinates ([lng, lat]).
+      const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(
         query,
-      )}.json?country=de&limit=1&access_token=${MAPBOX_TOKEN}`;
+      )}&country=de&limit=1&access_token=${MAPBOX_TOKEN}`;
       const r = await fetch(url);
+      if (!r.ok) return null;
       const j = await r.json();
-      const c = j?.features?.[0]?.center;
+      const c = j?.features?.[0]?.geometry?.coordinates;
       if (Array.isArray(c) && c.length === 2)
         return [c[0], c[1]] as [number, number];
       return null;
@@ -104,9 +120,12 @@ export async function searchAddresses(
 ): Promise<GeocodeSuggestion[]> {
   if (!hasMapbox() || query.trim().length < 3) return [];
   try {
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+    // Geocoding API v6 — forward search with autocomplete, restricted to
+    // addresses. Context is now a keyed object (not an array of id-prefixed
+    // entries) on properties.context.{postcode,place,region,…}.
+    const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(
       query,
-    )}.json?country=de&autocomplete=true&types=address&limit=${limit}&language=de&access_token=${MAPBOX_TOKEN}`;
+    )}&country=de&autocomplete=true&types=address&limit=${limit}&language=de&access_token=${MAPBOX_TOKEN}`;
     const r = await fetch(url);
     if (!r.ok) return [];
     const j = await r.json();
@@ -114,25 +133,24 @@ export async function searchAddresses(
     return feats
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((f: any): GeocodeSuggestion | null => {
-        const center = f?.center;
+        const center = f?.geometry?.coordinates;
         if (!Array.isArray(center) || center.length !== 2) return null;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const ctx: any[] = Array.isArray(f.context) ? f.context : [];
-        const findCtx = (prefix: string) =>
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ctx.find(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (c: any) => typeof c?.id === "string" && c.id.startsWith(prefix),
-          )?.text ?? "";
-        const street = f.text ?? "";
-        const num = f.address ?? "";
-        const address = [street, num].filter(Boolean).join(" ").trim();
+        const props: any = f.properties ?? {};
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ctx: any = props.context ?? {};
+        const address =
+          ctx.address?.name ??
+          [ctx.address?.street_name, ctx.address?.address_number]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
         return {
-          place_name: f.place_name ?? "",
-          address,
-          plz: findCtx("postcode"),
-          stadt: findCtx("place") || findCtx("locality"),
-          bundesland: findCtx("region") || null,
+          place_name: props.full_address ?? props.name ?? "",
+          address: address ?? "",
+          plz: ctx.postcode?.name ?? "",
+          stadt: ctx.place?.name ?? ctx.locality?.name ?? "",
+          bundesland: ctx.region?.name ?? null,
           lng: center[0],
           lat: center[1],
         };

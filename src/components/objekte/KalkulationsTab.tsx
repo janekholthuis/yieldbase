@@ -215,7 +215,7 @@ export function KalkulationsTab({ einheit, kalkContext, readOnly = false }: Prop
               </span>
             </div>
             <div className="h-72 w-full">
-              <ResponsiveContainer>
+              <ResponsiveContainer width="100%" height="100%" minHeight={288}>
                 <AreaChart data={result.jahre}>
                   <defs>
                     <linearGradient id="vermoegenG" x1="0" y1="0" x2="0" y2="1">
@@ -288,7 +288,7 @@ export function KalkulationsTab({ einheit, kalkContext, readOnly = false }: Prop
           <Card className="p-4">
             <h3 className="mb-2 font-semibold text-brand-ink">Cashflow-Entwicklung</h3>
             <div className="h-56 w-full">
-              <ResponsiveContainer>
+              <ResponsiveContainer width="100%" height="100%" minHeight={224}>
                 <LineChart data={result.jahre.filter((j) => j.jahr > 0)}>
                   <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" strokeOpacity={0.6} />
                   <XAxis

@@ -20,7 +20,9 @@ export function KarteTab({ adresse, stadt, plz }: Props) {
 
   useEffect(() => {
     if (!hasMapbox()) {
-      setError("Karte nicht verfügbar — Mapbox-Token fehlt.");
+      setError(
+        "Karte nicht verfügbar — es ist kein gültiger Mapbox-Token konfiguriert.",
+      );
       return;
     }
     let cancelled = false;

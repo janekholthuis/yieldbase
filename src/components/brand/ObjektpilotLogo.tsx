@@ -1,7 +1,6 @@
 /**
- * Erfolg-mit-Immobilien logo — house outline in brand blue with an
- * upward-rising growth arrow in brand peach. Symbolisiert Wertsteigerung
- * und Erfolg mit Immobilien.
+ * Objektpilot logo — abstract mark: navy chevron rising under a gold dot.
+ * Symbolisiert Aufwärtsentwicklung über einem soliden Fundament.
  */
 export function ObjektpilotLogo({
   size = 32,
@@ -20,30 +19,15 @@ export function ObjektpilotLogo({
       className={className}
       aria-hidden="true"
     >
-      {/* House outline (rounded corners) in brand blue */}
+      {/* Gold dot at apex */}
+      <circle cx="20" cy="9" r="4" fill="#C99B4D" />
+      {/* Navy chevron */}
       <path
-        d="M7 18.5 L20 7 L33 18.5 V32 a2.5 2.5 0 0 1 -2.5 2.5 H9.5 A2.5 2.5 0 0 1 7 32 Z"
-        stroke="#1583C9"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      {/* Rising growth arrow in brand peach */}
-      <path
-        d="M12.5 28.5 L18 22.5 L22.5 26 L28 19"
-        stroke="#F2A661"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M24.5 18.5 H28.5 V22.5"
-        stroke="#F2A661"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        d="M5 33 L20 18 L35 33"
+        stroke="#1B2D45"
+        strokeWidth="5"
+        strokeLinecap="square"
+        strokeLinejoin="miter"
         fill="none"
       />
     </svg>
@@ -66,8 +50,8 @@ export function ObjektpilotWordmark({
         className={`font-bold tracking-tight ${textClassName}`}
         style={{ letterSpacing: "-0.02em" }}
       >
-        <span className="text-brand-primary">Erfolg mit </span>
-        <span className="text-brand-accent">Immobilien</span>
+        <span className="text-brand-primary">Objekt</span>
+        <span className="text-brand-accent">pilot</span>
       </span>
     </span>
   );

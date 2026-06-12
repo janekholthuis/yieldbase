@@ -41,12 +41,12 @@ try {
 const BODY_FONT = FONTS_OK ? "Inter" : "Helvetica";
 const HEAD_FONT = BODY_FONT;
 
-// Brand-Tokens (Azure Blue + Peach Orange)
+// Brand-Tokens (Navy + Gold)
 const colors = {
-  primary: "#1583C9",
-  primaryDark: "#0E5688",
-  accent: "#F2A661",
-  accentSoft: "#FEF5EA",
+  primary: "#1B2D45",
+  primaryDark: "#0F1B2E",
+  accent: "#C99B4D",
+  accentSoft: "#FBF3E2",
   surface: "#FFFFFF",
   bg: "#F6F7F9",
   ink: "#0F1729",
@@ -259,7 +259,7 @@ function PageFooter({ einheit, page, total }: { einheit: any; page: number; tota
   return (
     <View style={s.footer} fixed>
       <Text>
-        Erfolg mit Immobilien · Wohnung {einheit.wohnungsnummer}
+        Objektpilot · Wohnung {einheit.wohnungsnummer}
         {einheit.projekt_name ? ` · ${einheit.projekt_name}` : ""}
       </Text>
       <Text>
@@ -285,14 +285,14 @@ export function ExposePdfDocument({ data }: { data: ExposeData }) {
   return (
     <Document
       title={`Exposé Wohnung ${e.wohnungsnummer}`}
-      author={data.vp.name ?? "Erfolg mit Immobilien"}
+      author={data.vp.name ?? "Objektpilot"}
     >
       {/* Seite 1: Cover */}
       <Page size="A4" style={s.page}>
         <View style={s.cover}>
           <View>
             <Text style={[s.small, { color: colors.accent, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase" }]}>
-              Erfolg mit Immobilien · Exposé
+              Objektpilot · Exposé
             </Text>
             <View style={[s.accentBar, { marginTop: 12 }]} />
             <Text style={s.h1}>{greeting}</Text>
@@ -571,7 +571,7 @@ export function ExposePdfDocument({ data }: { data: ExposeData }) {
             Dein Berater
           </Text>
           <Text style={{ fontSize: 16, fontWeight: 700, color: "#FFFFFF", marginTop: 8, fontFamily: HEAD_FONT }}>
-            {[data.vp.vorname, data.vp.nachname].filter(Boolean).join(" ") || data.vp.name || "Erfolg mit Immobilien"}
+            {[data.vp.vorname, data.vp.nachname].filter(Boolean).join(" ") || data.vp.name || "Objektpilot"}
           </Text>
           {data.vp.email && (
             <Text style={[s.smallOnDark, { marginTop: 6 }]}>E-Mail: {data.vp.email}</Text>
@@ -582,7 +582,7 @@ export function ExposePdfDocument({ data }: { data: ExposeData }) {
         </View>
 
         <View style={[s.footer, { color: "#B8C5D6" }]} fixed>
-          <Text>Erfolg mit Immobilien · Exposé</Text>
+          <Text>Objektpilot · Exposé</Text>
           <Text>Seite 9 / 9</Text>
         </View>
       </Page>

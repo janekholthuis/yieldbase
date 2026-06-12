@@ -2,7 +2,7 @@ import { listKunden } from "@/lib/data/kunden";
 import { KundenListView } from "@/components/kunden/KundenListView";
 
 export const metadata = {
-  title: "Kunden · Erfolg mit Immobilien",
+  title: "Kunden · Objektpilot",
 };
 
 export default async function KundenPage() {

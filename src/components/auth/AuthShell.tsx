@@ -25,7 +25,7 @@ export function AuthShell({
         className="pointer-events-none absolute -top-40 left-1/2 h-[420px] w-[860px] -translate-x-1/2 rounded-full opacity-[0.12] blur-3xl"
         style={{
           background:
-            "radial-gradient(closest-side, #1583C9 0%, #F2A661 60%, transparent 100%)",
+            "radial-gradient(closest-side, #0A2E4F 0%, #B8893E 60%, transparent 100%)",
         }}
       />
       <div className="relative w-full max-w-md">

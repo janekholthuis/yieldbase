@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { KundeDetailView } from "@/components/kunden/KundeDetailView";
 
 export const metadata = {
-  title: "Kunde · Erfolg mit Immobilien",
+  title: "Kunde · Objektpilot",
 };
 
 export default async function KundeDetailPage({

@@ -3,7 +3,7 @@ import { getCase, listCaseKommentare } from "@/lib/data/finanzierung";
 import { CaseDetailView } from "@/components/finanzierung/CaseDetailView";
 
 export const metadata = {
-  title: "Finanzierungs-Case · Erfolg mit Immobilien",
+  title: "Finanzierungs-Case · Objektpilot",
 };
 
 export default async function CaseDetailPage({

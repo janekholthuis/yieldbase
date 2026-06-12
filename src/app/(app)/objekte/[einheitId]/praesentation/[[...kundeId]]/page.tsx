@@ -4,7 +4,7 @@ import { getKalkulationsContext } from "@/lib/data/kalkulation-context";
 import { PraesentationView } from "@/components/objekte/PraesentationView";
 
 export const metadata = {
-  title: "Präsentation · Erfolg mit Immobilien",
+  title: "Präsentation · Objektpilot",
 };
 
 export default async function PraesentationPage({

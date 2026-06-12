@@ -54,7 +54,9 @@ import { KarteTab } from "@/components/objekte/KarteTab";
 import { KundenPickerModal } from "@/components/objekte/KundenPickerModal";
 import { ReservierungModal } from "@/components/reservierung/ReservierungModal";
 import { KalkulationsTab } from "@/components/objekte/KalkulationsTab";
+import { FinanziererPoolTab } from "@/components/objekte/FinanziererPoolTab";
 import { ExposeModal } from "@/components/expose/ExposeModal";
+import { useAuth } from "@/lib/auth-context";
 import type { KalkulationsContext } from "@/lib/data/kalkulation-context";
 
 const DOK_KAT_LABEL: Record<string, string> = {
@@ -77,6 +79,8 @@ export function EinheitDetailView({
 }) {
   const e = einheit;
   const router = useRouter();
+  const { roles } = useAuth();
+  const canManagePool = roles.includes("admin") || roles.includes("support");
   const ppsm = pricePerSqm(e.kaufpreis, e.wohnflaeche);
   const [exposeOpen, setExposeOpen] = useState(false);
 
@@ -165,6 +169,9 @@ export function EinheitDetailView({
           <TabsTrigger value="dokumente">Dokumente</TabsTrigger>
           <TabsTrigger value="bankdaten">Bankdaten</TabsTrigger>
           <TabsTrigger value="karte">Karte</TabsTrigger>
+          {canManagePool && (
+            <TabsTrigger value="finanzierer-pool">Finanzierer-Pool</TabsTrigger>
+          )}
         </TabsList>
 
         {/* Übersicht */}
@@ -215,6 +222,13 @@ export function EinheitDetailView({
         <TabsContent value="karte" className="space-y-4">
           <KarteTab adresse={e.adresse} plz={e.plz} stadt={e.stadt} />
         </TabsContent>
+
+        {/* Finanzierer-Pool (admin/support only) */}
+        {canManagePool && (
+          <TabsContent value="finanzierer-pool" className="space-y-4">
+            <FinanziererPoolTab projektId={e.projekt_id} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

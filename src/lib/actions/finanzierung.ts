@@ -10,6 +10,10 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { CASE_STATUS } from "@/lib/finanzierung-status";
+import {
+  listFinanziererForPool,
+  type FinanziererPoolResult,
+} from "@/lib/data/finanzierung";
 
 // ─── Kommentar hinzufügen ───────────────────────────────────────────
 const addKommentarInput = z.object({
@@ -86,6 +90,20 @@ export async function updateCaseStatus(input: z.input<typeof updateStatusInput>)
   revalidatePath(`/finanzierungen/${data.caseId}`);
   revalidatePath("/finanzierungen");
   return { ok: true };
+}
+
+// ─── Finanzierer-Pool laden (Client-Wrapper) ────────────────────────
+// Thin "use server" wrapper around the server-only data fn so the client
+// FinanziererPoolTab can load + refresh the pool without importing a
+// `server-only` module. Auth + admin/support gating happens inside
+// listFinanziererForPool (returns { error: "Forbidden" } for other roles).
+const getPoolInput = z.object({ projektId: z.string().uuid() });
+
+export async function getFinanziererPool(
+  input: z.input<typeof getPoolInput>,
+): Promise<FinanziererPoolResult> {
+  const data = getPoolInput.parse(input);
+  return listFinanziererForPool({ projektId: data.projektId });
 }
 
 // ─── Finanzierer-Pool verwalten (RPC, admin/support) ────────────────

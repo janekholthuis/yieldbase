@@ -4,14 +4,18 @@
 // Collections return Hydra envelopes; pagination is followed via
 // `hydra:view -> hydra:next` until no next link remains.
 //
-// Credentials come from env (never hardcode):
-//   - INVESTAGON_ORG_ID
-//   - INVESTAGON_API_KEY
+// Credentials are passed in explicitly by the caller (per-organisation,
+// loaded from the `organisationen` table) — never read from env here.
 //
-// This module is server-only (it reads secret env vars). Do NOT import it
-// into client components.
+// This module is server-only. Do NOT import it into client components.
 
 const BASE_URL = "https://api.investagon.com/api/";
+
+/** Per-organisation Investagon API credentials. */
+export interface InvestagonCredentials {
+  orgId: string;
+  apiKey: string;
+}
 
 /** A single Investagon project (ApiProject). Extra fields are preserved. */
 export interface InvestagonProject {
@@ -62,17 +66,6 @@ interface HydraCollection<T> {
   };
 }
 
-function getCredentials(): { orgId: string; apiKey: string } {
-  const orgId = process.env.INVESTAGON_ORG_ID;
-  const apiKey = process.env.INVESTAGON_API_KEY;
-  if (!orgId || !apiKey) {
-    throw new Error(
-      "Investagon credentials missing: set INVESTAGON_ORG_ID and INVESTAGON_API_KEY in the environment.",
-    );
-  }
-  return { orgId, apiKey };
-}
-
 /**
  * Builds an absolute URL for an Investagon endpoint or path, attaching the
  * auth query params. Accepts either a bare path ("api_projects"), an
@@ -80,10 +73,11 @@ function getCredentials(): { orgId: string; apiKey: string } {
  * `hydra:next`, or a full URL.
  */
 function buildUrl(
+  creds: InvestagonCredentials,
   pathOrUrl: string,
   params: Record<string, string | number | undefined> = {},
 ): string {
-  const { orgId, apiKey } = getCredentials();
+  const { orgId, apiKey } = creds;
 
   let url: URL;
   if (pathOrUrl.startsWith("http")) {
@@ -125,10 +119,11 @@ async function fetchJson<T>(urlString: string): Promise<T> {
  * `hydra:next` until exhausted. Guards against runaway pagination loops.
  */
 async function* paginate<T>(
+  creds: InvestagonCredentials,
   firstPath: string,
   params: Record<string, string | number | undefined>,
 ): AsyncGenerator<T, void, unknown> {
-  let next: string | undefined = buildUrl(firstPath, params);
+  let next: string | undefined = buildUrl(creds, firstPath, params);
   const seen = new Set<string>();
 
   while (next) {
@@ -143,7 +138,7 @@ async function* paginate<T>(
 
     const nextLink = page["hydra:view"]?.["hydra:next"];
     // Re-sign the next link with auth params (Hydra omits them).
-    next = nextLink ? buildUrl(nextLink) : undefined;
+    next = nextLink ? buildUrl(creds, nextLink) : undefined;
   }
 }
 
@@ -158,13 +153,15 @@ export function formatUpdatedAfter(date: Date): string {
 
 /**
  * Fetch all projects, following Hydra pagination.
+ * @param creds per-organisation Investagon API credentials.
  * @param updatedAfter optional `Y-m-d H:i:s` cutoff for incremental sync.
  */
 export async function fetchAllProjects(
+  creds: InvestagonCredentials,
   updatedAfter?: string,
 ): Promise<InvestagonProject[]> {
   const out: InvestagonProject[] = [];
-  for await (const project of paginate<InvestagonProject>("api_projects", {
+  for await (const project of paginate<InvestagonProject>(creds, "api_projects", {
     updated_after: updatedAfter,
   })) {
     out.push(project);
@@ -174,15 +171,17 @@ export async function fetchAllProjects(
 
 /**
  * Fetch all properties, following Hydra pagination.
+ * @param creds per-organisation Investagon API credentials.
  * @param updatedAfter optional `Y-m-d H:i:s` cutoff for incremental sync.
  * @param project optional project filter (id or IRI).
  */
 export async function fetchAllProperties(
+  creds: InvestagonCredentials,
   updatedAfter?: string,
   project?: string,
 ): Promise<InvestagonProperty[]> {
   const out: InvestagonProperty[] = [];
-  for await (const property of paginate<InvestagonProperty>("api_properties", {
+  for await (const property of paginate<InvestagonProperty>(creds, "api_properties", {
     updated_after: updatedAfter,
     project,
   })) {

@@ -122,6 +122,7 @@ export type Database = {
           miteigentumsanteil: string | null
           nutzungsart: Database["public"]["Enums"]["nutzungsart"]
           objektzustand: Database["public"]["Enums"]["objektzustand"] | null
+          organisation_id: string | null
           projekt_id: string
           raw: Json | null
           sondereigentumsverwaltung: number | null
@@ -161,6 +162,7 @@ export type Database = {
           miteigentumsanteil?: string | null
           nutzungsart?: Database["public"]["Enums"]["nutzungsart"]
           objektzustand?: Database["public"]["Enums"]["objektzustand"] | null
+          organisation_id?: string | null
           projekt_id: string
           raw?: Json | null
           sondereigentumsverwaltung?: number | null
@@ -200,6 +202,7 @@ export type Database = {
           miteigentumsanteil?: string | null
           nutzungsart?: Database["public"]["Enums"]["nutzungsart"]
           objektzustand?: Database["public"]["Enums"]["objektzustand"] | null
+          organisation_id?: string | null
           projekt_id?: string
           raw?: Json | null
           sondereigentumsverwaltung?: number | null
@@ -214,6 +217,13 @@ export type Database = {
           zimmer?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "einheiten_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisationen"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "einheiten_projekt_id_fkey"
             columns: ["projekt_id"]
@@ -1039,6 +1049,8 @@ export type Database = {
           accent_color: string | null
           created_at: string
           id: string
+          investagon_api_key: string | null
+          investagon_org_id: string | null
           logo_url: string | null
           name: string
           owner_id: string | null
@@ -1051,6 +1063,8 @@ export type Database = {
           accent_color?: string | null
           created_at?: string
           id?: string
+          investagon_api_key?: string | null
+          investagon_org_id?: string | null
           logo_url?: string | null
           name: string
           owner_id?: string | null
@@ -1063,6 +1077,8 @@ export type Database = {
           accent_color?: string | null
           created_at?: string
           id?: string
+          investagon_api_key?: string | null
+          investagon_org_id?: string | null
           logo_url?: string | null
           name?: string
           owner_id?: string | null
@@ -1200,6 +1216,7 @@ export type Database = {
           lage_daten: Json | null
           mietrendite_brutto: number | null
           name: string | null
+          organisation_id: string | null
           plz: string | null
           projekt_typ: Database["public"]["Enums"]["projekt_typ"]
           raw: Json | null
@@ -1230,6 +1247,7 @@ export type Database = {
           lage_daten?: Json | null
           mietrendite_brutto?: number | null
           name?: string | null
+          organisation_id?: string | null
           plz?: string | null
           projekt_typ?: Database["public"]["Enums"]["projekt_typ"]
           raw?: Json | null
@@ -1260,6 +1278,7 @@ export type Database = {
           lage_daten?: Json | null
           mietrendite_brutto?: number | null
           name?: string | null
+          organisation_id?: string | null
           plz?: string | null
           projekt_typ?: Database["public"]["Enums"]["projekt_typ"]
           raw?: Json | null
@@ -1267,7 +1286,15 @@ export type Database = {
           updated_at?: string
           visibility_reviewed_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "projekte_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisationen"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       provisionen: {
         Row: {
@@ -1409,42 +1436,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      tickets: {
-        Row: {
-          beschreibung: string | null
-          betreff: string
-          created_at: string
-          ersteller_id: string
-          id: string
-          status: Database["public"]["Enums"]["ticket_status"]
-          typ: Database["public"]["Enums"]["ticket_typ"]
-          updated_at: string
-          zugewiesen_an: string | null
-        }
-        Insert: {
-          beschreibung?: string | null
-          betreff: string
-          created_at?: string
-          ersteller_id: string
-          id?: string
-          status?: Database["public"]["Enums"]["ticket_status"]
-          typ?: Database["public"]["Enums"]["ticket_typ"]
-          updated_at?: string
-          zugewiesen_an?: string | null
-        }
-        Update: {
-          beschreibung?: string | null
-          betreff?: string
-          created_at?: string
-          ersteller_id?: string
-          id?: string
-          status?: Database["public"]["Enums"]["ticket_status"]
-          typ?: Database["public"]["Enums"]["ticket_typ"]
-          updated_at?: string
-          zugewiesen_an?: string | null
-        }
-        Relationships: []
       }
       user_roles: {
         Row: {

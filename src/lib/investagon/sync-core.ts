@@ -15,6 +15,7 @@ import type { Database, Json } from "../supabase/types";
 import {
   fetchAllProjects,
   fetchAllProperties,
+  type InvestagonCredentials,
   type InvestagonProject,
   type InvestagonProperty,
 } from "./client";
@@ -158,10 +159,17 @@ async function mapPool<T, R>(
 
 export async function runInvestagonSync(
   db: Db,
-  opts?: { updatedAfter?: string; log?: (msg: string) => void; concurrency?: number },
+  opts: {
+    organisationId: string;
+    credentials: InvestagonCredentials;
+    updatedAfter?: string;
+    log?: (msg: string) => void;
+    concurrency?: number;
+  },
 ): Promise<SyncResult> {
-  const log = opts?.log ?? (() => {});
-  const concurrency = opts?.concurrency ?? 8;
+  const log = opts.log ?? (() => {});
+  const concurrency = opts.concurrency ?? 8;
+  const { organisationId, credentials } = opts;
 
   // 1) Open sync-log row.
   let logId: string | null = null;
@@ -179,7 +187,10 @@ export async function runInvestagonSync(
 
   try {
     // 2) Projects -> projekte (+ sample fields).
-    const projects: InvestagonProject[] = await fetchAllProjects(opts?.updatedAfter);
+    const projects: InvestagonProject[] = await fetchAllProjects(
+      credentials,
+      opts.updatedAfter,
+    );
     log(`fetched ${projects.length} projects`);
 
     if (projects.length > 0) {
@@ -187,6 +198,7 @@ export async function runInvestagonSync(
         const s = sampleProjekt(p.id);
         return {
           investagon_id: p.id,
+          organisation_id: organisationId,
           name: p.name ?? null,
           adresse: p.name?.trim() ? p.name : `Investagon-Projekt ${p.id}`,
           baujahr: s.baujahr,
@@ -220,7 +232,7 @@ export async function runInvestagonSync(
     //    fast; the unfiltered collection times out). Limited concurrency.
     const perProject = await mapPool(projects, concurrency, async (p) => {
       try {
-        return await fetchAllProperties(opts?.updatedAfter, p.id);
+        return await fetchAllProperties(credentials, opts.updatedAfter, p.id);
       } catch (e) {
         log(`properties fetch failed for project ${p.id}: ${(e as Error).message}`);
         return [] as InvestagonProperty[];
@@ -260,6 +272,7 @@ export async function runInvestagonSync(
 
         return {
           investagon_id: prop.id,
+          organisation_id: organisationId,
           projekt_id: projektId,
           wohnungsnummer,
           status: mapStatus(prop.statusName),

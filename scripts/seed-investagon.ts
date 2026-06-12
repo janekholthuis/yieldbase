@@ -1,10 +1,14 @@
 // Standalone Investagon sync / seed runner.
 //
-//   npx tsx scripts/seed-investagon.ts
+//   npx tsx scripts/seed-investagon.ts [org-slug]
 //
 // Runs the same core sync as the `syncInvestagon` server action, but without
 // the request/role layer, so it can populate the DB directly (e.g. seeding test
-// data). Reads NEXT_PUBLIC_SUPABASE_URL + INVESTAGON_* from .env.local.
+// data). Reads NEXT_PUBLIC_SUPABASE_URL from .env.local.
+//
+// The Investagon credentials are loaded from the target organisation row in
+// `organisationen` (matched by slug, default `erfolg-mit-immobilien`) — no
+// Investagon env vars are needed.
 //
 // Service-role key resolution order:
 //   1. SUPABASE_SERVICE_ROLE_KEY from env (if set)
@@ -63,20 +67,44 @@ async function main() {
     console.log("[env] service-role key resolved via Management API");
   }
 
-  for (const k of [
-    "NEXT_PUBLIC_SUPABASE_URL",
-    "SUPABASE_SERVICE_ROLE_KEY",
-    "INVESTAGON_ORG_ID",
-    "INVESTAGON_API_KEY",
-  ]) {
+  for (const k of ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]) {
     if (!process.env[k]) {
       console.error(`Missing required env var: ${k}`);
       process.exit(1);
     }
   }
 
+  const admin = createAdminClient();
+
+  // Resolve the target organisation (by slug) and its Investagon credentials.
+  const slug = process.argv[2] ?? "erfolg-mit-immobilien";
+  const { data: org, error: orgErr } = await admin
+    .from("organisationen")
+    .select("id, investagon_org_id, investagon_api_key")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (orgErr) {
+    console.error(`Failed to load organisation "${slug}": ${orgErr.message}`);
+    process.exit(1);
+  }
+  if (!org) {
+    console.error(`Organisation with slug "${slug}" not found.`);
+    process.exit(1);
+  }
+  if (!org.investagon_org_id || !org.investagon_api_key) {
+    console.error(
+      `Organisation "${slug}" has no Investagon credentials (investagon_org_id / investagon_api_key).`,
+    );
+    process.exit(1);
+  }
+
   const started = Date.now();
-  const result = await runInvestagonSync(createAdminClient(), {
+  const result = await runInvestagonSync(admin, {
+    organisationId: org.id,
+    credentials: {
+      orgId: org.investagon_org_id,
+      apiKey: org.investagon_api_key,
+    },
     log: (m) => console.log("[sync]", m),
     concurrency: 8,
   });

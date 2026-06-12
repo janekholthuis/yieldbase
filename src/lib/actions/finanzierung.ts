@@ -1,0 +1,127 @@
+"use server";
+
+// Client-invokable server actions for the Finanzierungen feature: add a case
+// comment, fill an offer, change a case status, and manage the per-project
+// financier round-robin pool (RPC-based, admin/support only).
+// Each action authenticates via requireUser() and runs RLS-scoped queries as the
+// signed-in user. Ported from the OLD APP TanStack serverFns in
+// finanzierung.functions.ts / finanzierer-pool.functions.ts.
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
+import { requireUser } from "@/lib/auth";
+import { CASE_STATUS } from "@/lib/finanzierung-status";
+
+// ─── Kommentar hinzufügen ───────────────────────────────────────────
+const addKommentarInput = z.object({
+  caseId: z.string().uuid(),
+  text: z.string().min(1).max(4000),
+});
+
+export async function addCaseKommentar(input: z.input<typeof addKommentarInput>) {
+  const { supabase, userId } = await requireUser();
+  const data = addKommentarInput.parse(input);
+
+  const { error } = await supabase.from("finanzierungs_case_kommentare").insert({
+    case_id: data.caseId,
+    author_id: userId,
+    text: data.text,
+  });
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/finanzierungen/${data.caseId}`);
+  return { ok: true };
+}
+
+// ─── Angebot ausfüllen (nur Finanzierer) ────────────────────────────
+const OfferSchema = z.object({
+  caseId: z.string().uuid(),
+  zins_satz: z.number().min(0).max(20).nullable(),
+  tilgung_initial: z.number().min(0).max(20).nullable(),
+  laufzeit_jahre: z.number().int().min(1).max(50).nullable(),
+  sondertilgung_pa: z.number().min(0).max(100).nullable(),
+  monatliche_rate: z.number().min(0).max(100000).nullable(),
+  finanzierungs_summe: z.number().min(0).max(100_000_000).nullable(),
+  gesamtkosten: z.number().min(0).max(100_000_000).nullable(),
+  notiz_finanzierer: z.string().max(4000).nullable(),
+});
+
+export async function updateCaseOffer(input: z.input<typeof OfferSchema>) {
+  const { supabase } = await requireUser();
+  const data = OfferSchema.parse(input);
+
+  const { caseId, ...patch } = data;
+  const { error } = await supabase
+    .from("finanzierungs_cases")
+    .update({ ...patch, offer_filled_at: new Date().toISOString() })
+    .eq("id", caseId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/finanzierungen/${caseId}`);
+  return { ok: true };
+}
+
+// ─── Status setzen ──────────────────────────────────────────────────
+const updateStatusInput = z.object({
+  caseId: z.string().uuid(),
+  status: z.enum(CASE_STATUS),
+});
+
+export async function updateCaseStatus(input: z.input<typeof updateStatusInput>) {
+  const { supabase } = await requireUser();
+  const data = updateStatusInput.parse(input);
+
+  const finalSet: Partial<{ final_status_at: string; offer_accepted_at: string }> = {};
+  if (["genehmigt", "bewilligt", "abgelehnt", "ausgezahlt", "storniert"].includes(data.status)) {
+    finalSet.final_status_at = new Date().toISOString();
+  }
+  if (data.status === "angebot_akzeptiert") {
+    finalSet.offer_accepted_at = new Date().toISOString();
+  }
+  const { error } = await supabase
+    .from("finanzierungs_cases")
+    .update({ status: data.status, ...finalSet })
+    .eq("id", data.caseId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/finanzierungen/${data.caseId}`);
+  revalidatePath("/finanzierungen");
+  return { ok: true };
+}
+
+// ─── Finanzierer-Pool verwalten (RPC, admin/support) ────────────────
+const poolMutationInput = z.object({
+  projektId: z.string().uuid(),
+  finanziererId: z.string().uuid(),
+});
+
+export async function addFinanziererToPool(
+  input: z.input<typeof poolMutationInput>,
+): Promise<{ ok: true }> {
+  const { supabase } = await requireUser();
+  const data = poolMutationInput.parse(input);
+
+  const { error } = await supabase.rpc("add_finanzierer_to_pool", {
+    p_projekt_id: data.projektId,
+    p_finanzierer_id: data.finanziererId,
+  });
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/finanzierungen");
+  return { ok: true };
+}
+
+export async function removeFinanziererFromPool(
+  input: z.input<typeof poolMutationInput>,
+): Promise<{ ok: true }> {
+  const { supabase } = await requireUser();
+  const data = poolMutationInput.parse(input);
+
+  const { error } = await supabase.rpc("remove_finanzierer_from_pool", {
+    p_projekt_id: data.projektId,
+    p_finanzierer_id: data.finanziererId,
+  });
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/finanzierungen");
+  return { ok: true };
+}

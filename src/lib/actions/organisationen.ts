@@ -8,6 +8,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireRole, requireUser } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActiveOrg, MyOrganisation } from "@/lib/data/organisationen";
 import {
   getActiveOrganisation,
@@ -44,6 +45,12 @@ const addMemberSchema = z.object({
 const removeMemberSchema = z.object({
   orgId: z.string().uuid(),
   userId: z.string().uuid(),
+});
+
+const addMemberByEmailSchema = z.object({
+  orgId: z.string().uuid(),
+  email: z.string().trim().email(),
+  rolle: z.enum(["admin", "member"]).default("member"),
 });
 
 // ───────────── Helpers ─────────────
@@ -254,6 +261,62 @@ export async function addOrganisationMember(input: {
   if (error) throw new Error(error.message);
 
   revalidatePath("/", "layout");
+}
+
+/**
+ * Add an EXISTING user to the org by their email. For brand-new people (no
+ * account yet) use the VP invitation flow (createInvite) instead. The membership
+ * insert runs as the caller, so RLS enforces owner/admin; we additionally verify
+ * the caller's role up-front so a non-admin never even triggers the email lookup.
+ */
+export async function addOrgMemberByEmail(input: {
+  orgId: string;
+  email: string;
+  rolle?: "admin" | "member";
+}): Promise<{ name: string | null; email: string }> {
+  const { orgId, email, rolle } = addMemberByEmailSchema.parse(input);
+  const { supabase, userId } = await requireUser();
+
+  // Caller must be owner/admin of this org.
+  const { data: me } = await supabase
+    .from("organisation_members")
+    .select("rolle")
+    .eq("organisation_id", orgId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!me || (me.rolle !== "owner" && me.rolle !== "admin")) {
+    throw new Error("Keine Berechtigung, Mitglieder hinzuzufügen");
+  }
+
+  // Resolve the user by exact email (admin client — profiles aren't broadly
+  // RLS-readable). Case-insensitive exact match.
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("id, name, email")
+    .ilike("email", email)
+    .limit(1)
+    .maybeSingle();
+  if (!profile) {
+    throw new Error(
+      "Kein bestehender Nutzer mit dieser E-Mail. Für neue Nutzer die Einladung im Bereich „Mein Team“ verwenden.",
+    );
+  }
+  if (profile.id === userId) {
+    throw new Error("Du bist bereits Mitglied dieser Organisation.");
+  }
+
+  // Insert membership via the authed client (RLS double-checks owner/admin).
+  const { error } = await supabase
+    .from("organisation_members")
+    .upsert(
+      { organisation_id: orgId, user_id: profile.id, rolle },
+      { onConflict: "organisation_id,user_id" },
+    );
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/", "layout");
+  return { name: profile.name ?? null, email: profile.email ?? email };
 }
 
 /** Remove a member from an org. RLS restricts this to org owners/admins. */

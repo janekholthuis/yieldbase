@@ -12,7 +12,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Building2, Plus, Trash2, Loader2 } from "lucide-react";
+import { Building2, Plus, Trash2, Loader2, UserPlus } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -34,6 +34,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { FileUpload } from "@/components/dokumente/FileUpload";
 import { useAuth } from "@/lib/auth-context";
 import type { ActiveOrg, OrganisationMember } from "@/lib/data/organisationen";
@@ -41,6 +48,7 @@ import {
   createOrganisation,
   removeOrganisationMember,
   updateOrganisationBranding,
+  addOrgMemberByEmail,
 } from "@/lib/actions/organisationen";
 
 type MemberRolle = "owner" | "admin" | "member";
@@ -328,6 +336,31 @@ function MembersCard({
 }) {
   const router = useRouter();
   const [removing, setRemoving] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [rolle, setRolle] = useState<"member" | "admin">("member");
+  const [adding, setAdding] = useState(false);
+
+  async function handleAdd() {
+    const e = email.trim();
+    if (!e) {
+      toast.error("Bitte eine E-Mail angeben");
+      return;
+    }
+    setAdding(true);
+    try {
+      const res = await addOrgMemberByEmail({ orgId, email: e, rolle });
+      toast.success(`${res.name ?? res.email} hinzugefügt`);
+      setEmail("");
+      setRolle("member");
+      router.refresh();
+    } catch (err) {
+      toast.error("Mitglied konnte nicht hinzugefügt werden", {
+        description: err instanceof Error ? err.message : "Fehlgeschlagen",
+      });
+    } finally {
+      setAdding(false);
+    }
+  }
 
   async function handleRemove(userId: string) {
     setRemoving(userId);
@@ -410,8 +443,47 @@ function MembersCard({
             })}
           </ul>
         )}
-        {/* TODO(user): Mitglieder einladen — benötigt eine Nutzer-Auswahl
-            (Suche nach E-Mail/Profil) und anschließend addOrganisationMember(). */}
+        {canManage && (
+          <div className="mt-4 space-y-2 border-t border-brand-border pt-4">
+            <Label htmlFor="add-member-email" className="text-sm font-medium">
+              Mitglied hinzufügen
+            </Label>
+            <p className="text-xs text-brand-muted">
+              Bestehende Nutzer per E-Mail zur Organisation hinzufügen. Für neue
+              Personen die Einladung im Bereich „Mein Team“ nutzen.
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                id="add-member-email"
+                type="email"
+                placeholder="name@beispiel.de"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="flex-1"
+              />
+              <Select
+                value={rolle}
+                onValueChange={(v) => setRolle(v as "member" | "admin")}
+              >
+                <SelectTrigger className="w-full sm:w-40" aria-label="Rolle">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="member">Mitglied</SelectItem>
+                  <SelectItem value="admin">Administrator</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button onClick={handleAdd} disabled={adding}>
+                {adding ? (
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                ) : (
+                  <UserPlus className="mr-1 h-4 w-4" />
+                )}
+                Hinzufügen
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

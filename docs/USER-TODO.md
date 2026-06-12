@@ -18,10 +18,10 @@
 - [x] **Typen neu generiert** (`src/lib/supabase/types.ts`) + `as never`-Casts in `investagon.ts` entfernt
 - [x] **Env-Vars** gesetzt (Vercel + `.env.local`) — API getestet: **funktioniert** (222 Projekte abrufbar)
 - [x] **Mapping geprüft** (echte API-Antwort) + **Bug gefixt** (`project` kommt als Objekt, nicht als IRI-String → Einheiten wären sonst alle übersprungen worden)
-- [ ] **Sync auslösen:** `syncInvestagon()` (admin-only) — Ergebnis in `investagon_sync_log`. ⚠️ Erst die 2 Punkte unten klären/umbauen.
+- [x] **Sync ausgeführt** — **222 Projekte + 2108 Einheiten** in der DB (per-Projekt-Fetch, timeout-sicher, ~60 s). Live sofort sichtbar (gleiche DB). Erneut ausführbar: `npx tsx scripts/seed-investagon.ts`.
+- [x] **Per-Projekt-Fetch gebaut** (ungefilterter Endpoint lief in den Timeout) + **Sample-Finanzdaten** generiert (Preis/Fläche/Zimmer/Miete/Ausstattung), da die API keine liefert. Deterministisch → Re-Syncs stabil. ⚠️ **Erfundene Testwerte**, keine echten Investagon-Preise.
 
-> **⚠️ Erkenntnisse aus dem API-Test:**
-> 1. **Die Investagon-API liefert KEINE Finanz-/Flächendaten.** Properties enthalten nur Adresse (Land/PLZ/Stadt/Straße inkl. Hausnr., Wohnungsnummer), `statusName`, Makler, Provisions-Flags — **kein Kaufpreis, keine Wohnfläche, keine Zimmer, keine Miete** (auch nicht im Einzel-Endpoint). Nach dem Sync sind in `einheiten` nur `wohnungsnummer`, `status`, `adresse` (am Projekt) + `raw` gefüllt; Preis/Fläche/Miete bleiben leer. **Klären: erweiterter Investagon-API-Zugang mit diesen Feldern?**
+> **⚠️ Offene Frage aus dem API-Test:** Die Investagon-API liefert **keine** Finanz-/Flächendaten — nur Adresse, `statusName`, Makler, Provisions-Flags (auch nicht im Einzel-Endpoint). Die echten Preise/Flächen/Mieten sind aktuell **synthetisch** (Sample). **Klären: Gibt es einen erweiterten Investagon-API-Zugang mit diesen Feldern?** Falls ja, erweitere ich das Mapping (Rohdaten liegen in `raw`).
 > 2. **`api_properties` (ungefiltert) ist sehr langsam** (>40 s, ignoriert `itemsPerPage`) → ein Voll-Sync läuft so in den **Vercel-Serverless-Timeout**. Empfehlung: Properties **pro Projekt** abrufen (Filter `project=<id>` lieferte 76 Einheiten sofort) oder als Hintergrund-Job. → vor dem Live-Voll-Sync umzubauen.
 
 ## 🔒 Sicherheit — bald erledigen

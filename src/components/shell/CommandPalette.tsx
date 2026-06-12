@@ -57,13 +57,14 @@ export function CommandPalette({
     };
   }, [query]);
 
-  // Reset the query when the palette closes so it reopens clean.
-  useEffect(() => {
-    if (!open) setQuery("");
-  }, [open]);
+  // Reset the query on close so the palette reopens clean.
+  const handleOpenChange = (v: boolean) => {
+    if (!v) setQuery("");
+    onOpenChange(v);
+  };
 
   const go = (to: string) => {
-    onOpenChange(false);
+    handleOpenChange(false);
     router.push(to);
   };
 
@@ -71,7 +72,7 @@ export function CommandPalette({
     searchResults.filter((r) => r.group === group);
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange}>
+    <CommandDialog open={open} onOpenChange={handleOpenChange}>
       {/* shouldFilter off: results come pre-filtered from the server. */}
       <CommandInput
         placeholder="Objekte, Kunden oder Seiten suchen …"

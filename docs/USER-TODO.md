@@ -29,5 +29,10 @@ Reaktivierung später: Wiring liegt als Kommentar in den jeweiligen Page-Dateien
 - [ ] Reaktivierung Provisionen/Finanzierungen/KI (V2)
 
 
-## ℹ️ Offene Frage (Investagon)
-Die Investagon-API liefert **keine** echten Preise/Flächen/Mieten → aktuell **synthetische Sample-Werte**. Falls es einen erweiterten API-Zugang mit diesen Feldern gibt: Bescheid geben, dann erweitere ich das Mapping (Rohdaten liegen in `raw`).
+## ✅ Investagon (erledigt 2026-06-12)
+Echte Preise/Flächen/Mieten liegen auf den **vollen** `Project`/`Property`-Ressourcen
+(`GET /api/projects/{id}`, `/api/properties/{id}`) — nicht auf den schlanken
+`Api*`-Listen. Sync zieht jetzt echte Daten (synthetischer Generator entfernt),
+Volllauf erledigt (222 Projekte, 2108 Einheiten, 7023 Fotos, 9703 Dokumente).
+UI-Trigger in den Einstellungen + täglicher Vercel-Cron (inkrementell). Details:
+`docs/INVESTAGON-PLAN.md`. **Offen (deine Seite):** `CRON_SECRET` in Vercel-Env setzen.

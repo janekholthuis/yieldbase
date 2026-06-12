@@ -53,7 +53,6 @@ import {
   Building2,
   FileDown,
   FileText,
-  MapPin,
   Pencil,
   Plus,
   Presentation,
@@ -997,27 +996,5 @@ function DokumenteList({
         ))
       )}
     </div>
-  );
-}
-
-// STUB — OLD APP KarteTab renders a Mapbox map. Intentionally not ported.
-// TODO(migration): Mapbox KarteTab.
-function KarteStub({
-  adresse,
-  plz,
-  stadt,
-}: {
-  adresse: string;
-  plz: string | null;
-  stadt: string | null;
-}) {
-  return (
-    <Card className="flex flex-col items-center justify-center gap-2 p-10 text-center">
-      <MapPin className="h-8 w-8 text-muted-foreground" />
-      <h3 className="font-semibold">Karte folgt — Mapbox-Integration</h3>
-      <p className="text-sm text-muted-foreground">
-        {formatAddress(adresse, plz, stadt) || "—"}
-      </p>
-    </Card>
   );
 }

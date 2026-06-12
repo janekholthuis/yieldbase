@@ -68,10 +68,7 @@ export function ProjektCard({ data }: { data: ProjektCardData }) {
     "—";
   const stadtZeile = [data.plz, data.stadt].filter(Boolean).join(" ");
 
-  // TODO(migration): Projekt detail page (/projekte/[projektId]) is not ported yet.
-  // Link to the project's first unit so the card stays navigable.
-  const firstUnitId = units[0]?.einheit_id;
-  const href = firstUnitId ? `/objekte/${firstUnitId}` : "/objekte";
+  const href = `/objekte/projekt/${data.projekt_id}`;
 
   return (
     <Link href={href} className="group block focus:outline-none">

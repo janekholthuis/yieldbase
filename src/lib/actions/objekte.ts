@@ -17,9 +17,9 @@ import type {
 } from "@/lib/data/objekte-extra-types";
 
 const ACTIVE_STATUS: EinheitStatus[] = [
-  "verfuegbar",
+  "frei",
+  "auf_anfrage",
   "reserviert",
-  "in_finanzierung",
 ];
 
 function calcScore(args: {
@@ -29,7 +29,7 @@ function calcScore(args: {
   status: EinheitStatus;
 }): { score: number; reason: string } {
   const { kaufpreis, max_finanzierbar, mietrendite, status } = args;
-  if (status === "abgebrochen" || status === "verkauft") {
+  if (status === "verkauft") {
     return { score: 0, reason: "nicht verfügbar" };
   }
   if (!kaufpreis) return { score: 0, reason: "kein Preis" };
@@ -55,8 +55,8 @@ function calcScore(args: {
     const steps = Math.floor((mietrendite - 4) / 0.5);
     base += steps * 5;
   }
-  // Bonus: verfügbar → +10
-  if (status === "verfuegbar") base += 10;
+  // Bonus: frei → +10
+  if (status === "frei") base += 10;
 
   return { score: Math.min(150, base), reason };
 }

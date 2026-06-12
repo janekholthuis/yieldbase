@@ -75,13 +75,12 @@ const optionalDate = z
 
 const projektTypEnum = z.enum(["mfh", "etw_einzeln"]);
 const einheitStatusEnum = z.enum([
-  "verfuegbar",
+  "frei",
+  "auf_anfrage",
   "reserviert",
-  "in_finanzierung",
-  "kaufvertrag_bestellt",
+  "notarvorbereitung",
   "notartermin",
   "verkauft",
-  "abgebrochen",
 ]);
 const nutzungsartEnum = z.enum(["wohnen", "gewerbe"]);
 const objektzustandEnum = z.enum(["bestand", "neubau"]);
@@ -313,7 +312,7 @@ export async function createEinheit(
   const insert: EinheitInsert = {
     projekt_id: data.projekt_id,
     wohnungsnummer: data.wohnungsnummer,
-    status: data.status ?? "verfuegbar",
+    status: data.status ?? "frei",
     organisation_id: organisationId,
     ...compact({
       etage: data.etage,

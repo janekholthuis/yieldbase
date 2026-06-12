@@ -50,13 +50,12 @@ export const DEFAULT_FILTERS: ObjekteFilters = {
 };
 
 const ALL_STATUSES: EinheitStatus[] = [
-  "verfuegbar",
+  "frei",
+  "auf_anfrage",
   "reserviert",
-  "in_finanzierung",
-  "kaufvertrag_bestellt",
+  "notarvorbereitung",
   "notartermin",
   "verkauft",
-  "abgebrochen",
 ];
 
 interface Props {

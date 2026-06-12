@@ -6,13 +6,12 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
 export type EinheitStatus =
-  | "verfuegbar"
+  | "frei"
+  | "auf_anfrage"
   | "reserviert"
-  | "in_finanzierung"
-  | "kaufvertrag_bestellt"
+  | "notarvorbereitung"
   | "notartermin"
-  | "verkauft"
-  | "abgebrochen";
+  | "verkauft";
 
 export interface ObjektListItem {
   einheit_id: string;

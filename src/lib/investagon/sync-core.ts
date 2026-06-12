@@ -34,12 +34,12 @@ export interface SyncResult {
 function mapStatus(statusName?: string | null): EinheitStatus {
   const s = (statusName ?? "").toLowerCase();
   if (/(verkauft|sold)/.test(s)) return "verkauft";
-  if (/(notar)/.test(s)) return "notartermin";
-  if (/(kaufvertrag|beurkund)/.test(s)) return "kaufvertrag_bestellt";
-  if (/(finanzier)/.test(s)) return "in_finanzierung";
-  if (/(reserv)/.test(s)) return "reserviert";
-  if (/(abgebrochen|storniert|cancel)/.test(s)) return "abgebrochen";
-  return "verfuegbar";
+  if (/(notartermin)/.test(s)) return "notartermin";
+  if (/(kaufvertrag|beurkund|notar)/.test(s)) return "notarvorbereitung";
+  if (/(reserv|finanzier)/.test(s)) return "reserviert";
+  if (/(anfrage|request)/.test(s)) return "auf_anfrage";
+  if (/(abgebrochen|storniert|cancel)/.test(s)) return "frei";
+  return "frei";
 }
 
 function iriToId(iri?: string | null): string | null {

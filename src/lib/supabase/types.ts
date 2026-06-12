@@ -1981,13 +1981,12 @@ export type Database = {
         | "sonstiges"
         | "wirtschaftsplan"
       einheit_status:
-        | "verfuegbar"
+        | "frei"
+        | "auf_anfrage"
         | "reserviert"
-        | "in_finanzierung"
-        | "kaufvertrag_bestellt"
+        | "notarvorbereitung"
         | "notartermin"
         | "verkauft"
-        | "abgebrochen"
       feedback_kategorie:
         | "ui_ux"
         | "bug"
@@ -2211,13 +2210,12 @@ export const Constants = {
         "wirtschaftsplan",
       ],
       einheit_status: [
-        "verfuegbar",
+        "frei",
+        "auf_anfrage",
         "reserviert",
-        "in_finanzierung",
-        "kaufvertrag_bestellt",
+        "notarvorbereitung",
         "notartermin",
         "verkauft",
-        "abgebrochen",
       ],
       feedback_kategorie: [
         "ui_ux",

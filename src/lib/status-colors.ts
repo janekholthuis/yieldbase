@@ -46,10 +46,13 @@ export function getReservationStatusVariant(status: string | null | undefined): 
 }
 
 export const objektStatusVariant: Record<string, BadgeVariant> = {
-  verfuegbar: "success",
+  frei: "success",
   available: "success",
+  auf_anfrage: "primary",
   reserviert: "accent",
   reserved: "accent",
+  notarvorbereitung: "accent",
+  notartermin: "accent",
   verkauft: "muted",
   sold: "muted",
   inaktiv: "muted",

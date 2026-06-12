@@ -40,7 +40,7 @@ function item(over: Partial<ObjektListItem>): ObjektListItem {
     zimmer: 2,
     kaufpreis: 250000,
     miete: 800,
-    status: "verfuegbar",
+    status: "frei",
     vermietet: true,
     balkon: true,
     keller: false,
@@ -77,7 +77,7 @@ describe("applyObjekteFilters", () => {
 
   it("filters by status set", () => {
     const items = [
-      item({ einheit_id: "a", status: "verfuegbar" }),
+      item({ einheit_id: "a", status: "frei" }),
       item({ einheit_id: "b", status: "verkauft" }),
     ];
     const res = applyObjekteFilters(items, f({ statuses: ["verkauft"] }));
@@ -147,13 +147,13 @@ describe("applyObjekteFilters", () => {
 
   it("combines multiple filters (AND semantics)", () => {
     const items = [
-      item({ einheit_id: "a", stadt: "Berlin", status: "verfuegbar", kaufpreis: 300000 }),
+      item({ einheit_id: "a", stadt: "Berlin", status: "frei", kaufpreis: 300000 }),
       item({ einheit_id: "b", stadt: "Berlin", status: "verkauft", kaufpreis: 300000 }),
-      item({ einheit_id: "c", stadt: "Hamburg", status: "verfuegbar", kaufpreis: 300000 }),
+      item({ einheit_id: "c", stadt: "Hamburg", status: "frei", kaufpreis: 300000 }),
     ];
     const res = applyObjekteFilters(
       items,
-      f({ stadt: "Berlin", statuses: ["verfuegbar"] }),
+      f({ stadt: "Berlin", statuses: ["frei"] }),
     );
     expect(res).toHaveLength(1);
     expect(res[0].einheit_id).toBe("a");

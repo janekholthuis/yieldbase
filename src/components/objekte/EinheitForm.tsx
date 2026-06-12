@@ -119,7 +119,7 @@ export function EinheitForm({
     readStr(initial, "mietvertrag_ende"),
   );
   const [status, setStatus] = useState<EinheitStatus>(
-    (readStr(initial, "status") as EinheitStatus) || "verfuegbar",
+    (readStr(initial, "status") as EinheitStatus) || "frei",
   );
 
   // --- Wirtschaftlich ---

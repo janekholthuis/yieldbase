@@ -1,23 +1,21 @@
 import type { EinheitStatus } from "@/lib/data/objekte";
 
 export const STATUS_LABELS: Record<EinheitStatus, string> = {
-  verfuegbar: "Verfügbar",
+  frei: "Frei",
+  auf_anfrage: "Auf Anfrage",
   reserviert: "Reserviert",
-  in_finanzierung: "In Finanzierung",
-  kaufvertrag_bestellt: "Kaufvertrag bestellt",
+  notarvorbereitung: "Notarvorbereitung",
   notartermin: "Notartermin",
   verkauft: "Verkauft",
-  abgebrochen: "Abgebrochen",
 };
 
 export const STATUS_BADGE_CLASS: Record<EinheitStatus, string> = {
-  verfuegbar: "bg-success text-success-foreground",
+  frei: "bg-success text-success-foreground",
+  auf_anfrage: "bg-info text-info-foreground",
   reserviert: "bg-warning text-warning-foreground",
-  in_finanzierung: "bg-info text-info-foreground",
-  kaufvertrag_bestellt: "bg-brand-accent text-white",
+  notarvorbereitung: "bg-brand-accent text-white",
   notartermin: "bg-brand-accentHover text-white",
   verkauft: "bg-muted text-muted-foreground",
-  abgebrochen: "bg-destructive text-destructive-foreground",
 };
 
 export function formatEUR(n: number | null | undefined): string {

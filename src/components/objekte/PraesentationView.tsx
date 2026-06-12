@@ -29,7 +29,7 @@ import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { calculate, type CalcInputs } from "@/lib/kalkulation";
 import { formatEUR, formatNumber } from "@/lib/objekt-format";
-import { MAPBOX_TOKEN, hasMapbox, geocodeAddress } from "@/lib/mapbox";
+import { MAPBOX_TOKEN, hasMapbox, geocodeAddressParts } from "@/lib/mapbox";
 import type { EinheitDetail } from "@/lib/data/objekte";
 import type { KalkulationsContext } from "@/lib/data/kalkulation-context";
 import type { VPProfile } from "@/lib/data/objekte-extra-types";
@@ -400,12 +400,13 @@ function SlideLage({ einheit }: { einheit: EinheitDetail }) {
   useEffect(() => {
     if (!hasMapbox()) return;
     let cancelled = false;
-    const query = [einheit.adresse, einheit.plz, einheit.stadt]
-      .filter(Boolean)
-      .join(", ");
     let map: mapboxgl.Map | null = null;
     (async () => {
-      const center = await geocodeAddress(query);
+      const center = await geocodeAddressParts(
+        einheit.adresse,
+        einheit.plz,
+        einheit.stadt,
+      );
       if (cancelled || !ref.current || !center) return;
       mapboxgl.accessToken = MAPBOX_TOKEN;
       map = new mapboxgl.Map({

@@ -5,7 +5,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Card } from "@/components/ui/card";
 import { MapPin, AlertCircle } from "lucide-react";
-import { MAPBOX_TOKEN, hasMapbox, geocodeAddress } from "@/lib/mapbox";
+import { MAPBOX_TOKEN, hasMapbox, geocodeAddressParts } from "@/lib/mapbox";
 
 interface Props {
   adresse: string;
@@ -24,9 +24,8 @@ export function KarteTab({ adresse, stadt, plz }: Props) {
       return;
     }
     let cancelled = false;
-    const query = [adresse, plz, stadt].filter(Boolean).join(", ");
     (async () => {
-      const center = await geocodeAddress(query);
+      const center = await geocodeAddressParts(adresse, plz, stadt);
       if (cancelled || !ref.current) return;
       if (!center) {
         setError("Adresse konnte nicht geokodiert werden.");

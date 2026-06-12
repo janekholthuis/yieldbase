@@ -28,12 +28,13 @@ const TILES: Array<{
   description: string;
   to: string;
   icon: React.ComponentType<{ className?: string }>;
+  comingSoon?: boolean; // V1: deferred — greyed out (code kept)
 }> = [
   { title: "Objekte", description: "Projekte und Einheiten", to: "/objekte", icon: Building2 },
   { title: "Kunden", description: "Pipeline und Stammdaten", to: "/kunden", icon: Users },
   { title: "Reservierungen", description: "Aktive Vorgänge", to: "/reservierungen", icon: CalendarCheck },
-  { title: "Finanzierungen", description: "Cases mit Partnern", to: "/finanzierungen", icon: Coins },
-  { title: "Provisionen", description: "Status und Auszahlungen", to: "/provisionen", icon: Wallet },
+  { title: "Finanzierungen", description: "Cases mit Partnern", to: "/finanzierungen", icon: Coins, comingSoon: true },
+  { title: "Provisionen", description: "Status und Auszahlungen", to: "/provisionen", icon: Wallet, comingSoon: true },
   { title: "Mein Team", description: "Hierarchie und Sub-VPs", to: "/team", icon: Network },
 ];
 
@@ -59,20 +60,39 @@ export default function DashboardPage() {
       </p>
 
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {TILES.map((t) => (
-          <Link
-            key={t.to}
-            href={t.to}
-            className="group block transition hover:-translate-y-0.5 focus:outline-none"
-          >
-            <SectionCard
-              icon={<t.icon className="h-5 w-5" />}
-              title={t.title}
-              subtitle={t.description}
-              className="h-full transition group-hover:shadow-[var(--shadow-card-hover)] group-focus-visible:ring-2 group-focus-visible:ring-ring"
-            />
-          </Link>
-        ))}
+        {TILES.map((t) =>
+          t.comingSoon ? (
+            // V1: deferred area — greyed out and non-clickable (code kept).
+            <div
+              key={t.to}
+              className="relative cursor-not-allowed opacity-60"
+              aria-disabled
+            >
+              <span className="absolute right-3 top-3 z-10 rounded-full bg-brand-surfaceMuted px-2 py-0.5 text-[10px] font-medium text-brand-subtle">
+                Bald
+              </span>
+              <SectionCard
+                icon={<t.icon className="h-5 w-5" />}
+                title={t.title}
+                subtitle={t.description}
+                className="h-full"
+              />
+            </div>
+          ) : (
+            <Link
+              key={t.to}
+              href={t.to}
+              className="group block transition hover:-translate-y-0.5 focus:outline-none"
+            >
+              <SectionCard
+                icon={<t.icon className="h-5 w-5" />}
+                title={t.title}
+                subtitle={t.description}
+                className="h-full transition group-hover:shadow-[var(--shadow-card-hover)] group-focus-visible:ring-2 group-focus-visible:ring-ring"
+              />
+            </Link>
+          ),
+        )}
       </div>
     </div>
   );

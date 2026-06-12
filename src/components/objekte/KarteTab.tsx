@@ -69,13 +69,15 @@ export function KarteTab({ adresse, stadt, plz }: Props) {
       <Card className="overflow-hidden">
         <div ref={ref} className="h-[480px] w-full bg-muted" />
       </Card>
-      <Card className="p-4">
-        <h3 className="mb-1 flex items-center gap-2 font-semibold">
+      <Card className="p-4 opacity-60">
+        <h3 className="mb-1 flex items-center gap-2 font-semibold text-muted-foreground">
           <MapPin className="h-4 w-4" /> Standort-Highlights
+          <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            Bald
+          </span>
         </h3>
         <p className="text-sm text-muted-foreground">
-          ÖPNV, Schulen und Versorgung folgen mit dem KI-Standort-Modul (Phase
-          2).
+          ÖPNV, Schulen und Versorgung folgen mit dem KI-Standort-Modul (später).
         </p>
       </Card>
     </div>

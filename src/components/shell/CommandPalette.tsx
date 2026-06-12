@@ -11,7 +11,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useAuth } from "@/lib/auth-context";
-import { visibleNav } from "@/lib/navigation";
+import { navigableNav } from "@/lib/navigation";
 
 export function CommandPalette({
   open,
@@ -21,7 +21,7 @@ export function CommandPalette({
   onOpenChange: (v: boolean) => void;
 }) {
   const { roles } = useAuth();
-  const items = visibleNav(roles);
+  const items = navigableNav(roles);
   const router = useRouter();
 
   // TODO(migration): wire data-search results to a server action.

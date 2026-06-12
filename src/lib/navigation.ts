@@ -17,6 +17,7 @@ export interface NavItem {
   icon: LucideIcon;
   roles: AppRole[]; // roles that may see it
   mobile?: boolean; // include in mobile bottom tabs
+  comingSoon?: boolean; // V1: shown greyed-out + non-navigable (code kept, feature deferred)
 }
 
 const ALL_INTERNAL: AppRole[] = [
@@ -49,12 +50,14 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/finanzierungen",
     icon: Banknote,
     roles: [...ALL_INTERNAL, "finanzierer"],
+    comingSoon: true, // V1: deferred — greyed out (code kept)
   },
   {
     title: "Provisionen",
     to: "/provisionen",
     icon: Wallet,
     roles: ["admin", "vertriebsleiter", "vp_l1", "vp_l2", "vp_l3"],
+    comingSoon: true, // V1: deferred — greyed out (code kept)
   },
   {
     title: "Mein Team",
@@ -76,9 +79,14 @@ export function visibleNav(roles: AppRole[]): NavItem[] {
   return NAV_ITEMS.filter((item) => item.roles.some((r) => roles.includes(r)));
 }
 
+/** Nav the user can actually navigate to — excludes V1-deferred (comingSoon) areas. */
+export function navigableNav(roles: AppRole[]): NavItem[] {
+  return visibleNav(roles).filter((i) => !i.comingSoon);
+}
+
 export function mobileNav(roles: AppRole[]): NavItem[] {
   return visibleNav(roles)
-    .filter((i) => i.mobile)
+    .filter((i) => i.mobile && !i.comingSoon)
     .slice(0, 5);
 }
 

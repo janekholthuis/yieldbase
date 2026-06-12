@@ -57,6 +57,27 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {
+                // V1: deferred areas are shown greyed-out and non-navigable.
+                if (item.comingSoon) {
+                  return (
+                    <SidebarMenuItem key={item.to}>
+                      <SidebarMenuButton
+                        tooltip={`${item.title} · bald verfügbar`}
+                        aria-disabled
+                        className="rounded-lg text-brand-subtle opacity-60 cursor-not-allowed hover:!bg-transparent hover:!text-brand-subtle"
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        <item.icon className="h-[18px] w-[18px]" strokeWidth={2} />
+                        <span>{item.title}</span>
+                        {!collapsed && (
+                          <span className="ml-auto rounded-full bg-brand-surfaceMuted px-1.5 py-0.5 text-[10px] font-medium text-brand-subtle">
+                            Bald
+                          </span>
+                        )}
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                }
                 const active =
                   pathname === item.to || pathname.startsWith(item.to + "/");
                 return (

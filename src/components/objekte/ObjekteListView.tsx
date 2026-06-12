@@ -35,7 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { LayoutGrid, Rows3, SlidersHorizontal, Search } from "lucide-react";
+import { LayoutGrid, Plus, Rows3, SlidersHorizontal, Search } from "lucide-react";
 import {
   STATUS_BADGE_CLASS,
   STATUS_LABELS,
@@ -44,6 +44,17 @@ import {
   pricePerSqm,
 } from "@/lib/objekt-format";
 import type { ObjektListItem } from "@/lib/data/objekte";
+import { ProjektWizard } from "@/components/objekte/ProjektWizard";
+import { useAuth } from "@/lib/auth-context";
+
+const INTERNAL_ROLES = [
+  "admin",
+  "support",
+  "vertriebsleiter",
+  "vp_l1",
+  "vp_l2",
+  "vp_l3",
+];
 
 type SortKey = "neueste" | "preis_asc" | "preis_desc" | "rendite_desc" | "status";
 
@@ -56,6 +67,10 @@ export function ObjekteListView({ items: allItems }: { items: ObjektListItem[] }
   const [sort, setSort] = useState<SortKey>("neueste");
   const [filters, setFilters] = useState<ObjekteFilters>(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
+
+  const { roles } = useAuth();
+  const canCreate = roles.some((r) => INTERNAL_ROLES.includes(r));
 
   const filtered = useMemo(
     () => applyObjekteFilters(allItems, filters),
@@ -116,7 +131,17 @@ export function ObjekteListView({ items: allItems }: { items: ObjektListItem[] }
               : `${items.length} Einheiten`}
           </p>
         </div>
+        {canCreate && (
+          <Button className="gap-2" onClick={() => setWizardOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Neues Projekt anlegen
+          </Button>
+        )}
       </div>
+
+      {canCreate && (
+        <ProjektWizard open={wizardOpen} onOpenChange={setWizardOpen} />
+      )}
 
       {/* Top filter bar */}
       <div className="flex flex-wrap items-center gap-2">

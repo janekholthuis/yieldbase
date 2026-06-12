@@ -1,0 +1,572 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import { createEinheit, updateEinheit } from "@/lib/actions/objekte-crud";
+import {
+  BUNDESLAENDER,
+  grunderwerbsteuer,
+  grunderwerbsteuerSatz,
+  notarGerichtskosten,
+  gebaeudeanteil,
+  NOTAR_GERICHT_SATZ_DEFAULT,
+} from "@/lib/objekt-kosten";
+import { formatEUR, STATUS_LABELS } from "@/lib/objekt-format";
+import type { EinheitDetail, EinheitStatus } from "@/lib/data/objekte";
+
+// ---------------------------------------------------------------------------
+// Helpers — parse number / keep ISO dates; only filled values get submitted.
+// ---------------------------------------------------------------------------
+
+/** Parse the raw string of a number input to number | undefined (empty -> undefined). */
+function num(v: string): number | undefined {
+  if (v.trim() === "") return undefined;
+  const n = Number(v.replace(",", "."));
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** Trim a string -> string | undefined. */
+function str(v: string | null | undefined): string | undefined {
+  const t = (v ?? "").trim();
+  return t === "" ? undefined : t;
+}
+
+type NutzungsartValue = "wohnen" | "gewerbe";
+type ObjektzustandValue = "bestand" | "neubau";
+
+// The form reads more fields than EinheitDetail currently exposes (e.g.
+// nutzungsart, objektzustand, extras). We accept the typed partial but read
+// fields defensively, since `initial` may carry extra columns at runtime.
+type EinheitInitial = Partial<EinheitDetail>;
+
+function rawValue(initial: EinheitInitial | undefined, key: string): unknown {
+  if (!initial) return undefined;
+  return (initial as Record<string, unknown>)[key];
+}
+function readStr(initial: EinheitInitial | undefined, key: string): string {
+  const v = rawValue(initial, key);
+  return v == null ? "" : String(v);
+}
+function readNum(initial: EinheitInitial | undefined, key: string): string {
+  const v = rawValue(initial, key);
+  return v == null || v === "" ? "" : String(v);
+}
+function readBool(initial: EinheitInitial | undefined, key: string): boolean {
+  return Boolean(rawValue(initial, key));
+}
+
+export interface EinheitFormProps {
+  projektId: string;
+  bundesland?: string | null;
+  /** When `initial.einheit_id` is set, the form edits that unit; otherwise it creates one. */
+  initial?: EinheitInitial;
+  onSaved?: (id: string) => void;
+  /** Render the submit button inside the form (default true). Set false to drive externally. */
+  showSubmit?: boolean;
+  submitLabel?: string;
+}
+
+export function EinheitForm({
+  projektId,
+  bundesland,
+  initial,
+  onSaved,
+  showSubmit = true,
+  submitLabel,
+}: EinheitFormProps) {
+  const router = useRouter();
+  const isEdit = Boolean(initial?.einheit_id);
+  const [saving, setSaving] = useState(false);
+
+  // --- Technisch ---
+  const [wohnungsnummer, setWohnungsnummer] = useState(readStr(initial, "wohnungsnummer"));
+  const [etage, setEtage] = useState(readNum(initial, "etage"));
+  const [wohnflaeche, setWohnflaeche] = useState(readNum(initial, "wohnflaeche"));
+  const [zimmer, setZimmer] = useState(readNum(initial, "zimmer"));
+  const [nutzungsart, setNutzungsart] = useState<NutzungsartValue | "">(
+    (readStr(initial, "nutzungsart") as NutzungsartValue) || "",
+  );
+  const [objektzustand, setObjektzustand] = useState<ObjektzustandValue | "">(
+    (readStr(initial, "objektzustand") as ObjektzustandValue) || "",
+  );
+  const [heizungsart, setHeizungsart] = useState(readStr(initial, "heizungsart"));
+  const [energieklasse, setEnergieklasse] = useState(readStr(initial, "energieklasse"));
+  const [stellplaetzeAnzahl, setStellplaetzeAnzahl] = useState(
+    readNum(initial, "stellplaetze_anzahl"),
+  );
+  const [balkon, setBalkon] = useState(readBool(initial, "balkon"));
+  const [keller, setKeller] = useState(readBool(initial, "keller"));
+  const [aufzug, setAufzug] = useState(readBool(initial, "aufzug"));
+  const [vermietet, setVermietet] = useState(readBool(initial, "vermietet"));
+  const [vermietetSeit, setVermietetSeit] = useState(readStr(initial, "vermietet_seit"));
+  const [mietvertragEnde, setMietvertragEnde] = useState(
+    readStr(initial, "mietvertrag_ende"),
+  );
+  const [status, setStatus] = useState<EinheitStatus>(
+    (readStr(initial, "status") as EinheitStatus) || "verfuegbar",
+  );
+
+  // --- Wirtschaftlich ---
+  const [kaufpreis, setKaufpreis] = useState(readNum(initial, "kaufpreis"));
+  const [miete, setMiete] = useState(readNum(initial, "miete"));
+  const [stellplatzPreis, setStellplatzPreis] = useState(readNum(initial, "stellplatz_preis"));
+  const [hausgeldUml, setHausgeldUml] = useState(readNum(initial, "hausgeld_umlagefaehig"));
+  const [hausgeldNichtUml, setHausgeldNichtUml] = useState(
+    readNum(initial, "hausgeld_nicht_umlagefaehig"),
+  );
+  const [instandhaltung, setInstandhaltung] = useState(
+    readNum(initial, "instandhaltungsruecklage"),
+  );
+  const [sondereigentum, setSondereigentum] = useState(
+    readNum(initial, "sondereigentumsverwaltung"),
+  );
+
+  // --- Steuerlich ---
+  const [grundstueckswertAnteil, setGrundstueckswertAnteil] = useState(
+    readNum(initial, "grundstueckswert_anteil"),
+  );
+  const [grundstuecksanteilQm, setGrundstuecksanteilQm] = useState(
+    readNum(initial, "grundstuecksanteil_qm"),
+  );
+  const [miteigentumsanteil, setMiteigentumsanteil] = useState(
+    readStr(initial, "miteigentumsanteil"),
+  );
+  const [afaSatz, setAfaSatz] = useState(readNum(initial, "afa_satz"));
+  const [formBundesland, setFormBundesland] = useState<string>(
+    str(bundesland) ?? str(initial?.bundesland as string | undefined) ?? "",
+  );
+
+  // --- Extras ---
+  const [extras, setExtras] = useState(readStr(initial, "extras"));
+
+  // Live-derived steuerliche Werte.
+  const kp = num(kaufpreis);
+  const gwAnteil = num(grundstueckswertAnteil);
+  const derived = useMemo(() => {
+    const bl = formBundesland || null;
+    return {
+      satz: grunderwerbsteuerSatz(bl),
+      grest: grunderwerbsteuer(kp, bl),
+      notar: notarGerichtskosten(kp),
+      gebaeude: gebaeudeanteil(kp, gwAnteil),
+    };
+  }, [formBundesland, kp, gwAnteil]);
+
+  async function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (saving) return;
+    if (str(wohnungsnummer) === undefined) {
+      toast.error("Wohnungsnummer ist erforderlich.");
+      return;
+    }
+    const wnr = str(wohnungsnummer) as string; // guarded above
+    setSaving(true);
+    try {
+      const common = {
+        wohnungsnummer: wnr,
+        etage: num(etage),
+        wohnflaeche: num(wohnflaeche),
+        zimmer: num(zimmer),
+        nutzungsart: nutzungsart || undefined,
+        objektzustand: objektzustand || undefined,
+        heizungsart: str(heizungsart),
+        energieklasse: str(energieklasse),
+        stellplaetze_anzahl: num(stellplaetzeAnzahl),
+        balkon,
+        keller,
+        aufzug,
+        vermietet,
+        vermietet_seit: vermietet ? str(vermietetSeit) : undefined,
+        mietvertrag_ende: str(mietvertragEnde),
+        status,
+        kaufpreis: num(kaufpreis),
+        miete: num(miete),
+        stellplatz_preis: num(stellplatzPreis),
+        hausgeld_umlagefaehig: num(hausgeldUml),
+        hausgeld_nicht_umlagefaehig: num(hausgeldNichtUml),
+        instandhaltungsruecklage: num(instandhaltung),
+        sondereigentumsverwaltung: num(sondereigentum),
+        grundstueckswert_anteil: num(grundstueckswertAnteil),
+        grundstuecksanteil_qm: num(grundstuecksanteilQm),
+        miteigentumsanteil: str(miteigentumsanteil),
+        afa_satz: num(afaSatz),
+        extras: str(extras),
+      };
+
+      let id: string;
+      if (isEdit && initial?.einheit_id) {
+        const res = await updateEinheit({ id: initial.einheit_id, ...common });
+        id = res.id;
+      } else {
+        const res = await createEinheit({ projekt_id: projektId, ...common });
+        id = res.id;
+      }
+      toast.success(isEdit ? "Einheit gespeichert." : "Einheit angelegt.");
+      if (onSaved) onSaved(id);
+      else router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Speichern fehlgeschlagen.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Tabs defaultValue="technisch">
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="technisch">Technisch</TabsTrigger>
+          <TabsTrigger value="wirtschaftlich">Wirtschaftlich</TabsTrigger>
+          <TabsTrigger value="steuerlich">Steuerlich</TabsTrigger>
+          <TabsTrigger value="extras">Extras</TabsTrigger>
+        </TabsList>
+
+        {/* --- Technisch --- */}
+        <TabsContent value="technisch" className="space-y-4 pt-2">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Wohnungsnummer *">
+              <Input
+                value={wohnungsnummer}
+                onChange={(e) => setWohnungsnummer(e.target.value)}
+                placeholder="z. B. 1, WE 04"
+                required
+              />
+            </Field>
+            <Field label="Etage">
+              <Input
+                type="number"
+                value={etage}
+                onChange={(e) => setEtage(e.target.value)}
+                inputMode="numeric"
+              />
+            </Field>
+            <Field label="Wohnfläche (m²)">
+              <Input
+                type="number"
+                step="0.01"
+                value={wohnflaeche}
+                onChange={(e) => setWohnflaeche(e.target.value)}
+              />
+            </Field>
+            <Field label="Zimmer">
+              <Input
+                type="number"
+                step="0.5"
+                value={zimmer}
+                onChange={(e) => setZimmer(e.target.value)}
+              />
+            </Field>
+            <Field label="Nutzungsart">
+              <Select
+                value={nutzungsart || undefined}
+                onValueChange={(v) => setNutzungsart(v as NutzungsartValue)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Wählen…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="wohnen">Wohnung</SelectItem>
+                  <SelectItem value="gewerbe">Gewerbe</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Objektzustand">
+              <Select
+                value={objektzustand || undefined}
+                onValueChange={(v) => setObjektzustand(v as ObjektzustandValue)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Wählen…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bestand">Bestand</SelectItem>
+                  <SelectItem value="neubau">Neubau</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Heizungsart">
+              <Input
+                value={heizungsart}
+                onChange={(e) => setHeizungsart(e.target.value)}
+                placeholder="z. B. Gas-Zentralheizung"
+              />
+            </Field>
+            <Field label="Energieklasse">
+              <Input
+                value={energieklasse}
+                onChange={(e) => setEnergieklasse(e.target.value)}
+                placeholder="z. B. B"
+              />
+            </Field>
+            <Field label="Stellplätze (Anzahl)">
+              <Input
+                type="number"
+                value={stellplaetzeAnzahl}
+                onChange={(e) => setStellplaetzeAnzahl(e.target.value)}
+                inputMode="numeric"
+              />
+            </Field>
+            <Field label="Status">
+              <Select value={status} onValueChange={(v) => setStatus(v as EinheitStatus)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(STATUS_LABELS) as EinheitStatus[]).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {STATUS_LABELS[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <SwitchRow label="Balkon" checked={balkon} onChange={setBalkon} />
+            <SwitchRow label="Keller" checked={keller} onChange={setKeller} />
+            <SwitchRow label="Aufzug" checked={aufzug} onChange={setAufzug} />
+          </div>
+
+          <div className="rounded-lg border p-3 space-y-3">
+            <SwitchRow label="Vermietet" checked={vermietet} onChange={setVermietet} />
+            {vermietet && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Vermietet seit">
+                  <Input
+                    type="date"
+                    value={vermietetSeit}
+                    onChange={(e) => setVermietetSeit(e.target.value)}
+                  />
+                </Field>
+                <Field label="Mietvertrag Ende">
+                  <Input
+                    type="date"
+                    value={mietvertragEnde}
+                    onChange={(e) => setMietvertragEnde(e.target.value)}
+                  />
+                </Field>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* --- Wirtschaftlich --- */}
+        <TabsContent value="wirtschaftlich" className="space-y-4 pt-2">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Kaufpreis (€)">
+              <Input
+                type="number"
+                step="0.01"
+                value={kaufpreis}
+                onChange={(e) => setKaufpreis(e.target.value)}
+              />
+            </Field>
+            <Field label="Kaltmiete (€/Monat)">
+              <Input
+                type="number"
+                step="0.01"
+                value={miete}
+                onChange={(e) => setMiete(e.target.value)}
+              />
+            </Field>
+            <Field label="Stellplatz-Preis (€)">
+              <Input
+                type="number"
+                step="0.01"
+                value={stellplatzPreis}
+                onChange={(e) => setStellplatzPreis(e.target.value)}
+              />
+            </Field>
+            <Field label="Hausgeld umlagefähig (€/Monat)">
+              <Input
+                type="number"
+                step="0.01"
+                value={hausgeldUml}
+                onChange={(e) => setHausgeldUml(e.target.value)}
+              />
+            </Field>
+            <Field label="Hausgeld nicht umlagefähig (€/Monat)">
+              <Input
+                type="number"
+                step="0.01"
+                value={hausgeldNichtUml}
+                onChange={(e) => setHausgeldNichtUml(e.target.value)}
+              />
+            </Field>
+            <Field label="Instandhaltungsrücklage (€/Monat)">
+              <Input
+                type="number"
+                step="0.01"
+                value={instandhaltung}
+                onChange={(e) => setInstandhaltung(e.target.value)}
+              />
+            </Field>
+            <Field label="Sondereigentumsverwaltung (€/Monat)">
+              <Input
+                type="number"
+                step="0.01"
+                value={sondereigentum}
+                onChange={(e) => setSondereigentum(e.target.value)}
+              />
+            </Field>
+          </div>
+        </TabsContent>
+
+        {/* --- Steuerlich --- */}
+        <TabsContent value="steuerlich" className="space-y-4 pt-2">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Bundesland">
+              <Select
+                value={formBundesland || undefined}
+                onValueChange={setFormBundesland}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Wählen…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUNDESLAENDER.map((bl) => (
+                    <SelectItem key={bl} value={bl}>
+                      {bl}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Grundstückswert-Anteil (€)">
+              <Input
+                type="number"
+                step="0.01"
+                value={grundstueckswertAnteil}
+                onChange={(e) => setGrundstueckswertAnteil(e.target.value)}
+              />
+            </Field>
+            <Field label="Grundstücksanteil (m²)">
+              <Input
+                type="number"
+                step="0.01"
+                value={grundstuecksanteilQm}
+                onChange={(e) => setGrundstuecksanteilQm(e.target.value)}
+              />
+            </Field>
+            <Field label="Miteigentumsanteil">
+              <Input
+                value={miteigentumsanteil}
+                onChange={(e) => setMiteigentumsanteil(e.target.value)}
+                placeholder="z. B. 123/10000"
+              />
+            </Field>
+            <Field label="AfA-Satz (%)">
+              <Input
+                type="number"
+                step="0.01"
+                value={afaSatz}
+                onChange={(e) => setAfaSatz(e.target.value)}
+              />
+            </Field>
+          </div>
+
+          {/* Read-only derived panel */}
+          <div className="rounded-lg border bg-muted/40 p-4">
+            <h4 className="mb-3 text-sm font-semibold">Abgeleitete Kosten</h4>
+            <dl className="grid gap-2 sm:grid-cols-3">
+              <DerivedRow
+                label={`Grunderwerbsteuer${
+                  derived.satz != null ? ` (${derived.satz} %)` : ""
+                }`}
+                value={
+                  derived.grest != null
+                    ? formatEUR(derived.grest)
+                    : formBundesland
+                      ? "—"
+                      : "Bundesland wählen"
+                }
+              />
+              <DerivedRow
+                label={`Notar/Gericht (${NOTAR_GERICHT_SATZ_DEFAULT} %)`}
+                value={derived.notar != null ? formatEUR(derived.notar) : "—"}
+              />
+              <DerivedRow
+                label="Gebäudeanteil"
+                value={derived.gebaeude != null ? formatEUR(derived.gebaeude) : "—"}
+              />
+            </dl>
+          </div>
+        </TabsContent>
+
+        {/* --- Extras --- */}
+        <TabsContent value="extras" className="space-y-4 pt-2">
+          <Field label="Extras / Besonderheiten">
+            <Textarea
+              value={extras}
+              onChange={(e) => setExtras(e.target.value)}
+              rows={5}
+              placeholder="Freitext zu Ausstattung, Besonderheiten, Hinweise…"
+            />
+          </Field>
+        </TabsContent>
+      </Tabs>
+
+      {showSubmit && (
+        <div className="flex justify-end">
+          <Button type="submit" disabled={saving}>
+            {saving
+              ? "Speichern…"
+              : (submitLabel ?? (isEdit ? "Änderungen speichern" : "Einheit anlegen"))}
+          </Button>
+        </div>
+      )}
+    </form>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function SwitchRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
+      <span className="font-medium">{label}</span>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </label>
+  );
+}
+
+function DerivedRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="text-sm font-semibold tabular-nums">{value}</dd>
+    </div>
+  );
+}

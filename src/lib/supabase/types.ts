@@ -102,12 +102,15 @@ export type Database = {
           balkon: boolean
           bewegliche_wg: Json
           created_at: string
+          energieklasse: string | null
           erhaltungsaufwand: number | null
           etage: number | null
+          extras: string | null
           grundstuecksanteil_qm: number | null
           grundstueckswert_anteil: number | null
           hausgeld_nicht_umlagefaehig: number | null
           hausgeld_umlagefaehig: number | null
+          heizungsart: string | null
           id: string
           instandhaltungsruecklage: number | null
           investagon_id: string | null
@@ -116,12 +119,18 @@ export type Database = {
           keller: boolean
           miete: number | null
           mietvertrag_ende: string | null
+          miteigentumsanteil: string | null
+          nutzungsart: Database["public"]["Enums"]["nutzungsart"]
+          objektzustand: Database["public"]["Enums"]["objektzustand"] | null
           projekt_id: string
           raw: Json | null
           sondereigentumsverwaltung: number | null
           status: Database["public"]["Enums"]["einheit_status"]
+          stellplaetze_anzahl: number
+          stellplatz_preis: number | null
           updated_at: string
           vermietet: boolean
+          vermietet_seit: string | null
           wohnflaeche: number | null
           wohnungsnummer: string
           zimmer: number | null
@@ -132,12 +141,15 @@ export type Database = {
           balkon?: boolean
           bewegliche_wg?: Json
           created_at?: string
+          energieklasse?: string | null
           erhaltungsaufwand?: number | null
           etage?: number | null
+          extras?: string | null
           grundstuecksanteil_qm?: number | null
           grundstueckswert_anteil?: number | null
           hausgeld_nicht_umlagefaehig?: number | null
           hausgeld_umlagefaehig?: number | null
+          heizungsart?: string | null
           id?: string
           instandhaltungsruecklage?: number | null
           investagon_id?: string | null
@@ -146,12 +158,18 @@ export type Database = {
           keller?: boolean
           miete?: number | null
           mietvertrag_ende?: string | null
+          miteigentumsanteil?: string | null
+          nutzungsart?: Database["public"]["Enums"]["nutzungsart"]
+          objektzustand?: Database["public"]["Enums"]["objektzustand"] | null
           projekt_id: string
           raw?: Json | null
           sondereigentumsverwaltung?: number | null
           status?: Database["public"]["Enums"]["einheit_status"]
+          stellplaetze_anzahl?: number
+          stellplatz_preis?: number | null
           updated_at?: string
           vermietet?: boolean
+          vermietet_seit?: string | null
           wohnflaeche?: number | null
           wohnungsnummer: string
           zimmer?: number | null
@@ -162,12 +180,15 @@ export type Database = {
           balkon?: boolean
           bewegliche_wg?: Json
           created_at?: string
+          energieklasse?: string | null
           erhaltungsaufwand?: number | null
           etage?: number | null
+          extras?: string | null
           grundstuecksanteil_qm?: number | null
           grundstueckswert_anteil?: number | null
           hausgeld_nicht_umlagefaehig?: number | null
           hausgeld_umlagefaehig?: number | null
+          heizungsart?: string | null
           id?: string
           instandhaltungsruecklage?: number | null
           investagon_id?: string | null
@@ -176,12 +197,18 @@ export type Database = {
           keller?: boolean
           miete?: number | null
           mietvertrag_ende?: string | null
+          miteigentumsanteil?: string | null
+          nutzungsart?: Database["public"]["Enums"]["nutzungsart"]
+          objektzustand?: Database["public"]["Enums"]["objektzustand"] | null
           projekt_id?: string
           raw?: Json | null
           sondereigentumsverwaltung?: number | null
           status?: Database["public"]["Enums"]["einheit_status"]
+          stellplaetze_anzahl?: number
+          stellplatz_preis?: number | null
           updated_at?: string
           vermietet?: boolean
+          vermietet_seit?: string | null
           wohnflaeche?: number | null
           wohnungsnummer?: string
           zimmer?: number | null
@@ -1167,6 +1194,7 @@ export type Database = {
           geo: Json | null
           hausunterlagen: Json | null
           id: string
+          instandhaltungsruecklage_gesamt: number | null
           investagon_id: string | null
           kalkulations_defaults: Json | null
           lage_daten: Json | null
@@ -1196,6 +1224,7 @@ export type Database = {
           geo?: Json | null
           hausunterlagen?: Json | null
           id?: string
+          instandhaltungsruecklage_gesamt?: number | null
           investagon_id?: string | null
           kalkulations_defaults?: Json | null
           lage_daten?: Json | null
@@ -1225,6 +1254,7 @@ export type Database = {
           geo?: Json | null
           hausunterlagen?: Json | null
           id?: string
+          instandhaltungsruecklage_gesamt?: number | null
           investagon_id?: string | null
           kalkulations_defaults?: Json | null
           lage_daten?: Json | null
@@ -1928,7 +1958,9 @@ export type Database = {
         | "bonitaet_geprueft"
         | "reserviert"
         | "beurkundet"
+      nutzungsart: "wohnen" | "gewerbe"
       objekt_ebene: "projekt" | "einheit"
+      objektzustand: "bestand" | "neubau"
       projekt_typ: "mfh" | "etw_einzeln"
       provision_status:
         | "pipeline"
@@ -2161,7 +2193,9 @@ export const Constants = {
         "reserviert",
         "beurkundet",
       ],
+      nutzungsart: ["wohnen", "gewerbe"],
       objekt_ebene: ["projekt", "einheit"],
+      objektzustand: ["bestand", "neubau"],
       projekt_typ: ["mfh", "etw_einzeln"],
       provision_status: [
         "pipeline",

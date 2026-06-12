@@ -6,6 +6,13 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
@@ -38,10 +45,13 @@ import {
   FileDown,
   FileText,
   MapPin,
+  Pencil,
+  Plus,
   Presentation,
   Trash2,
   UserCheck,
 } from "lucide-react";
+import { EinheitForm } from "@/components/objekte/EinheitForm";
 import type {
   EinheitDetail,
   ObjektBild,
@@ -81,8 +91,13 @@ export function EinheitDetailView({
   const router = useRouter();
   const { roles } = useAuth();
   const canManagePool = roles.includes("admin") || roles.includes("support");
+  const canEdit = roles.some((r) =>
+    ["admin", "support", "vertriebsleiter", "vp_l1", "vp_l2", "vp_l3"].includes(r),
+  );
   const ppsm = pricePerSqm(e.kaufpreis, e.wohnflaeche);
   const [exposeOpen, setExposeOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   // Erste zugewiesene Kunde-ID für eine personalisierte Präsentation (optional).
   const praesentationKundeId =
@@ -99,6 +114,26 @@ export function EinheitDetailView({
           <ArrowLeft className="mr-1 h-4 w-4" /> Zurück
         </Button>
         <div className="flex flex-wrap items-center gap-2">
+          {canEdit && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="h-4 w-4" /> Bearbeiten
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setAddOpen(true)}
+              >
+                <Plus className="h-4 w-4" /> Einheit hinzufügen
+              </Button>
+            </>
+          )}
           <Button type="button" variant="outline" size="sm" asChild>
             <Link href={praesentationHref}>
               <Presentation className="h-4 w-4" /> Präsentation
@@ -124,6 +159,53 @@ export function EinheitDetailView({
         einheit={e}
         defaults={kalkContext.defaults}
       />
+
+      {canEdit && (
+        <>
+          <Dialog open={editOpen} onOpenChange={setEditOpen}>
+            <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Einheit bearbeiten</DialogTitle>
+                <DialogDescription>
+                  Wohnung {e.wohnungsnummer}
+                  {e.projekt_name ? ` · ${e.projekt_name}` : ""}
+                </DialogDescription>
+              </DialogHeader>
+              <EinheitForm
+                projektId={e.projekt_id}
+                bundesland={e.bundesland}
+                initial={e}
+                submitLabel="Änderungen speichern"
+                onSaved={() => {
+                  setEditOpen(false);
+                  router.refresh();
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Einheit hinzufügen</DialogTitle>
+                <DialogDescription>
+                  Neue Einheit zu{" "}
+                  {e.projekt_name ?? e.adresse ?? "diesem Projekt"} hinzufügen.
+                </DialogDescription>
+              </DialogHeader>
+              <EinheitForm
+                projektId={e.projekt_id}
+                bundesland={e.bundesland}
+                submitLabel="Einheit anlegen"
+                onSaved={(id) => {
+                  setAddOpen(false);
+                  router.push(`/objekte/${id}`);
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
 
       {/* Title block */}
       <div className="flex flex-wrap items-end justify-between gap-3">

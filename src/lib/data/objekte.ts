@@ -99,6 +99,16 @@ export interface EinheitDetail extends ObjektListItem {
   grundstueckswert_anteil: number | null;
   afa_satz: number;
   erhaltungsaufwand: number | null;
+  grundstuecksanteil_qm: number | null;
+  nutzungsart: string | null;
+  objektzustand: string | null;
+  stellplaetze_anzahl: number | null;
+  stellplatz_preis: number | null;
+  miteigentumsanteil: string | null;
+  vermietet_seit: string | null;
+  energieklasse: string | null;
+  heizungsart: string | null;
+  extras: string | null;
   bilder: ObjektBild[];
   dokumente: ObjektDokument[];
   zuweisungen: ObjektKundenZuweisung[];
@@ -175,7 +185,9 @@ export async function getEinheitDetail(einheitId: string): Promise<{
        mietvertrag_ende, kalkulation,
        hausgeld_umlagefaehig, hausgeld_nicht_umlagefaehig,
        instandhaltungsruecklage, sondereigentumsverwaltung,
-       grundstueckswert_anteil, afa_satz, erhaltungsaufwand,
+       grundstueckswert_anteil, grundstuecksanteil_qm, afa_satz, erhaltungsaufwand,
+       nutzungsart, objektzustand, stellplaetze_anzahl, stellplatz_preis,
+       miteigentumsanteil, vermietet_seit, energieklasse, heizungsart, extras,
        projekte:projekt_id (
          id, name, projekt_typ, bautraeger, cover_image_url, adresse, baujahr,
          stadt, plz, bundesland, mietrendite_brutto
@@ -233,6 +245,16 @@ export async function getEinheitDetail(einheitId: string): Promise<{
     grundstueckswert_anteil: (e as any).grundstueckswert_anteil ?? null,
     afa_satz: (e as any).afa_satz ?? 2.0,
     erhaltungsaufwand: (e as any).erhaltungsaufwand ?? null,
+    grundstuecksanteil_qm: (e as any).grundstuecksanteil_qm ?? null,
+    nutzungsart: (e as any).nutzungsart ?? null,
+    objektzustand: (e as any).objektzustand ?? null,
+    stellplaetze_anzahl: (e as any).stellplaetze_anzahl ?? null,
+    stellplatz_preis: (e as any).stellplatz_preis ?? null,
+    miteigentumsanteil: (e as any).miteigentumsanteil ?? null,
+    vermietet_seit: (e as any).vermietet_seit ?? null,
+    energieklasse: (e as any).energieklasse ?? null,
+    heizungsart: (e as any).heizungsart ?? null,
+    extras: (e as any).extras ?? null,
     bilder: (bildersR.data ?? []) as ObjektBild[],
     dokumente: (dokR.data ?? []) as ObjektDokument[],
     zuweisungen: zuweisungenRaw.map((z) => ({

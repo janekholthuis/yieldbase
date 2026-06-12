@@ -11,6 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { VerkaufsstatusTabelle } from "@/components/objekte/VerkaufsstatusTabelle";
+import { ProjektKalkulation } from "@/components/objekte/ProjektKalkulation";
+import type { KalkulationsContext } from "@/lib/data/kalkulation-context";
 import {
   STATUS_BADGE_CLASS,
   STATUS_LABELS,
@@ -32,7 +34,13 @@ function fmtRange(r: [number, number] | null, fmt: (n: number) => string): strin
   return r[0] === r[1] ? fmt(r[0]) : `${fmt(r[0])} – ${fmt(r[1])}`;
 }
 
-export function ProjektDetailView({ projekt }: { projekt: ProjektDetail }) {
+export function ProjektDetailView({
+  projekt,
+  kalkContext,
+}: {
+  projekt: ProjektDetail;
+  kalkContext: KalkulationsContext;
+}) {
   const units = projekt.einheiten;
   const prices = units.map((u) => u.kaufpreis).filter((v): v is number => v != null);
   const flaechen = units.map((u) => u.wohnflaeche).filter((v): v is number => v != null);
@@ -194,6 +202,17 @@ export function ProjektDetailView({ projekt }: { projekt: ProjektDetail }) {
           )}
         </section>
       </div>
+
+      {/* Kalkulation für eine gewählte Wohneinheit */}
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">Kalkulation</h2>
+          <p className="text-sm text-muted-foreground">
+            Wähle eine Wohneinheit und rechne direkt — Annahmen anpassbar.
+          </p>
+        </div>
+        <ProjektKalkulation einheiten={units} kalkContext={kalkContext} />
+      </section>
     </div>
   );
 }

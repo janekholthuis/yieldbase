@@ -20,12 +20,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { calculate, type CalcInputs, type CalcResult } from "@/lib/kalkulation";
 import type { KalkulationsContext } from "@/lib/data/kalkulation-context";
-import type { EinheitDetail } from "@/lib/data/objekte";
+import type { KalkulationsEinheit } from "@/lib/data/objekte";
 import { formatEUR } from "@/lib/objekt-format";
 import { BrandTooltip } from "@/components/charts/BrandTooltip";
 
 interface Props {
-  einheit: EinheitDetail;
+  einheit: KalkulationsEinheit;
   kalkContext: KalkulationsContext;
   readOnly?: boolean;
 }

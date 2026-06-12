@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getProjektDetail } from "@/lib/data/objekte";
+import { getKalkulationsContext } from "@/lib/data/kalkulation-context";
 import { Button } from "@/components/ui/button";
 import { ProjektDetailView } from "@/components/objekte/ProjektDetailView";
 
@@ -14,7 +15,10 @@ export default async function ProjektDetailPage({
   params: Promise<{ projektId: string }>;
 }) {
   const { projektId } = await params;
-  const { projekt, error } = await getProjektDetail(projektId);
+  const [{ projekt, error }, kalkContext] = await Promise.all([
+    getProjektDetail(projektId),
+    getKalkulationsContext(),
+  ]);
 
   if (error || !projekt) {
     return (
@@ -31,5 +35,5 @@ export default async function ProjektDetailPage({
     );
   }
 
-  return <ProjektDetailView projekt={projekt} />;
+  return <ProjektDetailView projekt={projekt} kalkContext={kalkContext} />;
 }

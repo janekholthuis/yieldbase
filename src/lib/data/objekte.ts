@@ -114,6 +114,24 @@ export interface EinheitDetail extends ObjektListItem {
   geschwister: ObjektListItem[];
 }
 
+/**
+ * The unit fields the calculation engine seeds from. `EinheitDetail` satisfies
+ * this, and the projekt page lazy-loads exactly these for the selected unit
+ * (see getEinheitKalkulation) so the calculator can be reused with accurate
+ * per-unit values instead of list-level fallbacks.
+ */
+export interface KalkulationsEinheit {
+  wohnungsnummer: string;
+  kaufpreis: number | null;
+  miete: number | null;
+  hausgeld_nicht_umlagefaehig: number | null;
+  instandhaltungsruecklage: number | null;
+  sondereigentumsverwaltung: number | null;
+  grundstueckswert_anteil: number | null;
+  afa_satz: number | null;
+  erhaltungsaufwand: number | null;
+}
+
 const EINHEIT_SELECT = `id, projekt_id, wohnungsnummer, etage, wohnflaeche, zimmer,
   kaufpreis, miete, status, vermietet, balkon, keller, aufzug, afa_satz, created_at,
   projekte:projekt_id (

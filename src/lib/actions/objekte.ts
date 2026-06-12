@@ -8,13 +8,37 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
-import type { ObjektListItem, EinheitStatus } from "@/lib/data/objekte";
+import type {
+  ObjektListItem,
+  EinheitStatus,
+  KalkulationsEinheit,
+} from "@/lib/data/objekte";
 import type {
   EmpfehlungItem,
   KundeZuweisungItem,
   KalkulationListItem,
   VPProfile,
 } from "@/lib/data/objekte-extra-types";
+
+/**
+ * Calculation seed fields for a single unit. Used by the projekt detail page so
+ * the calculator can be run for a selected Wohneinheit with accurate per-unit
+ * values. RLS-scoped via the authed client.
+ */
+export async function getEinheitKalkulation(input: {
+  einheitId: string;
+}): Promise<KalkulationsEinheit | null> {
+  const { supabase } = await requireUser();
+  const { einheitId } = z.object({ einheitId: z.string().uuid() }).parse(input);
+  const { data } = await supabase
+    .from("einheiten")
+    .select(
+      "wohnungsnummer, kaufpreis, miete, hausgeld_nicht_umlagefaehig, instandhaltungsruecklage, sondereigentumsverwaltung, grundstueckswert_anteil, afa_satz, erhaltungsaufwand",
+    )
+    .eq("id", einheitId)
+    .maybeSingle();
+  return (data as KalkulationsEinheit | null) ?? null;
+}
 
 const ACTIVE_STATUS: EinheitStatus[] = [
   "frei",

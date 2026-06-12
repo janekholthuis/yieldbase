@@ -28,6 +28,7 @@
 | PROJ-10 | Investagon API sync (mirror project/unit data into Supabase) | Roadmap | — | 2026-06-11 |
 | PROJ-11 | Domain structure audit (compare entity diagram vs. existing schema) | Roadmap | — | 2026-06-11 |
 | PROJ-12 | Objekte-Revision (expert feedback: simplified project mgmt, grouped fields, new fields, doc upload) | Planned | docs/OBJEKTE-REVISION-PLAN.md | 2026-06-12 |
+| PROJ-13 | Multi-Tenant Organisationen mit eigenem Branding + Org-Switcher (VP/Finanzierer) | Planned | docs/MULTI-TENANT-PLAN.md | 2026-06-12 |
 
 <!-- Add features above this line -->
 

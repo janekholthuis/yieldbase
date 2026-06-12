@@ -18,8 +18,8 @@
 |----|---------|--------|------|---------|
 | PROJ-1 | Auth, invites & role-based access (8 roles) | Roadmap | — | 2026-06-11 |
 | PROJ-2 | App shell (sidebar, topbar, command palette, notifications) | Roadmap | — | 2026-06-11 |
-| PROJ-3 | Objekte (projects/units, calculation, images, docs, map) | In Progress | — | 2026-06-11 |
-| PROJ-4 | Kunden (pipeline, Bonität scoring, documents) | In Progress | — | 2026-06-11 |
+| PROJ-3 | Objekte (projects/units, calculation, images, docs, map) | In Progress | — | 2026-06-12 |
+| PROJ-4 | Kunden (pipeline, Bonität scoring, documents) | In Progress | — | 2026-06-12 |
 | PROJ-5 | Reservierungen (signed PDF, expiry, email) | Roadmap | — | 2026-06-11 |
 | PROJ-6 | Finanzierungen (lender cases, offers, finanzierer pool) | Roadmap | — | 2026-06-11 |
 | PROJ-7 | Customer portal (dashboard, dokumente, Selbstauskunft, profil) | Roadmap | — | 2026-06-11 |

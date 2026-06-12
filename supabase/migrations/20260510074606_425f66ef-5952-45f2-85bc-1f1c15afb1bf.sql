@@ -1,0 +1,1 @@
+ALTER TABLE public.reservierungen ADD CONSTRAINT reservierungen_vp_id_profiles_fkey FOREIGN KEY (vp_id) REFERENCES public.profiles(id) ON DELETE RESTRICT;

@@ -1,0 +1,19 @@
+project_id = "ffagjzkkzlywejzjfgue"
+
+# Seed-Funktion ist nach Bootstrap nur noch über Admin-JWT zugänglich.
+# verify_jwt = true zwingt Aufrufer zu einem gültigen Supabase-Token;
+# die Function selbst prüft zusätzlich, dass der User die Admin-Rolle hat.
+[functions.seed-demo-users]
+verify_jwt = true
+
+# Reservierungs-Email: wird vom Server (server fn) mit Anon-Key aufgerufen.
+# Anon-Key reicht aus; Function prüft zusätzlich nichts (rein interner Use).
+[functions.send-reservation-email]
+verify_jwt = false
+
+# Tägliche Wartung: Auto-Expire + Reminder. Cron ruft sie via Anon-Key auf.
+[functions.reservierungen-cron]
+verify_jwt = false
+
+[functions.reset-demo-passwords]
+verify_jwt = false

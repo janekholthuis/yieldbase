@@ -32,8 +32,28 @@
 
 ---
 
-## Was Claude in dieser autonomen Session gebaut hat
-_(wird laufend ergänzt)_
+## Was Claude in dieser autonomen Session gebaut hat (alles deployed)
 
-- ✅ Objekte-Liste (deployed)
-- ✅ Objekte-Detail read-only (deployed)
+- ✅ **Objekte**: Liste (Filter/Suche/Grid/Tabelle), Detail (Übersicht, **interaktive Kalkulation** mit Charts, Bilder, Dokumente, Bankdaten, **Mapbox-Karte**), Kunden-Zuweisung
+- ✅ **Kunden**: Liste, Anlegen (mit Bonitäts-Vorschau), Detail (Daten/Bonität/Zuweisungen), **Kundenportal-Aktivierung**
+- ✅ **Reservierungen**: Liste (Stornieren, Verlängern, PDF-Download, Email erneut senden)
+- ✅ **Finanzierungen**: rollenbasierte Fall-Liste + Fall-Detail (Angebot, Status, Kommentare)
+- ✅ **Kunden-Portal**: eigene Shell, Dashboard, Selbstauskunft-Wizard, Profil
+- ✅ **Auth komplett**: Login, Passwort vergessen/zurücksetzen, Einladung annehmen, Magic-Link-Callback
+- ✅ Edge Functions + 62 Migrationen ins Repo übernommen (`supabase/`)
+- ✅ Struktur-Audit (`docs/STRUCTURE-AUDIT.md`)
+
+## Noch offen (von Claude, kein User-Input nötig — nur Zeit)
+
+- [ ] **Reservierungs-Erstellung**: Modal + Signatur-Pad + Reservierungs-/Exposé-PDF (`@react-pdf/renderer` + `signature_pad` sind installiert). Backend-Actions existieren bereits.
+- [ ] **Dokumenten-Upload** (Kunden-Dokumente + Objekt-Bilder/-Dokumente): Storage-Actions + Upload-UI. Aktuell read-only / Platzhalter.
+- [ ] **Exposé-PDF** + **Präsentations-Modus** (`/objekte/[id]/praesentation`).
+- [ ] **Finanzierer-Pool-UI** im Objekt-Detail (Backend existiert).
+- [ ] Module **Provisionen / Team / Tickets** (noch Stubs).
+- [ ] **Investagon-Integration** (`docs/INVESTAGON-PLAN.md`) — letzter Punkt.
+
+## Deine offenen Punkte (Dashboard / Secrets)
+
+- [ ] **Edge Functions deployen**: `supabase functions deploy reservierungen-cron send-reservation-email seed-demo-users reset-demo-passwords` + `RESEND_API_KEY` als Secret.
+- [ ] **`INVESTAGON_API_KEY`** in Vercel + `.env.local` (für die Investagon-Sync, sobald gebaut).
+- [ ] Struktur-Gaps entscheiden (`docs/STRUCTURE-AUDIT.md`): Projektentwickler-Tabelle? Datenraum-Tabelle?

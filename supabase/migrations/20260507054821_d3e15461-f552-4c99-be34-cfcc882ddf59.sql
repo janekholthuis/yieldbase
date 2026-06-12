@@ -1,0 +1,1 @@
+ALTER TABLE public.invites ADD COLUMN IF NOT EXISTS commission_rate numeric(6,3);

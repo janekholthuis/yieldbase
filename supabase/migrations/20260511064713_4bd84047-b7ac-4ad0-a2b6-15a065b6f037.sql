@@ -1,0 +1,1 @@
+UPDATE public.reservierungen SET expires_at = now() + interval '7 days' WHERE id = '9d561411-6641-4848-8d1f-f29eb5db4b81';

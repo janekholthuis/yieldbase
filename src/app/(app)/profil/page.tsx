@@ -1,10 +1,12 @@
-import { ModuleStub } from "@/components/shell/ModuleStub";
+import type { Metadata } from "next";
+import { getMyProfile } from "@/lib/data/profil";
+import { ProfilView } from "@/components/profil/ProfilView";
 
-export default function ProfilPage() {
-  return (
-    <ModuleStub
-      title="Profil"
-      description="Persönliche Einstellungen — wird in einem späteren Schritt portiert."
-    />
-  );
+export const metadata: Metadata = {
+  title: "Profil · Objektpilot",
+};
+
+export default async function ProfilPage() {
+  const profile = await getMyProfile();
+  return <ProfilView profile={profile} />;
 }

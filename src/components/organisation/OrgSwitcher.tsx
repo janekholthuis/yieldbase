@@ -25,7 +25,7 @@ import type { MyOrganisation } from "@/lib/data/organisationen";
 
 function OrgLogo({ org }: { org: Pick<MyOrganisation, "name" | "logoUrl"> }) {
   if (org.logoUrl) {
-    // eslint-disable-next-line @next/next/no-img-element
+     
     return (
       <img
         src={org.logoUrl}

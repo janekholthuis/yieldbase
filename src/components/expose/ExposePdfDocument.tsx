@@ -162,7 +162,7 @@ const eur = (n: number | null | undefined) =>
 const num = (n: number | null | undefined, suffix = "") =>
   n == null ? "—" : `${n.toLocaleString("de-DE", { maximumFractionDigits: 1 })}${suffix}`;
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 export interface ExposeData {
   einheit: any;
   kunde: {

@@ -28,9 +28,9 @@ export async function getKalkulationsContext(): Promise<KalkulationsContext> {
       .maybeSingle(),
   ]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const a = adminR.data as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const p = profileR.data as any;
   const vp = (p?.kalkulations_defaults ?? {}) as Partial<CalcDefaults>;
 

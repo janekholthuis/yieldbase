@@ -88,7 +88,7 @@ export interface ProjektDetail {
 
 export interface EinheitDetail extends ObjektListItem {
   mietvertrag_ende: string | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   kalkulation: Record<string, any>;
   adresse: string;
   baujahr: number | null;
@@ -122,7 +122,7 @@ const EINHEIT_SELECT = `id, projekt_id, wohnungsnummer, etage, wohnflaeche, zimm
     stadt, plz, bundesland, mietrendite_brutto
   )`;
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 function mapEinheitRow(row: any): ObjektListItem {
   return {
     einheit_id: row.id,

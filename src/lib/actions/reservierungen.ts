@@ -71,7 +71,7 @@ export async function createReservierung(input: z.input<typeof createInput>) {
   if (einheitErr || !einheitRow) {
     throw new Error("Einheit nicht gefunden.");
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const projektBank = (einheitRow as any).projekte ?? {};
   const ibanOk =
     typeof projektBank.bank_iban === "string" &&
@@ -386,7 +386,7 @@ export async function sendReservierungEmail(input: { id: string }) {
     .eq("id", data.id)
     .maybeSingle();
   if (error || !r) throw new Error(error?.message ?? "Reservierung nicht gefunden");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const rr: any = r;
   if (!rr.kunde?.email) throw new Error("Kunde hat keine Email-Adresse");
   if (!rr.pdf_url) throw new Error("Kein PDF vorhanden");

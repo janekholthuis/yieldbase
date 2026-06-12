@@ -145,7 +145,7 @@ export function FileUpload({
       try {
         const files = Array.from(list);
         for (const f of files) {
-          // eslint-disable-next-line no-await-in-loop
+           
           if (await handleOne(f)) ok++;
         }
         if (ok > 0) {

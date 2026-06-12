@@ -91,9 +91,9 @@ export async function getEmpfehlungen(input: { kundeId: string }): Promise<{
   if (error) throw new Error(error.message);
 
   const items: EmpfehlungItem[] = (rows ?? [])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     .filter((r: any) => r.projekte)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     .map((r: any) => {
       const item: ObjektListItem = {
         einheit_id: r.id,
@@ -273,7 +273,7 @@ export async function listKundenZuweisungen(input: {
     .in("id", einheitIds);
 
   const byId = new Map(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     (einheiten ?? []).map((e: any) => [
       e.id,
       {

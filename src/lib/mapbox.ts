@@ -131,13 +131,13 @@ export async function searchAddresses(
     const j = await r.json();
     const feats = Array.isArray(j?.features) ? j.features : [];
     return feats
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .map((f: any): GeocodeSuggestion | null => {
         const center = f?.geometry?.coordinates;
         if (!Array.isArray(center) || center.length !== 2) return null;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const props: any = f.properties ?? {};
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const ctx: any = props.context ?? {};
         const address =
           ctx.address?.name ??

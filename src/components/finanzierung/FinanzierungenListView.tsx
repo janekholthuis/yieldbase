@@ -84,7 +84,7 @@ function VpHint() {
     <div className="rounded-3xl border border-brand-border bg-card p-8 text-center shadow-card">
       <p className="text-sm text-brand-body">
         Finanzierungscases öffnest du direkt in der Akte des jeweiligen Kunden unter dem Reiter
-        „Finanzierung".
+        &bdquo;Finanzierung&ldquo;.
       </p>
       <Link
         href="/kunden"

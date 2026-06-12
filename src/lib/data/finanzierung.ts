@@ -81,7 +81,7 @@ export async function listCasesForFinanzierer(): Promise<CaseListItem[]> {
     )
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   return (data ?? []).map((r: any) => ({
     id: r.id,
     status: r.status as CaseStatus,
@@ -129,7 +129,7 @@ export async function listCasesForKunde(input: { kundeId: string }): Promise<Cas
     .eq("kunde_id", input.kundeId)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   return (rows ?? []).map((r: any) => ({
     id: r.id,
     status: r.status as CaseStatus,
@@ -159,7 +159,7 @@ export async function getMyKundeCases(): Promise<MyKundeCase[]> {
   // keine finanzierer_id, keine Notizen.
   const { data: rows, error } = await supabase.rpc("get_my_kunde_cases");
   if (error) throw new Error(error.message);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   return (rows ?? []).map((r: any) => ({
     id: r.id,
     status: r.status as CaseStatus,
@@ -225,7 +225,7 @@ export async function listFinanziererForPool(input: {
     .from("user_roles")
     .select("role")
     .eq("user_id", userId);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const roleSet = new Set((roles ?? []).map((r: any) => r.role));
   if (!roleSet.has("admin") && !roleSet.has("support")) {
     return {
@@ -261,7 +261,7 @@ export async function listFinanziererForPool(input: {
     .filter((m) => m.in_pool)
     .sort((a, b) => (a.pool_position ?? 0) - (b.pool_position ?? 0));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const counter = (projekt.data as any)?.finanzierer_round_robin_counter ?? 0;
   const nextAssignee = pool.length > 0 ? (pool[counter % pool.length] ?? null) : null;
 

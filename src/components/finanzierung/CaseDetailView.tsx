@@ -50,7 +50,7 @@ const FIN_NEXT_STATUS: CaseStatus[] = [
   "ausgezahlt",
 ];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type AnyCase = any;
 
 export function CaseDetailView({

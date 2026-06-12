@@ -113,7 +113,7 @@ export async function getReservierungContext(input: {
       .maybeSingle(),
   ]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const e: any = eRes.data;
   return {
     einheit: e
@@ -139,9 +139,9 @@ export async function getReservierungContext(input: {
             : null,
         }
       : null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     kunde: (kRes.data as any) ?? null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     vp: (vpRes.data as any) ?? null,
   };
 }

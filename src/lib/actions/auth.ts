@@ -205,6 +205,45 @@ export async function acceptInvite(input: z.infer<typeof acceptInviteInput>) {
     .insert({ user_id: newUserId, role: inv.role });
   if (rErr) throw new Error(`Rolle konnte nicht gesetzt werden: ${rErr.message}`);
 
+  // 2b) Multi-tenant membership: resolve the inviter's organisation and join the
+  // new user to it so tenant isolation (active_organisation_id + organisation_members)
+  // is wired from the start. The admin client has no auth.uid(), so org-default
+  // triggers can't fire — we set it explicitly.
+  {
+    // Prefer the inviter's active org; fall back to parent_vp / vertriebsleiter.
+    const inviterCandidates = [
+      inv.invited_by,
+      inv.parent_vp_id,
+      inv.vertriebsleiter_id,
+    ].filter((id): id is string => Boolean(id));
+
+    let orgId: string | null = null;
+    for (const candidateId of inviterCandidates) {
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("active_organisation_id")
+        .eq("id", candidateId)
+        .maybeSingle();
+      if (prof?.active_organisation_id) {
+        orgId = prof.active_organisation_id;
+        break;
+      }
+    }
+
+    if (orgId) {
+      await admin
+        .from("profiles")
+        .update({ active_organisation_id: orgId })
+        .eq("id", newUserId);
+      await admin
+        .from("organisation_members")
+        .upsert(
+          { organisation_id: orgId, user_id: newUserId, rolle: "member" },
+          { onConflict: "organisation_id,user_id" },
+        );
+    }
+  }
+
   // 3) Hierarchie / Kunden-Verknüpfung
   if (["vp_l1", "vp_l2", "vp_l3"].includes(inv.role)) {
     const level = inv.role === "vp_l1" ? 1 : inv.role === "vp_l2" ? 2 : 3;

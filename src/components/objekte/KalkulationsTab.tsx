@@ -219,8 +219,8 @@ export function KalkulationsTab({ einheit, kalkContext, readOnly = false }: Prop
                 <AreaChart data={result.jahre}>
                   <defs>
                     <linearGradient id="vermoegenG" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#C99B4D" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#C99B4D" stopOpacity={0} />
+                      <stop offset="0%" stopColor="#F2A661" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#F2A661" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" strokeOpacity={0.6} />
@@ -255,20 +255,20 @@ export function KalkulationsTab({ einheit, kalkContext, readOnly = false }: Prop
                     type="monotone"
                     dataKey="vermoegen"
                     name="Vermögen"
-                    stroke="#C99B4D"
+                    stroke="#F2A661"
                     fill="url(#vermoegenG)"
                     strokeWidth={2}
-                    dot={{ r: 4, fill: "#C99B4D", stroke: "#C99B4D" }}
-                    activeDot={{ r: 6, fill: "#C99B4D" }}
+                    dot={{ r: 4, fill: "#F2A661", stroke: "#F2A661" }}
+                    activeDot={{ r: 6, fill: "#F2A661" }}
                   />
                   <Line
                     type="monotone"
                     dataKey="immobilienwert"
                     name="Immobilienwert"
-                    stroke="#1B2D45"
+                    stroke="#1583C9"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{ r: 6, fill: "#1B2D45" }}
+                    activeDot={{ r: 6, fill: "#1583C9" }}
                   />
                   <Line
                     type="monotone"
@@ -319,10 +319,10 @@ export function KalkulationsTab({ einheit, kalkContext, readOnly = false }: Prop
                     type="monotone"
                     dataKey="cashflowMonat"
                     name="Cashflow nach Steuer"
-                    stroke="#1B2D45"
+                    stroke="#1583C9"
                     strokeWidth={2}
-                    dot={{ r: 4, fill: "#1B2D45", stroke: "#1B2D45" }}
-                    activeDot={{ r: 6, fill: "#1B2D45" }}
+                    dot={{ r: 4, fill: "#1583C9", stroke: "#1583C9" }}
+                    activeDot={{ r: 6, fill: "#1583C9" }}
                   />
                 </LineChart>
               </ResponsiveContainer>

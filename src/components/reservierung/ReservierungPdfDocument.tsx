@@ -32,9 +32,9 @@ const BODY = FONTS_OK ? "Inter" : "Helvetica";
 const HEAD = BODY;
 
 const colors = {
-  primary: "#1B2D45",
-  accent: "#C99B4D",
-  accentSoft: "#FBF3E2",
+  primary: "#1583C9",
+  accent: "#F2A661",
+  accentSoft: "#FEF5EA",
   ink: "#0F1729",
   body: "#374151",
   muted: "#6B7785",
@@ -250,7 +250,7 @@ export function ReservierungPdfDocument({ data }: { data: ReservierungPdfData })
 
         <View style={s.footer} fixed>
           <Text>
-            Objektpilot · Audit-Trail · Reservierungs-ID {data.reservierungId} · Signiert {dtDE(data.audit.timestamp)}
+            Erfolg mit Immobilien · Audit-Trail · Reservierungs-ID {data.reservierungId} · Signiert {dtDE(data.audit.timestamp)}
             {data.audit.ip ? ` · IP ${data.audit.ip}` : ""}
           </Text>
           <Text>{data.audit.userAgent ?? ""}</Text>

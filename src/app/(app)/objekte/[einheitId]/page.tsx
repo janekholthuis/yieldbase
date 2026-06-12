@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EinheitDetailView } from "@/components/objekte/EinheitDetailView";
 
 export const metadata = {
-  title: "Objekt-Detail · Objektpilot",
+  title: "Objekt-Detail · Erfolg mit Immobilien",
 };
 
 export default async function EinheitDetailPage({

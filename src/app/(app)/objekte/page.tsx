@@ -2,7 +2,7 @@ import { listObjekte } from "@/lib/data/objekte";
 import { ObjekteListView } from "@/components/objekte/ObjekteListView";
 
 export const metadata = {
-  title: "Objekte · Objektpilot",
+  title: "Objekte · Erfolg mit Immobilien",
 };
 
 export default async function ObjektePage() {

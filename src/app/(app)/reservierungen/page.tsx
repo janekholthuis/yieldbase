@@ -3,7 +3,7 @@ import { listReservierungen } from "@/lib/data/reservierungen";
 import { ReservierungenListView } from "@/components/reservierung/ReservierungenListView";
 
 export const metadata: Metadata = {
-  title: "Reservierungen · Objektpilot",
+  title: "Reservierungen · Erfolg mit Immobilien",
 };
 
 export default async function ReservierungenPage() {

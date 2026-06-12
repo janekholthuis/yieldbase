@@ -3,7 +3,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: "Objektpilot Vertriebsplattform",
+  title: "Erfolg mit Immobilien Vertriebsplattform",
   description: "Multi-Tenant Vertriebsplattform für Bestandsimmobilien.",
 };
 

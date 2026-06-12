@@ -42,7 +42,7 @@ export function KarteTab({ adresse, stadt, plz }: Props) {
       });
       mapRef.current = map;
       map.addControl(new mapboxgl.NavigationControl(), "top-right");
-      new mapboxgl.Marker({ color: "#B8893E" }).setLngLat(center).addTo(map);
+      new mapboxgl.Marker({ color: "#F2A661" }).setLngLat(center).addTo(map);
     })();
     return () => {
       cancelled = true;

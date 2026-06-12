@@ -147,10 +147,10 @@ export function PraesentationView({
       <header className="flex items-center justify-between border-b border-white/10 px-6 py-3">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-accent font-display font-bold text-anthrazit">
-            O
+            E
           </div>
           <span className="font-display font-semibold tracking-tight">
-            Objektpilot
+            Erfolg mit Immobilien
           </span>
         </div>
         <div className="font-display text-sm text-white/70">
@@ -414,7 +414,7 @@ function SlideLage({ einheit }: { einheit: EinheitDetail }) {
         center,
         zoom: 14,
       });
-      new mapboxgl.Marker({ color: "#C99B4D" }).setLngLat(center).addTo(map);
+      new mapboxgl.Marker({ color: "#F2A661" }).setLngLat(center).addTo(map);
     })();
     return () => {
       cancelled = true;
@@ -860,12 +860,12 @@ function SlideVermoegen({
           <AreaChart data={data}>
             <defs>
               <linearGradient id="vmg" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#C99B4D" stopOpacity={0.6} />
-                <stop offset="95%" stopColor="#C99B4D" stopOpacity={0} />
+                <stop offset="5%" stopColor="#F2A661" stopOpacity={0.6} />
+                <stop offset="95%" stopColor="#F2A661" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="wt" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#FBF3E2" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#FBF3E2" stopOpacity={0} />
+                <stop offset="5%" stopColor="#FEF5EA" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#FEF5EA" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid
@@ -914,11 +914,11 @@ function SlideVermoegen({
             <Area
               type="monotone"
               dataKey="Wert"
-              stroke="#FBF3E2"
+              stroke="#FEF5EA"
               fill="url(#wt)"
               strokeWidth={2}
               dot={false}
-              activeDot={{ r: 6, fill: "#FBF3E2" }}
+              activeDot={{ r: 6, fill: "#FEF5EA" }}
             />
             <Area
               type="monotone"
@@ -933,11 +933,11 @@ function SlideVermoegen({
             <Area
               type="monotone"
               dataKey="Vermögen"
-              stroke="#C99B4D"
+              stroke="#F2A661"
               fill="url(#vmg)"
               strokeWidth={3}
-              dot={{ r: 4, fill: "#C99B4D", stroke: "#C99B4D" }}
-              activeDot={{ r: 6, fill: "#C99B4D" }}
+              dot={{ r: 4, fill: "#F2A661", stroke: "#F2A661" }}
+              activeDot={{ r: 6, fill: "#F2A661" }}
             />
           </AreaChart>
         </ResponsiveContainer>

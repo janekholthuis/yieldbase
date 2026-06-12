@@ -3,7 +3,7 @@ import { listCasesForFinanzierer, type CaseListItem } from "@/lib/data/finanzier
 import { FinanzierungenListView } from "@/components/finanzierung/FinanzierungenListView";
 
 export const metadata = {
-  title: "Finanzierungen · Objektpilot",
+  title: "Finanzierungen · Erfolg mit Immobilien",
 };
 
 export default async function FinanzierungenPage() {

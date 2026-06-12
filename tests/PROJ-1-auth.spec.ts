@@ -25,20 +25,22 @@ test.describe("login page", () => {
 });
 
 test.describe("route guards (unauthenticated)", () => {
-  // NOTE: the effective guard is the (app)/(portal) layout `redirect("/login")`,
-  // which lands on a bare /login WITHOUT the `?redirect=` target. The
-  // middleware's param-preserving redirect does not take effect in practice
-  // (documented as a Low finding in docs/QA-RESULTS-2026-06-12.md). These specs
-  // assert the security guarantee (no unauthenticated access), not the lost UX.
-  test("protected route redirects to login", async ({ page }) => {
+  // The middleware (src/middleware.ts) redirects to /login and preserves the
+  // originally requested path in the `redirect` query param (BUG-003 fix —
+  // previously the middleware sat at the repo root and never ran).
+  test("protected route redirects to login with the redirect target", async ({
+    page,
+  }) => {
     await page.goto("/dashboard");
-    await expect(page).toHaveURL(/\/login(\?|$)/);
+    await expect(page).toHaveURL(/\/login\?redirect=%2Fdashboard/);
     await expect(page.locator("#email")).toBeVisible();
   });
 
-  test("a deep protected route is also blocked", async ({ page }) => {
+  test("a deep protected route preserves its redirect target", async ({
+    page,
+  }) => {
     await page.goto("/kunden");
-    await expect(page).toHaveURL(/\/login(\?|$)/);
+    await expect(page).toHaveURL(/\/login\?redirect=%2Fkunden/);
   });
 
   test("forgot-password is publicly reachable", async ({ page }) => {

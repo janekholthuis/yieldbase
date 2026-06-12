@@ -1,5 +1,11 @@
-// Next.js middleware: refresh the Supabase session on every request and
-// guard protected route groups. Public routes are listed in PUBLIC_PREFIXES.
+// Next.js proxy (formerly "middleware"): refresh the Supabase session on every
+// request and guard protected route groups. Public routes are in PUBLIC_PREFIXES.
+//
+// MUST live in `src/` because this project uses a `src/` directory — a
+// root-level file is silently ignored by Next.js (it never ran, which dropped
+// the redirect target and disabled the session refresh; see BUG-003 in
+// docs/QA-RESULTS-2026-06-12.md). Renamed middleware.ts → proxy.ts per the
+// Next 16 convention (the `middleware` filename is deprecated).
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
@@ -18,11 +24,12 @@ function isPublic(pathname: string) {
   );
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
 
-  // Unauthenticated user hitting a protected route → send to login.
+  // Unauthenticated user hitting a protected route → send to login,
+  // preserving the originally requested path so we can return there post-login.
   if (!user && !isPublic(pathname) && pathname !== "/") {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

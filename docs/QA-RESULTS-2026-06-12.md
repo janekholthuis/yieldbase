@@ -88,20 +88,27 @@ Zielobjekts laden und gegen `activeOrgId(session.supabase, userId)` prüfen
 (bzw. Schreibpfad auf den authed RLS-Client umstellen, analog
 `organisationen.ts`). Einheitliches Muster wie `assertCanManageKunde` einführen.
 
-### BUG-003 — Redirect-Ziel beim Login-Guard geht verloren (Low)
-**Feature:** PROJ-1/PROJ-2 · **Dateien:** `middleware.ts`, `src/app/(app)/layout.tsx`
+### BUG-003 — Middleware lief gar nicht (Root Cause) — ✅ BEHOBEN
+**Feature:** PROJ-1/PROJ-2 · **Datei:** `middleware.ts` → **`src/proxy.ts`**
 
-Beim Aufruf einer geschützten Route ohne Session leitet die App korrekt auf
-`/login` um (**Security hält** — Zugriff wird geblockt, per E2E verifiziert).
-Der param-erhaltende Redirect der Middleware (`/login?redirect=<pfad>`) greift
-in der Praxis aber **nicht**: Der effektive Guard ist der server-seitige
-`redirect("/login")` im `(app)`/`(portal)`-Layout, der das ursprünglich
-angeforderte Ziel **verwirft** (rohe Probe: `GET /dashboard` → `307 → /login`,
-ohne `?redirect`). Folge: Wer ausgeloggt einen Deep-Link öffnet, landet nach
-dem Login auf `/dashboard` statt auf der angefragten Seite. Reines UX-Thema.
-**Empfehlung:** Im Layout das Redirect-Ziel mitgeben
-(`redirect(\`/login?redirect=${pathname}\`)`) oder den Middleware-Guard als
-alleinige Quelle nutzen. Verifiziert durch `tests/PROJ-1-auth.spec.ts`.
+**Symptom:** Beim Aufruf einer geschützten Route ohne Session landete man auf
+einem param-losen `/login` (`GET /dashboard` → `307 → /login`, ohne `?redirect`)
+— der param-erhaltende Middleware-Redirect griff nie.
+
+**Root Cause (per Instrumentierung verifiziert):** Die Middleware lag im
+**Repo-Root** (`middleware.ts`), das Projekt nutzt aber ein **`src/`-Verzeichnis**
+(`src/app/...`). Next.js erwartet die Datei dann unter `src/` — die Root-Datei
+wurde **komplett ignoriert** (Marker-Header `x-mw` fehlte auf allen Routen).
+Dadurch lief weder der Route-Guard **noch der Session-Refresh (`updateSession`)**
+der Middleware; der Schutz kam allein aus dem RSC-Layout-`redirect("/login")`
+(ohne Param).
+
+**Fix:** Datei nach `src/` verschoben und gemäß Next-16-Konvention zu
+**`src/proxy.ts`** (Export `proxy`) umbenannt (`middleware`-Dateiname ist
+deprecated). Verifiziert: `GET /dashboard` → `307 → /login?redirect=%2Fdashboard`
+(`x-mw: redirect`), `/login` → `200` (`x-mw: pass user=0`). Damit ist auch der
+**Session-Refresh reaktiviert**. Regression: `tests/PROJ-1-auth.spec.ts` prüft
+jetzt die Param-Erhaltung.
 
 ### BUG-002 — Unisolierter Insert bei fehlender aktiver Org (Low) — ✅ BEHOBEN
 **Datei:** `src/lib/actions/_org.ts`, genutzt in `objekte-crud.ts`
@@ -176,4 +183,6 @@ verifiziert (RLS-Helfer wie `current_org_id` nachweislich unverändert).
    (ESLint-Flat-Config, `eslint .`).
 5. E2E-Infrastruktur: ~~Gerüst~~ ✅ angelegt (unauth-Smoke grün). Offen:
    **Staging-Supabase + Seed + Test-Logins je Rolle** für authed/Write-Path-E2E.
-6. BUG-003 (Low): Login-Guard verwirft Redirect-Ziel — optional fixen.
+6. ~~BUG-003: Login-Guard verwirft Redirect-Ziel.~~ ✅ behoben — Root Cause war
+   die fehlplatzierte Middleware (`middleware.ts` im Root statt `src/`); jetzt
+   `src/proxy.ts`. Reaktiviert zugleich den Middleware-Session-Refresh.

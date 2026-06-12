@@ -8,6 +8,10 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // Unit/integration tests are co-located under src/. The Playwright E2E
+    // specs in tests/ run via `npm run test:e2e`, not vitest — exclude them so
+    // vitest doesn't try to load @playwright/test.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
   resolve: {
     alias: {

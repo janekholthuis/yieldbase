@@ -1,5 +1,10 @@
 # QA-Bericht — V1-Features (2026-06-12)
 
+> **Deployed 2026-06-12:** Commits `9c028c5..d263a5e` nach `main` gepusht →
+> Vercel-Prod (objekt-pilot.vercel.app). Pre-Flight grün (Lint 0 Errors, 107
+> Unit-Tests, Build ok); DB-Migrationen A/B bereits live. Post-Deploy verifiziert:
+> `/login` → 200, `/dashboard` (unauth) → `307 → /login?redirect=%2Fdashboard`.
+
 > QA-Pass über die V1-Kernmodule. Schwerpunkt: Unit-Tests der finanzkritischen
 > reinen Logik, statische Regression (Lint/Build) und ein Security-Audit der
 > Server-Action-Autorisierung + Supabase-Advisors.

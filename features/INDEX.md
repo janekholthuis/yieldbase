@@ -23,7 +23,7 @@
 | PROJ-5 | Reservierungen (signed PDF, expiry, email) | Roadmap | — | 2026-06-11 |
 | PROJ-6 | Finanzierungen (lender cases, offers, finanzierer pool) | Roadmap | — | 2026-06-11 |
 | PROJ-7 | Customer portal (dashboard, dokumente, Selbstauskunft, profil) | Roadmap | — | 2026-06-11 |
-| PROJ-8 | Präsentation / Exposé PDF generation | Roadmap | — | 2026-06-11 |
+| PROJ-8 | Präsentation / Exposé PDF generation | In Progress | — | 2026-06-11 |
 | PROJ-9 | Provisionen, Team, Tickets (stubs → full) | Roadmap | — | 2026-06-11 |
 | PROJ-10 | Investagon API sync (mirror project/unit data into Supabase) | Roadmap | — | 2026-06-11 |
 | PROJ-11 | Domain structure audit (compare entity diagram vs. existing schema) | Roadmap | — | 2026-06-11 |

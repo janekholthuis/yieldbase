@@ -83,6 +83,14 @@ const config: Config = {
   				border: 'oklch(var(--sidebar-border) / <alpha-value>)',
   				ring: 'oklch(var(--sidebar-ring) / <alpha-value>)'
   			},
+  			/* Präsentations-Modus tokens (dark slideshow) — CONSTANT hex */
+  			anthrazit: '#0F1B2E',
+  			'off-white': '#F6F7F9',
+  			graphit: {
+  				'700': '#243A57',
+  				'800': '#152538',
+  				'900': '#0B1626'
+  			},
   			/* Brand tokens (DealOS palette) — CONSTANT hex, theme-independent */
   			brand: {
   				bg: '#FFFFFF',
@@ -159,12 +167,21 @@ const config: Config = {
   					opacity: '1',
   					transform: 'translateY(0)'
   				}
+  			},
+  			'fade-in': {
+  				from: {
+  					opacity: '0'
+  				},
+  				to: {
+  					opacity: '1'
+  				}
   			}
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
-  			'page-fade': 'page-fade 180ms ease-out both'
+  			'page-fade': 'page-fade 180ms ease-out both',
+  			'fade-in': 'fade-in 220ms ease-out both'
   		}
   	}
   },

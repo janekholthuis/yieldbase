@@ -17,8 +17,10 @@ import {
 import {
   ArrowLeft,
   Building2,
+  FileDown,
   FileText,
   MapPin,
+  Presentation,
   UserCheck,
 } from "lucide-react";
 import type {
@@ -33,6 +35,7 @@ import { KarteTab } from "@/components/objekte/KarteTab";
 import { KundenPickerModal } from "@/components/objekte/KundenPickerModal";
 import { ReservierungModal } from "@/components/reservierung/ReservierungModal";
 import { KalkulationsTab } from "@/components/objekte/KalkulationsTab";
+import { ExposeModal } from "@/components/expose/ExposeModal";
 import type { KalkulationsContext } from "@/lib/data/kalkulation-context";
 
 const DOK_KAT_LABEL: Record<string, string> = {
@@ -56,18 +59,48 @@ export function EinheitDetailView({
   const e = einheit;
   const router = useRouter();
   const ppsm = pricePerSqm(e.kaufpreis, e.wohnflaeche);
+  const [exposeOpen, setExposeOpen] = useState(false);
+
+  // Erste zugewiesene Kunde-ID für eine personalisierte Präsentation (optional).
+  const praesentationKundeId =
+    e.zuweisungen.find((z) => z.kunde_id)?.kunde_id ?? undefined;
+  const praesentationHref = `/objekte/${e.einheit_id}/praesentation${
+    praesentationKundeId ? `/${praesentationKundeId}` : ""
+  }`;
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-4">
       {/* Back */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
           <ArrowLeft className="mr-1 h-4 w-4" /> Zurück
         </Button>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/objekte">Alle Objekte</Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" asChild>
+            <Link href={praesentationHref}>
+              <Presentation className="h-4 w-4" /> Präsentation
+            </Link>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setExposeOpen(true)}
+          >
+            <FileDown className="h-4 w-4" /> Exposé
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/objekte">Alle Objekte</Link>
+          </Button>
+        </div>
       </div>
+
+      <ExposeModal
+        open={exposeOpen}
+        onOpenChange={setExposeOpen}
+        einheit={e}
+        defaults={kalkContext.defaults}
+      />
 
       {/* Title block */}
       <div className="flex flex-wrap items-end justify-between gap-3">

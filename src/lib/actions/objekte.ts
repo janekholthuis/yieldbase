@@ -441,6 +441,37 @@ export async function promoteToPraesentationGehalten(input: {
   return { ok: true };
 }
 
+// ─── getKundePersonalisierung ───
+// Lean read of a single customer's personalization fields (name + tax rate +
+// equity) for client-side Exposé/Präsentation generation. RLS-scoped.
+export async function getKundePersonalisierung(input: {
+  kundeId: string;
+}): Promise<{
+  id: string;
+  vorname: string | null;
+  nachname: string | null;
+  eigenkapital: number | null;
+  persoenlicher_steuersatz: number | null;
+} | null> {
+  const { supabase } = await requireUser();
+  const data = z.object({ kundeId: z.string().uuid() }).parse(input);
+  const { data: k, error } = await supabase
+    .from("kunden")
+    .select("id, vorname, nachname, eigenkapital, persoenlicher_steuersatz")
+    .eq("id", data.kundeId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!k) return null;
+  return {
+    id: k.id,
+    vorname: k.vorname ?? null,
+    nachname: k.nachname ?? null,
+    eigenkapital: (k.eigenkapital as number | null) ?? null,
+    persoenlicher_steuersatz:
+      (k.persoenlicher_steuersatz as number | null) ?? null,
+  };
+}
+
 // ─── getMyVPProfile ───
 export async function getMyVPProfile(): Promise<VPProfile> {
   const { supabase, userId } = await requireUser();

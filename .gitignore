@@ -41,3 +41,9 @@ next-env.d.ts
 
 # Lovable reference source (read-only, has its own secrets)
 OLD APP/
+
+# Playwright E2E
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

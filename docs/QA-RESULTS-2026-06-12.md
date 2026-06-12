@@ -15,7 +15,7 @@
 | Unit-Tests (`npm test`) | ✅ **97/97 grün** (9 Dateien) |
 | Supabase Security Advisors | 0 ERROR · 75 WARN (bekannte Tuning-Punkte) |
 | Server-Action-Authz-Audit | **1 High**, 1 Low gefunden |
-| E2E (Playwright) | ⛔ nicht ausgeführt (siehe Gaps) |
+| E2E (Playwright) | ⚙️ Gerüst angelegt, unauth-Smoke grün (`tests/PROJ-1-auth.spec.ts`) — authed braucht Test-Creds/Staging |
 
 **Produktionsreife-Empfehlung:** Bedingt READY. Die ausgelieferten V1-Module sind
 fachlich/statisch solide; **vor weiterem Multi-Org-Rollout** sollte BUG-001
@@ -88,6 +88,21 @@ Zielobjekts laden und gegen `activeOrgId(session.supabase, userId)` prüfen
 (bzw. Schreibpfad auf den authed RLS-Client umstellen, analog
 `organisationen.ts`). Einheitliches Muster wie `assertCanManageKunde` einführen.
 
+### BUG-003 — Redirect-Ziel beim Login-Guard geht verloren (Low)
+**Feature:** PROJ-1/PROJ-2 · **Dateien:** `middleware.ts`, `src/app/(app)/layout.tsx`
+
+Beim Aufruf einer geschützten Route ohne Session leitet die App korrekt auf
+`/login` um (**Security hält** — Zugriff wird geblockt, per E2E verifiziert).
+Der param-erhaltende Redirect der Middleware (`/login?redirect=<pfad>`) greift
+in der Praxis aber **nicht**: Der effektive Guard ist der server-seitige
+`redirect("/login")` im `(app)`/`(portal)`-Layout, der das ursprünglich
+angeforderte Ziel **verwirft** (rohe Probe: `GET /dashboard` → `307 → /login`,
+ohne `?redirect`). Folge: Wer ausgeloggt einen Deep-Link öffnet, landet nach
+dem Login auf `/dashboard` statt auf der angefragten Seite. Reines UX-Thema.
+**Empfehlung:** Im Layout das Redirect-Ziel mitgeben
+(`redirect(\`/login?redirect=${pathname}\`)`) oder den Middleware-Guard als
+alleinige Quelle nutzen. Verifiziert durch `tests/PROJ-1-auth.spec.ts`.
+
 ### BUG-002 — Unisolierter Insert bei fehlender aktiver Org (Low) — ✅ BEHOBEN
 **Datei:** `src/lib/actions/_org.ts`, genutzt in `objekte-crud.ts`
 
@@ -123,11 +138,14 @@ Deckt sich mit den bereits dokumentierten Punkten in `docs/USER-TODO.md`.
 
 ## 3. Nicht abgedeckt / Gaps
 
-- **E2E (Playwright) nicht ausgeführt.** Erfordert authentifizierte
-  Supabase-Sessions gegen die (Produktiv-)DB `ffagjzkkzlywejzjfgue` inkl.
-  Seed-Daten je Rolle. Ohne dedizierte Test-/Staging-Umgebung + Test-Accounts
-  riskant (Schreibzugriff auf Prod). **Empfehlung:** Staging-Projekt + Seed +
-  Test-Logins je Rolle, dann `tests/PROJ-*.spec.ts` aufbauen.
+- **E2E (Playwright) — Gerüst steht.** `tests/PROJ-1-auth.spec.ts` +
+  `tests/helpers/auth.ts` + `tests/README.md` angelegt; **5 unauth-Smoke-Tests
+  grün** (Login-Render, Magic-Link-Tab, Route-Guards, Public-Route). Die
+  **authentifizierten** Specs (`login()`-Helper, Deep-Link-Redirect) sind
+  `test.skip` bis `E2E_TEST_EMAIL`/`E2E_TEST_PASSWORD` gesetzt sind. **Offen für
+  Write-Path-Abdeckung:** dediziertes **Staging**-Supabase-Projekt + Seed +
+  Test-Logins je Rolle (admin, vp_l1–l3, finanzierer, kunde) — aktuell liefe
+  authed-E2E gegen Prod. Details in `tests/README.md`.
 - **Manuelles Cross-Browser/Responsive-Testing** (Chrome/FF/Safari · 375/768/1440)
   nicht durchgeführt — kein Browser-Treiber in dieser Umgebung.
 - **PROJ-6 Finanzierungen / KI** = V2, ausgegraut/zurückgestellt → nicht getestet.

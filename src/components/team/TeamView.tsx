@@ -2,7 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus, Mail, Trash2, Pencil, Check, X, Loader2 } from "lucide-react";
+import {
+  UserPlus,
+  Mail,
+  Trash2,
+  Pencil,
+  Check,
+  X,
+  Loader2,
+  Copy,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -126,6 +137,11 @@ export function TeamView({ members, invites }: TeamViewProps) {
   );
   const [rate, setRate] = useState(5);
   const [busy, setBusy] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{
+    email: string;
+    acceptUrl: string;
+    emailSent: boolean;
+  } | null>(null);
 
   const [editId, setEditId] = useState<string | null>(null);
   const [editRate, setEditRate] = useState(0);
@@ -139,20 +155,43 @@ export function TeamView({ members, invites }: TeamViewProps) {
     }
     setBusy(true);
     try {
-      await createInvite({
+      const res = await createInvite({
         email: email.trim(),
         role: inviteRole as "vp_l1" | "vp_l2" | "vp_l3",
         commission_rate: rate,
       });
-      toast.success(`Einladung an ${email.trim()} erstellt`);
-      setInviteOpen(false);
-      setEmail("");
-      setRate(5);
+      setInviteResult({
+        email: email.trim(),
+        acceptUrl: res.acceptUrl,
+        emailSent: res.emailSent,
+      });
+      toast.success(
+        res.emailSent
+          ? `Einladung per E-Mail an ${email.trim()} gesendet`
+          : `Einladung erstellt — Link teilen (E-Mail-Versand nicht möglich)`,
+      );
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Einladung fehlgeschlagen");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const closeInvite = () => {
+    setInviteOpen(false);
+    setInviteResult(null);
+    setEmail("");
+    setRate(5);
+  };
+
+  const copyInviteLink = async () => {
+    if (!inviteResult) return;
+    try {
+      await navigator.clipboard.writeText(inviteResult.acceptUrl);
+      toast.success("Link kopiert");
+    } catch {
+      toast.error("Kopieren fehlgeschlagen");
     }
   };
 
@@ -405,67 +444,114 @@ export function TeamView({ members, invites }: TeamViewProps) {
       )}
 
       {/* Einladungs-Dialog */}
-      <Dialog open={inviteOpen} onOpenChange={(o) => !busy && setInviteOpen(o)}>
+      <Dialog
+        open={inviteOpen}
+        onOpenChange={(o) => {
+          if (busy) return;
+          if (!o) closeInvite();
+          else setInviteOpen(true);
+        }}
+      >
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sub-VP einladen</DialogTitle>
-            <DialogDescription>
-              Die Person wird unter dir in der Hierarchie eingeordnet und erhält
-              eine Einladungs-Email.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="invite-email">Email</Label>
-              <Input
-                id="invite-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@beispiel.de"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="invite-role">Rolle</Label>
-              <Select value={inviteRole} onValueChange={setInviteRole}>
-                <SelectTrigger id="invite-role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {invitableRoles.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {roleLabel(r)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="invite-rate">Provisionssatz (%)</Label>
-              <Input
-                id="invite-rate"
-                type="number"
-                min={0}
-                max={100}
-                step={0.1}
-                value={rate}
-                onChange={(e) => setRate(Number(e.target.value || 0))}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setInviteOpen(false)}
-              disabled={busy}
-            >
-              Abbrechen
-            </Button>
-            <Button onClick={submitInvite} disabled={busy}>
-              {busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-              Einladen
-            </Button>
-          </DialogFooter>
+          {inviteResult ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Einladung erstellt</DialogTitle>
+                <DialogDescription>
+                  {inviteResult.emailSent ? (
+                    <span className="flex items-center gap-1.5 text-brand-success">
+                      <CheckCircle2 className="h-4 w-4" />
+                      E-Mail an {inviteResult.email} gesendet.
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-brand-danger">
+                      <AlertCircle className="h-4 w-4" />
+                      E-Mail konnte nicht versendet werden — teile den Link manuell.
+                    </span>
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-1.5 py-2">
+                <Label>Einladungslink</Label>
+                <div className="flex items-center gap-2">
+                  <Input readOnly value={inviteResult.acceptUrl} className="font-mono text-xs" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={copyInviteLink}
+                    aria-label="Link kopieren"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-brand-muted">
+                  Gültig für 7 Tage. Über diesen Link erstellt die Person ihr Konto.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button onClick={closeInvite}>Fertig</Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Sub-VP einladen</DialogTitle>
+                <DialogDescription>
+                  Die Person wird unter dir in der Hierarchie eingeordnet und
+                  erhält eine Einladungs-Email mit Anmelde-Link.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="invite-email">Email</Label>
+                  <Input
+                    id="invite-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@beispiel.de"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="invite-role">Rolle</Label>
+                  <Select value={inviteRole} onValueChange={setInviteRole}>
+                    <SelectTrigger id="invite-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {invitableRoles.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {roleLabel(r)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="invite-rate">Provisionssatz (%)</Label>
+                  <Input
+                    id="invite-rate"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={rate}
+                    onChange={(e) => setRate(Number(e.target.value || 0))}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={closeInvite} disabled={busy}>
+                  Abbrechen
+                </Button>
+                <Button onClick={submitInvite} disabled={busy}>
+                  {busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                  Einladen
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

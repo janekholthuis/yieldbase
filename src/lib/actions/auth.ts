@@ -10,6 +10,7 @@
 // - acceptInvite: public — creates the auth user (admin), assigns the role and
 //   links vp_hierarchy / kunden, then marks the invite accepted.
 import { z } from "zod";
+import { headers } from "next/headers";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { activeOrgId } from "@/lib/actions/_org";
@@ -17,6 +18,27 @@ import { passwordSchema } from "@/lib/password";
 import type { Database } from "@/lib/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
+
+const ROLE_LABEL: Record<AppRole, string> = {
+  admin: "Administrator",
+  support: "Support",
+  vertriebsleiter: "Vertriebsleiter",
+  vp_l1: "Vertriebspartner L1",
+  vp_l2: "Vertriebspartner L2",
+  vp_l3: "Vertriebspartner L3",
+  kunde: "Kunde",
+  finanzierer: "Finanzierungspartner",
+};
+
+/** Resolve the public site URL from request headers (fallback to env). */
+async function resolveSiteUrl(): Promise<string> {
+  const hdrs = await headers();
+  const origin = hdrs.get("origin");
+  if (origin) return origin;
+  const fwd = hdrs.get("x-forwarded-host");
+  if (fwd) return `https://${fwd}`;
+  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+}
 
 function randomToken(): string {
   const bytes = new Uint8Array(32);
@@ -139,7 +161,43 @@ export async function createInvite(input: z.infer<typeof createInviteInput>) {
   });
   if (error) throw new Error(`Invite konnte nicht angelegt werden: ${error.message}`);
 
-  return { token, expires_at };
+  const siteUrl = await resolveSiteUrl();
+  const acceptUrl = `${siteUrl.replace(/\/$/, "")}/invite/${token}`;
+
+  // Send the invitation email (best-effort — the invite is already created; if
+  // mailing fails the caller can still share `acceptUrl` manually).
+  let emailSent = false;
+  try {
+    const [{ data: inviter }, { data: org }] = await Promise.all([
+      admin
+        .from("profiles")
+        .select("name, vorname, nachname")
+        .eq("id", userId)
+        .maybeSingle(),
+      orgId
+        ? admin.from("organisationen").select("name").eq("id", orgId).maybeSingle()
+        : Promise.resolve({ data: null as { name: string } | null }),
+    ]);
+    const inviterName =
+      inviter?.name ??
+      ([inviter?.vorname, inviter?.nachname].filter(Boolean).join(" ") || null);
+
+    const { error: fnErr } = await admin.functions.invoke("send-invite-email", {
+      body: {
+        to: data.email,
+        inviterName,
+        orgName: org?.name ?? null,
+        roleLabel: ROLE_LABEL[data.role] ?? data.role,
+        acceptUrl,
+        expiresAt: expires_at,
+      },
+    });
+    emailSent = !fnErr;
+  } catch {
+    emailSent = false;
+  }
+
+  return { token, expires_at, acceptUrl, emailSent };
 }
 
 // ──────────────────────────── getInviteInfo (public) ────────────────────────────

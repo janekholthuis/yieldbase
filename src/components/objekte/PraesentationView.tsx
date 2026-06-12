@@ -21,6 +21,12 @@ import {
   Building2,
   Phone,
   Mail,
+  CalendarDays,
+  Zap,
+  Flame,
+  Car,
+  Home,
+  KeyRound,
 } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -28,7 +34,12 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { calculate, type CalcInputs } from "@/lib/kalkulation";
-import { formatEUR, formatNumber, formatAddress } from "@/lib/objekt-format";
+import {
+  formatEUR,
+  formatNumber,
+  formatAddress,
+  pricePerSqm,
+} from "@/lib/objekt-format";
 import { MAPBOX_TOKEN, hasMapbox, geocodeAddressParts } from "@/lib/mapbox";
 import { formatDistance } from "@/lib/standort-highlights";
 import {
@@ -52,6 +63,29 @@ interface KundePerso {
   eigenkapital: number | null;
   persoenlicher_steuersatz: number | null;
 }
+
+/**
+ * Brutto-Mietrendite in %: the stored projekt value if present, otherwise
+ * computed from monthly rent & purchase price (the real Investagon sync leaves
+ * the stored projekt value null, so without this every unit shows "—").
+ */
+function bruttoRenditeProzent(einheit: EinheitDetail): number | null {
+  if (einheit.mietrendite_brutto != null) return einheit.mietrendite_brutto;
+  if (einheit.miete && einheit.kaufpreis && einheit.kaufpreis > 0) {
+    return ((einheit.miete * 12) / einheit.kaufpreis) * 100;
+  }
+  return null;
+}
+
+/** Reliable hero image: project cover first, then the first available image. */
+function heroImage(einheit: EinheitDetail): string | null {
+  return einheit.cover_image_url ?? einheit.bilder?.[0]?.url ?? null;
+}
+
+const ZUSTAND_LABEL: Record<string, string> = {
+  bestand: "Bestand",
+  neubau: "Neubau",
+};
 
 export function PraesentationView({
   einheit,
@@ -276,7 +310,7 @@ function SlideCover({
   kunde: KundePerso | null;
   vp: VPProfile | null;
 }) {
-  const hero = einheit.bilder?.[0]?.url;
+  const hero = heroImage(einheit);
   const vorname = kunde?.vorname ?? "";
   const begruessung = vorname
     ? `Hey ${vorname}, hier ist deine Wohnung`
@@ -285,6 +319,19 @@ function SlideCover({
     [vp?.vorname, vp?.nachname].filter(Boolean).join(" ") ||
     vp?.name ||
     "Dein Berater";
+  const rendite = bruttoRenditeProzent(einheit);
+  const facts: { label: string; value: string }[] = [
+    { label: "Kaufpreis", value: formatEUR(einheit.kaufpreis) },
+    ...(einheit.wohnflaeche != null
+      ? [{ label: "Wohnfläche", value: formatNumber(einheit.wohnflaeche, " m²") }]
+      : []),
+    ...(einheit.zimmer != null
+      ? [{ label: "Zimmer", value: formatNumber(einheit.zimmer) }]
+      : []),
+    ...(rendite != null
+      ? [{ label: "Mietrendite", value: formatNumber(rendite, " %") }]
+      : []),
+  ];
   return (
     <div className="relative h-full overflow-hidden rounded-2xl">
       {hero ? (
@@ -297,7 +344,7 @@ function SlideCover({
       ) : (
         <div className="absolute inset-0 bg-graphit-800" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-anthrazit via-anthrazit/60 to-anthrazit/10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-anthrazit via-anthrazit/65 to-anthrazit/10" />
       <div className="relative flex h-full flex-col justify-end p-8 md:p-14">
         <h1 className="font-display text-3xl font-bold leading-tight md:text-6xl">
           {begruessung}
@@ -305,7 +352,20 @@ function SlideCover({
         <p className="mt-3 font-display text-lg text-white/80 md:text-2xl">
           {formatAddress(einheit.adresse, einheit.plz, einheit.stadt)}
         </p>
-        <div className="mt-8 flex items-center gap-3 border-t border-white/15 pt-5">
+        {/* Kennzahlen-Strip — sofortiger Eindruck */}
+        <div className="mt-7 flex flex-wrap gap-x-10 gap-y-4 border-t border-white/15 pt-5">
+          {facts.map((f) => (
+            <div key={f.label}>
+              <div className="text-[11px] uppercase tracking-wide text-white/55">
+                {f.label}
+              </div>
+              <div className="font-display text-2xl font-bold text-white md:text-3xl">
+                {f.value}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-7 flex items-center gap-3 border-t border-white/15 pt-5">
           {vp?.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -344,7 +404,37 @@ function SlideCover({
 
 // ──────────────── Slide 2: Übersicht ────────────────
 function SlideUebersicht({ einheit }: { einheit: EinheitDetail }) {
-  const hero = einheit.bilder?.[0]?.url;
+  const hero = heroImage(einheit);
+  // Data-driven facts — never claim something that isn't backed by data
+  // (a sales document must not state "Vollvermietung" for a vacant unit).
+  const facts: { icon: typeof Home; label: string; value: string }[] = [];
+  if (einheit.baujahr != null)
+    facts.push({ icon: CalendarDays, label: "Baujahr", value: String(einheit.baujahr) });
+  if (einheit.objektzustand)
+    facts.push({
+      icon: Home,
+      label: "Zustand",
+      value: ZUSTAND_LABEL[einheit.objektzustand] ?? einheit.objektzustand,
+    });
+  if (einheit.energieklasse)
+    facts.push({ icon: Zap, label: "Energieklasse", value: einheit.energieklasse });
+  if (einheit.heizungsart)
+    facts.push({ icon: Flame, label: "Heizung", value: einheit.heizungsart });
+  if (einheit.stellplaetze_anzahl && einheit.stellplaetze_anzahl > 0)
+    facts.push({
+      icon: Car,
+      label: "Stellplatz",
+      value:
+        einheit.stellplatz_preis != null
+          ? formatEUR(einheit.stellplatz_preis)
+          : `${einheit.stellplaetze_anzahl}`,
+    });
+  facts.push({
+    icon: KeyRound,
+    label: "Vermietung",
+    value: einheit.vermietet ? "Vermietet" : "Leerstand",
+  });
+
   return (
     <div className="grid h-full gap-6 md:grid-cols-2">
       <div className="flex flex-col justify-center space-y-6">
@@ -367,7 +457,6 @@ function SlideUebersicht({ einheit }: { einheit: EinheitDetail }) {
             <Pill>{formatNumber(einheit.zimmer, " Zi")}</Pill>
           )}
           {einheit.etage != null && <Pill>Etage {einheit.etage}</Pill>}
-          <Pill>{einheit.vermietet ? "Vermietet" : "Leerstand"}</Pill>
         </div>
         <div>
           <div className="text-sm uppercase tracking-wider text-white/60">
@@ -377,11 +466,24 @@ function SlideUebersicht({ einheit }: { einheit: EinheitDetail }) {
             {formatEUR(einheit.kaufpreis)}
           </div>
         </div>
-        <ul className="space-y-1.5 text-white/85">
-          <li>· Vollvermietung mit stabilem Cashflow</li>
-          <li>· Lage in {einheit.stadt ?? "begehrter Region"}</li>
-          <li>· Steuerlich attraktiv über AfA und Werbungskosten</li>
-        </ul>
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
+          {facts.map((f) => {
+            const Icon = f.icon;
+            return (
+              <div key={f.label} className="flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5 text-brand-accent">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <dt className="text-xs text-white/55">{f.label}</dt>
+                  <dd className="truncate font-display font-semibold text-white">
+                    {f.value}
+                  </dd>
+                </div>
+              </div>
+            );
+          })}
+        </dl>
       </div>
       <div className="overflow-hidden rounded-2xl bg-graphit-800">
         {hero ? (
@@ -500,31 +602,38 @@ function SlideLage({ einheit }: { einheit: EinheitDetail }) {
 // ──────────────── Slide 4: Bilder + Grundriss ────────────────
 function SlideBilder({ einheit }: { einheit: EinheitDetail }) {
   const bilder = einheit.bilder ?? [];
-  const grundriss =
-    bilder.find((b) => /grund/i.test(b.alt ?? "")) ?? bilder[0];
-  const restBilder = bilder
-    .filter((b) => b.id !== grundriss?.id)
-    .slice(0, 6);
+  // Only call it a "Grundriss" when an image actually is one; otherwise show the
+  // lead image as a neutral "Ansicht" — never mislabel a photo as a floor plan.
+  const grundriss = bilder.find((b) => /grund/i.test(b.alt ?? ""));
+  const lead = grundriss ?? bilder[0];
+  const leadLabel = grundriss ? "Grundriss" : "Ansicht";
+  const restBilder = bilder.filter((b) => b.id !== lead?.id).slice(0, 6);
   const [lightbox, setLightbox] = useState<string | null>(null);
 
   return (
     <div className="grid h-full gap-6 md:grid-cols-2">
       <div className="flex flex-col">
         <div className="mb-2 text-sm uppercase tracking-wider text-white/60">
-          Grundriss
+          {leadLabel}
         </div>
-        <div className="flex-1 overflow-hidden rounded-2xl border border-white/10 bg-off-white">
-          {grundriss ? (
+        <div
+          className={`flex-1 overflow-hidden rounded-2xl border border-white/10 ${
+            grundriss ? "bg-off-white" : "bg-graphit-800"
+          }`}
+        >
+          {lead ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={grundriss.url}
-              alt={grundriss.alt ?? "Grundriss"}
-              className="h-full w-full cursor-zoom-in object-contain p-3"
-              onClick={() => setLightbox(grundriss.url)}
+              src={lead.url}
+              alt={lead.alt ?? leadLabel}
+              className={`h-full w-full cursor-zoom-in ${
+                grundriss ? "object-contain p-3" : "object-cover"
+              }`}
+              onClick={() => setLightbox(lead.url)}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-anthrazit/50">
-              Kein Grundriss vorhanden
+            <div className="flex h-full items-center justify-center text-white/50">
+              Keine Bilder vorhanden
             </div>
           )}
         </div>
@@ -582,11 +691,8 @@ function SlideBilder({ einheit }: { einheit: EinheitDetail }) {
 
 // ──────────────── Slide 5: Wirtschaftliche Eckdaten ────────────────
 function SlideEckdaten({ einheit }: { einheit: EinheitDetail }) {
-  const ppsm =
-    einheit.kaufpreis && einheit.wohnflaeche
-      ? Math.round(einheit.kaufpreis / einheit.wohnflaeche)
-      : null;
-  const rendite = einheit.mietrendite_brutto;
+  const ppsm = pricePerSqm(einheit.kaufpreis, einheit.wohnflaeche);
+  const rendite = bruttoRenditeProzent(einheit);
   return (
     <div className="flex h-full flex-col justify-center">
       <div className="mb-8">
@@ -625,6 +731,12 @@ function SlideEckdaten({ einheit }: { einheit: EinheitDetail }) {
           label="Sondereig.-Verwaltung"
           value={formatEUR(einheit.sondereigentumsverwaltung)}
         />
+        {einheit.stellplatz_preis != null && (
+          <DataRow
+            label="Stellplatzpreis"
+            value={formatEUR(einheit.stellplatz_preis)}
+          />
+        )}
       </div>
     </div>
   );

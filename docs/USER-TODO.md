@@ -16,7 +16,8 @@ Reaktivierung später: Wiring liegt als Kommentar in den jeweiligen Page-Dateien
 ## 🛠️ V1 — offene Bauarbeiten (Claude, kein User-Input nötig)
 - [x] **`/profil`** ausgebaut: persönliche Daten + Adresse + persönl. Steuersatz, Passwort ändern, Abmelden (2026-06-12)
 - [ ] **V1-Kernflows QA + INDEX-Status angleichen** (Objekte/Kunden/Reservierungen/Team) — viele stehen in INDEX noch auf „In Progress", sind aber live
-- [ ] **Mailing für V1 schärfen** (Reservierungs- & Einladungs-Mails: Templates/Versand prüfen)
+- [x] **Einladungs-Mail** gebaut: `send-invite-email` Edge-Function + Versand in `createInvite` + Accept-Link-Fallback in TeamView (2026-06-12)
+- [ ] **Resend für echten Versand konfigurieren** (deine Seite): eigene Domain in Resend verifizieren + `RESERVATION_FROM_EMAIL`/`INVITE_FROM_EMAIL` als Supabase-Edge-Secrets setzen — sonst liefert `onboarding@resend.dev` nur an den Resend-Account-Owner
 
 ## 🟡 Optional / später
 - [ ] Eigene Domain verbinden (statt `objekt-pilot.vercel.app`)

@@ -115,15 +115,27 @@ Daten-/UX-Defekt. **Empfehlung:** Bei `null` den Insert ablehnen statt
 unisoliert zu schreiben.
 
 ### Supabase Advisors (Security)
-**0 ERROR · 75 WARN** — keine RLS-Lücke. Verteilung:
+**0 ERROR · 75 WARN** — keine RLS-Lücke. Verteilung & Behandlung:
 - 72× SECURITY-DEFINER-RPCs für `anon`/`authenticated` ausführbar (Lints
-  0028/0029) — überwiegend gewollte RPC-Helfer; EXECUTE-Grants härten oder auf
-  `SECURITY INVOKER` umstellen.
-- 1× `extension_in_public` — `pg_net` im `public`-Schema → in eigenes Schema.
-- 1× `public_bucket_allows_listing` — Bucket `objekt-bilder` erlaubt Listing.
-- 1× `auth_leaked_password_protection` deaktiviert — HaveIBeenPwned aktivieren.
+  0028/0029). **Analyse:** Der Großteil ist by-design — `authenticated` braucht
+  EXECUTE für RLS-Policy-Auswertung (`current_org_id`, `can_*`, `*_sees_*`, …)
+  oder Client-`.rpc()` (`is_descendant_of`, `submit_selbstauskunft`, `get_my_*`,
+  `list_finanzierer_for_pool`, `add/remove_finanzierer_to_pool`). Diese **bleiben
+  unangetastet**. **✅ Behoben:** 10 Trigger-/Event-Trigger-/Wartungsfunktionen
+  (nie client-aufgerufen) → EXECUTE für `public/anon/authenticated` entzogen
+  (Migration `20260612150000_harden_trigger_fn_execute_grants.sql`).
+- 1× `public_bucket_allows_listing` (Bucket `objekt-bilder`) → **✅ Behoben:**
+  Listing-Policy gedroppt (Migration
+  `20260612150100_drop_objekt_bilder_public_listing_policy.sql`). Bucket bleibt
+  `public`, App listet nie, aktuell 0 Objekte im Bucket → folgenlos verifiziert.
+- 1× `extension_in_public` (`pg_net`) → **⏸️ zurückgestellt** (moderates Risiko
+  durch Referenzen, niedriger Sicherheitswert).
+- 1× `auth_leaked_password_protection` deaktiviert → **🔧 USER-Aktion** (nur per
+  Dashboard setzbar): *Authentication → Passwords → „Leaked password
+  protection" → on* (HaveIBeenPwned-Abgleich).
 
-Deckt sich mit den bereits dokumentierten Punkten in `docs/USER-TODO.md`.
+Beide Migrationen wurden gegen Prod (`ffagjzkkzlywejzjfgue`) angewandt und
+verifiziert (RLS-Helfer wie `current_org_id` nachweislich unverändert).
 
 ### Positiv bestätigt
 - Durchgängige **Zod-Eingabevalidierung** in allen Server Actions.
@@ -157,8 +169,11 @@ Deckt sich mit den bereits dokumentierten Punkten in `docs/USER-TODO.md`.
 ## Priorisierung (Vorschlag)
 1. ~~**BUG-001** (High) — Org-Ownership-Checks in `objekte-crud.ts`.~~ ✅ behoben.
 2. ~~**BUG-002** (Low) — `null`-Org-Insert ablehnen.~~ ✅ behoben.
-3. Advisor-Tuning (WARN) gemäß `docs/USER-TODO.md`. *(offen)*
-4. E2E-Infrastruktur (Staging + Seed) als eigenständiges Vorhaben. *(offen)*
-5. Infra: `npm run lint` ist repo-weit defekt — `next lint` wurde in Next 16
-   entfernt (`Invalid project directory ... \lint`). Script auf ESLint-CLI
-   (`eslint .`) umstellen. *(offen, vorbestehend)*
+3. ~~Advisor-Tuning (WARN): Trigger-Fn-Grants + Bucket-Listing.~~ ✅ behoben
+   (2 Migrationen, gegen Prod angewandt). Offen: **Leaked-Password-Protection
+   (USER-Dashboard-Aktion)** und `pg_net`-Schema (zurückgestellt).
+4. ~~Infra: `npm run lint` defekt (`next lint` in Next 16 entfernt).~~ ✅ behoben
+   (ESLint-Flat-Config, `eslint .`).
+5. E2E-Infrastruktur: ~~Gerüst~~ ✅ angelegt (unauth-Smoke grün). Offen:
+   **Staging-Supabase + Seed + Test-Logins je Rolle** für authed/Write-Path-E2E.
+6. BUG-003 (Low): Login-Guard verwirft Redirect-Ziel — optional fixen.

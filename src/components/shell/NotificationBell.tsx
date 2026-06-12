@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  listMyNotifications,
+  markNotificationsRead,
+} from "@/lib/actions/notifications";
 
-// TODO(migration): move this type to the notifications server action module once it exists.
 export interface NotificationItem {
   id: string;
   titel: string;
@@ -37,19 +40,35 @@ export function NotificationBell() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
-  // TODO(migration): wire to notifications server action (listMyNotifications/markNotificationsRead).
-  // Backed by local state initialized to an empty list (no unread) until the backend is ported.
   const [items, setItems] = useState<NotificationItem[]>([]);
   const unread = items.filter((i) => !i.read_at);
 
+  // Load on mount, then refresh whenever the popover is opened.
+  useEffect(() => {
+    let cancelled = false;
+    listMyNotifications()
+      .then((data) => {
+        if (!cancelled) setItems(data);
+      })
+      .catch(() => {
+        // Notifications are non-critical; fail silently.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
   const markRead = (ids?: string[]) => {
-    // TODO(migration): call markNotificationsRead server action; optimistic update for now.
+    // Optimistic update, then persist.
     const now = new Date().toISOString();
     setItems((prev) =>
       prev.map((n) =>
         !ids || ids.includes(n.id) ? { ...n, read_at: n.read_at ?? now } : n,
       ),
     );
+    void markNotificationsRead(ids).catch(() => {
+      // Best-effort; the optimistic state already reflects the intent.
+    });
   };
 
   const handleClick = (n: NotificationItem) => {

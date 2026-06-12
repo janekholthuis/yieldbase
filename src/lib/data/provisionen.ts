@@ -6,6 +6,7 @@
 import "server-only";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { activeOrgId } from "@/lib/actions/_org";
 import type { Database } from "@/lib/supabase/types";
 
 type ProvisionStatus = Database["public"]["Enums"]["provision_status"];
@@ -55,15 +56,21 @@ async function resolveScopeVpIds(
 
 /** Role-scoped list of provisionen with VP name + deal/einheit context. */
 export async function listProvisionen(): Promise<ProvisionListItem[]> {
-  const { userId, roles } = await requireUser();
+  const session = await requireUser();
+  const { userId, roles } = session;
   const admin = createAdminClient();
 
   const scopeIds = await resolveScopeVpIds(admin, userId, roles);
+  // Tenant isolation: the admin client bypasses RLS, so scope to the caller's
+  // active organisation explicitly (the org-switcher model — you see the active
+  // org's data, regardless of role).
+  const orgId = await activeOrgId(session.supabase, userId);
 
   let query = admin
     .from("provisionen")
     .select("id, vp_id, deal_id, provisionssatz, betrag, status, created_at")
     .order("created_at", { ascending: false });
+  if (orgId) query = query.eq("organisation_id", orgId);
   if (scopeIds !== null) {
     if (scopeIds.length === 0) return [];
     query = query.in("vp_id", scopeIds);
@@ -132,10 +139,12 @@ export async function listProvisionen(): Promise<ProvisionListItem[]> {
 
 /** Totals (sum of betrag) grouped by status, scoped like listProvisionen. */
 export async function provisionenSummary(): Promise<ProvisionenSummary> {
-  const { userId, roles } = await requireUser();
+  const session = await requireUser();
+  const { userId, roles } = session;
   const admin = createAdminClient();
 
   const scopeIds = await resolveScopeVpIds(admin, userId, roles);
+  const orgId = await activeOrgId(session.supabase, userId);
 
   const empty: ProvisionenSummary = {
     pipeline: 0,
@@ -146,6 +155,7 @@ export async function provisionenSummary(): Promise<ProvisionenSummary> {
   };
 
   let query = admin.from("provisionen").select("status, betrag");
+  if (orgId) query = query.eq("organisation_id", orgId);
   if (scopeIds !== null) {
     if (scopeIds.length === 0) return empty;
     query = query.in("vp_id", scopeIds);

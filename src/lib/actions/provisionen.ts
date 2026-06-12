@@ -10,6 +10,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { activeOrgId } from "@/lib/actions/_org";
 import type { Database } from "@/lib/supabase/types";
 
 type ProvisionStatus = Database["public"]["Enums"]["provision_status"];
@@ -27,11 +28,16 @@ export async function generateProvisionen(): Promise<{
   reservierungen: number;
   provisionen: number;
 }> {
-  const { userId, roles } = await requireRole("admin", "vertriebsleiter");
+  const session = await requireRole("admin", "vertriebsleiter");
+  const { userId, roles } = session;
   const admin = createAdminClient();
 
-  // Scope: admin sees all reservierungen; Vertriebsleiter sees those whose VP is
-  // within their tree.
+  // Tenant isolation: only generate within the caller's active organisation.
+  // The admin client bypasses RLS, so the org scope is applied explicitly.
+  const orgId = await activeOrgId(session.supabase, userId);
+
+  // Scope: admin sees all reservierungen (within the active org); Vertriebsleiter
+  // sees those whose VP is within their tree.
   const isAdmin = roles.includes("admin");
   let scopeVpIds: Set<string> | null = null;
   if (!isAdmin) {
@@ -56,6 +62,7 @@ export async function generateProvisionen(): Promise<{
     .from("reservierungen")
     .select("id, vp_id, status, einheit:einheit_id ( kaufpreis )")
     .neq("status", "storniert");
+  if (orgId) resQuery = resQuery.eq("organisation_id", orgId);
   if (scopeVpIds !== null) {
     const ids = Array.from(scopeVpIds);
     if (ids.length === 0) return { reservierungen: 0, provisionen: 0 };
@@ -88,6 +95,9 @@ export async function generateProvisionen(): Promise<{
       vp_id: r.vp_id,
       provisionssatz: rate,
       betrag: (rate / 100) * kaufpreis,
+      // Stamp the tenant explicitly — the admin client has no auth.uid(), so the
+      // default-org trigger can't fire. Reservierungen are already org-scoped.
+      organisation_id: orgId,
     });
     provisionCount += 1;
   }

@@ -471,6 +471,7 @@ export type Database = {
           expires_at: string
           id: string
           invited_by: string
+          organisation_id: string | null
           parent_vp_id: string | null
           role: Database["public"]["Enums"]["app_role"]
           token: string
@@ -484,6 +485,7 @@ export type Database = {
           expires_at?: string
           id?: string
           invited_by: string
+          organisation_id?: string | null
           parent_vp_id?: string | null
           role: Database["public"]["Enums"]["app_role"]
           token: string
@@ -497,12 +499,21 @@ export type Database = {
           expires_at?: string
           id?: string
           invited_by?: string
+          organisation_id?: string | null
           parent_vp_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           token?: string
           vertriebsleiter_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "invites_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisationen"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       kalkulationen: {
         Row: {
@@ -1323,6 +1334,7 @@ export type Database = {
           created_at: string
           deal_id: string | null
           id: string
+          organisation_id: string | null
           provisionssatz: number
           status: Database["public"]["Enums"]["provision_status"]
           updated_at: string
@@ -1333,6 +1345,7 @@ export type Database = {
           created_at?: string
           deal_id?: string | null
           id?: string
+          organisation_id?: string | null
           provisionssatz: number
           status?: Database["public"]["Enums"]["provision_status"]
           updated_at?: string
@@ -1343,6 +1356,7 @@ export type Database = {
           created_at?: string
           deal_id?: string | null
           id?: string
+          organisation_id?: string | null
           provisionssatz?: number
           status?: Database["public"]["Enums"]["provision_status"]
           updated_at?: string
@@ -1354,6 +1368,13 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "reservierungen"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provisionen_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisationen"
             referencedColumns: ["id"]
           },
         ]
@@ -1494,6 +1515,7 @@ export type Database = {
           commission_rate: number
           created_at: string
           level: number
+          organisation_id: string | null
           parent_vp_id: string | null
           updated_at: string
           vertriebsleiter_id: string
@@ -1503,6 +1525,7 @@ export type Database = {
           commission_rate: number
           created_at?: string
           level: number
+          organisation_id?: string | null
           parent_vp_id?: string | null
           updated_at?: string
           vertriebsleiter_id: string
@@ -1512,12 +1535,21 @@ export type Database = {
           commission_rate?: number
           created_at?: string
           level?: number
+          organisation_id?: string | null
           parent_vp_id?: string | null
           updated_at?: string
           vertriebsleiter_id?: string
           vp_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vp_hierarchy_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisationen"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vp_objekt_visibility: {
         Row: {

@@ -5,6 +5,7 @@
 import "server-only";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { activeOrgId } from "@/lib/actions/_org";
 import type { Database } from "@/lib/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -36,16 +37,23 @@ const VP_ROLES: AppRole[] = ["vp_l1", "vp_l2", "vp_l3"];
  * their own sub-tree (themselves + all descendants).
  */
 export async function getMyTeam(): Promise<TeamMember[]> {
-  const { userId, roles } = await requireUser();
+  const session = await requireUser();
+  const { userId, roles } = session;
   const admin = createAdminClient();
 
   const isAdmin = roles.includes("admin");
   const isVertriebsleiter = roles.includes("vertriebsleiter");
 
-  // Load the full hierarchy once, then derive the caller's visible subset.
-  const { data: hierarchy, error: hErr } = await admin
+  // Tenant isolation: the admin client bypasses RLS, so scope the hierarchy to
+  // the caller's active organisation explicitly.
+  const orgId = await activeOrgId(session.supabase, userId);
+
+  // Load the (org-scoped) hierarchy once, then derive the caller's visible subset.
+  let hierarchyQuery = admin
     .from("vp_hierarchy")
     .select("vp_id, parent_vp_id, level, commission_rate, vertriebsleiter_id");
+  if (orgId) hierarchyQuery = hierarchyQuery.eq("organisation_id", orgId);
+  const { data: hierarchy, error: hErr } = await hierarchyQuery;
   if (hErr) throw new Error(`Hierarchie konnte nicht geladen werden: ${hErr.message}`);
   const rows = hierarchy ?? [];
 
@@ -129,17 +137,22 @@ export async function getMyTeam(): Promise<TeamMember[]> {
 
 /** Open invites (not accepted, not expired) the caller created. */
 export async function listPendingInvites(): Promise<PendingInvite[]> {
-  const { userId } = await requireUser();
+  const session = await requireUser();
+  const { userId } = session;
   const admin = createAdminClient();
 
+  const orgId = await activeOrgId(session.supabase, userId);
+
   const nowIso = new Date().toISOString();
-  const { data, error } = await admin
+  let query = admin
     .from("invites")
     .select("id, email, role, commission_rate, created_at, expires_at")
     .eq("invited_by", userId)
     .is("accepted_at", null)
     .gt("expires_at", nowIso)
     .order("created_at", { ascending: false });
+  if (orgId) query = query.eq("organisation_id", orgId);
+  const { data, error } = await query;
   if (error) throw new Error(`Einladungen konnten nicht geladen werden: ${error.message}`);
 
   return (data ?? []).map((i) => ({

@@ -12,6 +12,7 @@
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { activeOrgId } from "@/lib/actions/_org";
 import { passwordSchema } from "@/lib/password";
 import type { Database } from "@/lib/supabase/types";
 
@@ -40,9 +41,15 @@ const createInviteInput = z.object({
 });
 
 export async function createInvite(input: z.infer<typeof createInviteInput>) {
-  const { userId } = await requireUser();
+  const session = await requireUser();
+  const { userId } = session;
   const data = createInviteInput.parse(input);
   const admin = createAdminClient();
+
+  // Tenant: stamp the invite with the inviter's active organisation so the new
+  // member joins the right tenant (the admin client has no auth.uid(), so the
+  // default-org trigger can't fire).
+  const orgId = await activeOrgId(session.supabase, userId);
 
   // Inviter-Rollen ermitteln
   const { data: roles } = await admin
@@ -128,6 +135,7 @@ export async function createInvite(input: z.infer<typeof createInviteInput>) {
     vertriebsleiter_id,
     commission_rate: invite_commission_rate,
     expires_at,
+    organisation_id: orgId,
   });
   if (error) throw new Error(`Invite konnte nicht angelegt werden: ${error.message}`);
 
@@ -209,16 +217,18 @@ export async function acceptInvite(input: z.infer<typeof acceptInviteInput>) {
   // new user to it so tenant isolation (active_organisation_id + organisation_members)
   // is wired from the start. The admin client has no auth.uid(), so org-default
   // triggers can't fire — we set it explicitly.
+  // Prefer the org stamped on the invite; fall back to the inviter chain's
+  // active org for legacy invites created before invites carried organisation_id.
+  let orgId: string | null = inv.organisation_id ?? null;
   {
-    // Prefer the inviter's active org; fall back to parent_vp / vertriebsleiter.
     const inviterCandidates = [
       inv.invited_by,
       inv.parent_vp_id,
       inv.vertriebsleiter_id,
     ].filter((id): id is string => Boolean(id));
 
-    let orgId: string | null = null;
     for (const candidateId of inviterCandidates) {
+      if (orgId) break;
       const { data: prof } = await admin
         .from("profiles")
         .select("active_organisation_id")
@@ -268,6 +278,7 @@ export async function acceptInvite(input: z.infer<typeof acceptInviteInput>) {
       level,
       commission_rate,
       vertriebsleiter_id: vl_id,
+      organisation_id: orgId,
     });
     if (hErr) throw new Error(`Hierarchie konnte nicht gesetzt werden: ${hErr.message}`);
   } else if (inv.role === "kunde" && inv.parent_vp_id) {

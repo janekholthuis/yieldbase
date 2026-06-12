@@ -5,7 +5,6 @@ import {
   Users,
   CalendarCheck,
   Banknote,
-  LifeBuoy,
   Wallet,
   UsersRound,
   UserCircle,
@@ -50,13 +49,6 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/finanzierungen",
     icon: Banknote,
     roles: [...ALL_INTERNAL, "finanzierer"],
-  },
-  {
-    title: "Tickets",
-    to: "/tickets",
-    icon: LifeBuoy,
-    roles: [...ALL_INTERNAL, "kunde"],
-    mobile: true,
   },
   {
     title: "Provisionen",

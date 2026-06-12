@@ -1,76 +1,17 @@
 "use server";
 
-// Server actions for the Team module: invite sub-VPs, adjust their commission
-// rate within the caller's tree, and revoke pending invites. Authorisation is
-// enforced via requireRole; mutations use the admin client (invites/hierarchy
-// are not RLS-writable by ordinary VPs) after the caller's scope is verified.
+// Server actions for the Team module: adjust a sub-VP's commission rate within
+// the caller's tree, and revoke pending invites. Authorisation is enforced via
+// requireRole; mutations use the admin client (invites/hierarchy are not
+// RLS-writable by ordinary VPs) after the caller's scope is verified.
+//
+// Sub-VP invitations go through `createInvite` (src/lib/actions/auth.ts), which
+// owns the canonical who-may-invite-whom matrix and the sub ≤ parent commission
+// cap. There is deliberately no separate, less-guarded invite path here.
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-function randomToken(): string {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-// ──────────────────────────── inviteSubVp ────────────────────────────
-const inviteSubVpInput = z.object({
-  email: z.string().email(),
-  role: z.enum(["vp_l1", "vp_l2", "vp_l3"]),
-  commissionRate: z.number().min(0).max(100),
-});
-
-export async function inviteSubVp(input: z.infer<typeof inviteSubVpInput>) {
-  const { userId } = await requireRole(
-    "admin",
-    "vertriebsleiter",
-    "vp_l1",
-    "vp_l2",
-    "vp_l3",
-  );
-  const data = inviteSubVpInput.parse(input);
-  const admin = createAdminClient();
-
-  // parent_vp_id = caller. vertriebsleiter_id = the caller's vertriebsleiter,
-  // or the caller themselves if they are a Vertriebsleiter.
-  const parent_vp_id = userId;
-  let vertriebsleiter_id: string = userId;
-
-  const { data: callerH } = await admin
-    .from("vp_hierarchy")
-    .select("vertriebsleiter_id")
-    .eq("vp_id", userId)
-    .maybeSingle();
-  if (callerH?.vertriebsleiter_id) {
-    vertriebsleiter_id = callerH.vertriebsleiter_id;
-  }
-
-  const token = randomToken();
-  const expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-  const { data: inserted, error } = await admin
-    .from("invites")
-    .insert({
-      email: data.email,
-      role: data.role,
-      token,
-      invited_by: userId,
-      parent_vp_id,
-      vertriebsleiter_id,
-      commission_rate: data.commissionRate,
-      expires_at,
-    })
-    .select("id, token")
-    .single();
-  if (error || !inserted) {
-    throw new Error(`Einladung konnte nicht angelegt werden: ${error?.message}`);
-  }
-
-  revalidatePath("/team");
-  return { id: inserted.id, token: inserted.token, expires_at };
-}
 
 // ──────────────────────────── updateVpCommissionRate ────────────────────────────
 const updateVpCommissionRateInput = z.object({
@@ -88,7 +29,7 @@ export async function updateVpCommissionRate(
   // Scope check: the target VP must be within the caller's tree.
   const { data: target } = await admin
     .from("vp_hierarchy")
-    .select("vp_id, vertriebsleiter_id")
+    .select("vp_id, vertriebsleiter_id, parent_vp_id")
     .eq("vp_id", data.vpId)
     .maybeSingle();
   if (!target) throw new Error("VP nicht gefunden");
@@ -96,6 +37,24 @@ export async function updateVpCommissionRate(
   const isAdmin = roles.includes("admin");
   if (!isAdmin && target.vertriebsleiter_id !== userId) {
     throw new Error("VP liegt nicht in Ihrem Team");
+  }
+
+  // Commission cap: a sub-VP's rate may not exceed its upline's rate (mirrors the
+  // sub ≤ parent rule enforced at invite time). Only applies when the VP has a
+  // parent VP — a top-level L1 (parent_vp_id null) reports to a Vertriebsleiter,
+  // who has no vp_hierarchy rate, so there is nothing to cap against.
+  if (target.parent_vp_id) {
+    const { data: parent } = await admin
+      .from("vp_hierarchy")
+      .select("commission_rate")
+      .eq("vp_id", target.parent_vp_id)
+      .maybeSingle();
+    const parentRate = parent ? Number(parent.commission_rate) : null;
+    if (parentRate != null && data.commissionRate > parentRate) {
+      throw new Error(
+        `Provisionssatz (${data.commissionRate} %) darf den Satz des übergeordneten VP (${parentRate} %) nicht übersteigen`,
+      );
+    }
   }
 
   const { error } = await admin

@@ -24,7 +24,7 @@
 | PROJ-6 | Finanzierungen (lender cases, offers, finanzierer pool) | Roadmap | — | 2026-06-11 |
 | PROJ-7 | Customer portal (dashboard, dokumente, Selbstauskunft, profil) | In Progress | — | 2026-06-11 |
 | PROJ-8 | Präsentation / Exposé PDF generation | In Progress | — | 2026-06-11 |
-| PROJ-9 | Provisionen (% vom Kaufpreis entlang VP-Hierarchie) + Team (Hierarchie, Sub-VP-Einladung, Provisionssätze) | Roadmap | — | 2026-06-11 |
+| PROJ-9 | Provisionen (% vom Kaufpreis entlang VP-Hierarchie) + Team (Hierarchie, Sub-VP-Einladung, Provisionssätze) | In Review | features/PROJ-9-provisionen-team.md | 2026-06-11 |
 | PROJ-10 | Investagon API sync (mirror project/unit data into Supabase) | Roadmap | — | 2026-06-11 |
 | PROJ-11 | Domain structure audit (compare entity diagram vs. existing schema) | Roadmap | — | 2026-06-11 |
 | PROJ-12 | Objekte-Revision (expert feedback: simplified project mgmt, grouped fields, new fields, doc upload) | In Progress | docs/OBJEKTE-REVISION-PLAN.md | 2026-06-12 |

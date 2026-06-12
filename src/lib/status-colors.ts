@@ -60,3 +60,16 @@ export function getObjektStatusVariant(status: string | null | undefined): Badge
   if (!status) return "default";
   return objektStatusVariant[status.toLowerCase()] ?? "default";
 }
+
+export const provisionStatusVariant: Record<string, BadgeVariant> = {
+  pipeline: "default",
+  verdient: "primary",
+  in_auszahlung: "accent",
+  ausgezahlt: "success",
+  storniert: "destructive",
+};
+
+export function getProvisionStatusVariant(status: string | null | undefined): BadgeVariant {
+  if (!status) return "default";
+  return provisionStatusVariant[status.toLowerCase()] ?? "default";
+}

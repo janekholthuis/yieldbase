@@ -1,10 +1,15 @@
-import { ModuleStub } from "@/components/shell/ModuleStub";
+import type { Metadata } from "next";
+import { getMyTeam, listPendingInvites } from "@/lib/data/team";
+import { TeamView } from "@/components/team/TeamView";
 
-export default function TeamPage() {
-  return (
-    <ModuleStub
-      title="Mein Team"
-      description="Hierarchie und Sub-VPs — wird im Migrations-Schritt PROJ-9 portiert."
-    />
-  );
+export const metadata: Metadata = {
+  title: "Mein Team · Objektpilot",
+};
+
+export default async function TeamPage() {
+  const [members, invites] = await Promise.all([
+    getMyTeam(),
+    listPendingInvites(),
+  ]);
+  return <TeamView members={members} invites={invites} />;
 }

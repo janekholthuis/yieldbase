@@ -9,10 +9,20 @@
 //
 // Data arrives as props from the Server Component; every mutation goes through a
 // `"use server"` action, followed by a toast and `router.refresh()`.
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Building2, Plus, Trash2, Loader2, UserPlus } from "lucide-react";
+import {
+  Building2,
+  Plus,
+  Trash2,
+  Loader2,
+  UserPlus,
+  RefreshCw,
+  DatabaseZap,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -50,6 +60,11 @@ import {
   updateOrganisationBranding,
   addOrgMemberByEmail,
 } from "@/lib/actions/organisationen";
+import {
+  getInvestagonStatus,
+  syncInvestagon,
+  type InvestagonStatus,
+} from "@/lib/actions/investagon";
 
 type MemberRolle = "owner" | "admin" | "member";
 
@@ -78,6 +93,7 @@ export function EinstellungenView({
   const canManageOrg = activeRole === "owner" || activeRole === "admin";
   const canCreateOrg =
     roles.includes("admin") || roles.includes("vertriebsleiter");
+  const canSyncInvestagon = roles.includes("admin") || roles.includes("support");
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 md:px-6">
@@ -121,6 +137,8 @@ export function EinstellungenView({
             members={members}
             canManage={canManageOrg}
           />
+
+          {canSyncInvestagon && <InvestagonSyncCard />}
         </>
       )}
 
@@ -484,6 +502,142 @@ function MembersCard({
             </div>
           </div>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ───────────── Investagon-Sync (admin/support) ─────────────
+
+const DATE_FMT = new Intl.DateTimeFormat("de-DE", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function formatDateTime(value: string | null): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "—" : DATE_FMT.format(d);
+}
+
+function InvestagonSyncCard() {
+  const [status, setStatus] = useState<InvestagonStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+
+  const loadStatus = useCallback(async () => {
+    try {
+      setStatus(await getInvestagonStatus());
+    } catch {
+      setStatus(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadStatus();
+  }, [loadStatus]);
+
+  async function handleSync() {
+    setSyncing(true);
+    try {
+      const res = await syncInvestagon({ incremental: true });
+      toast.success("Synchronisierung abgeschlossen", {
+        description: `${res.projects} Projekte · ${res.properties} Einheiten · ${res.photos} Fotos · ${res.documents} Dokumente`,
+      });
+      await loadStatus();
+    } catch (e) {
+      toast.error("Synchronisierung fehlgeschlagen", {
+        description: e instanceof Error ? e.message : "Unbekannter Fehler",
+      });
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  const last = status?.lastSync ?? null;
+  const hasCreds = status?.hasCredentials ?? false;
+
+  return (
+    <Card className="rounded-xl">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <DatabaseZap className="h-4 w-4 text-brand-primary" />
+          Investagon-Synchronisierung
+        </CardTitle>
+        <CardDescription>
+          Projekte, Einheiten, Fotos und Dokumente aus Investagon übernehmen.
+          Dieser Button gleicht Änderungen seit dem letzten Lauf ab; der
+          vollständige Erstimport läuft über das Seed-Skript.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loading ? (
+          <div className="flex items-center gap-2 text-sm text-brand-muted">
+            <Loader2 className="h-4 w-4 animate-spin" /> Status wird geladen …
+          </div>
+        ) : !hasCreds ? (
+          <div className="flex items-start gap-2 rounded-lg border border-brand-border bg-brand-surfaceMuted p-3 text-sm text-brand-muted">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            Für diese Organisation sind keine Investagon-Zugangsdaten hinterlegt.
+          </div>
+        ) : (
+          <div className="rounded-lg border border-brand-border bg-brand-surface p-3 text-sm">
+            <div className="mb-2 flex items-center gap-2 font-medium text-brand-primary">
+              {last?.status === "success" ? (
+                <CheckCircle2 className="h-4 w-4 text-brand-success" />
+              ) : last?.status === "error" ? (
+                <AlertCircle className="h-4 w-4 text-destructive" />
+              ) : last?.status === "running" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <DatabaseZap className="h-4 w-4 text-brand-muted" />
+              )}
+              {last
+                ? `Letzter Lauf: ${
+                    last.status === "success"
+                      ? "erfolgreich"
+                      : last.status === "error"
+                        ? "fehlgeschlagen"
+                        : (last.status ?? "—")
+                  }`
+                : "Noch keine Synchronisierung durchgeführt."}
+            </div>
+            {last && (
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-brand-muted">
+                <dt>Zeitpunkt</dt>
+                <dd className="text-right tabular-nums text-brand-primary">
+                  {formatDateTime(last.finishedAt ?? last.startedAt)}
+                </dd>
+                <dt>Projekte</dt>
+                <dd className="text-right tabular-nums text-brand-primary">
+                  {last.projectsSynced ?? "—"}
+                </dd>
+                <dt>Einheiten</dt>
+                <dd className="text-right tabular-nums text-brand-primary">
+                  {last.propertiesSynced ?? "—"}
+                </dd>
+              </dl>
+            )}
+            {last?.status === "error" && last.error && (
+              <p className="mt-2 break-words text-xs text-destructive">
+                {last.error}
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <Button onClick={handleSync} disabled={syncing || !hasCreds}>
+            {syncing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
+            Jetzt synchronisieren
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

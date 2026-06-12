@@ -15,13 +15,25 @@ Collections are API Platform / Hydra envelopes; pagination follows
 
 | Endpoint                  | Used for                          |
 |---------------------------|-----------------------------------|
-| `GET /api/api_projects`   | Projects → `projekte`             |
-| `GET /api/api_properties` | Properties (units) → `einheiten`  |
+| `GET /api/api_projects`   | **Enumerate** projects (ids/names) |
+| `GET /api/projects/{id}`  | **Full** project → `projekte` + photos/files |
+| `GET /api/api_properties` | **Enumerate** units per project (ids + status) |
+| `GET /api/properties/{id}`| **Full** unit → `einheiten` + photos/files |
 | `GET /api/api_parking_spots` | not synced yet (future)        |
 | `GET /api/reservations`   | not synced yet (future)           |
 
+**Two-tier model (important):** the `Api*` list endpoints are *thin* — they
+only expose address + status. The real financials/structure/media live on the
+**full** `Project` / `Property` resources (schemas `Project-project.read` ~48
+fields, `Property-property.read` ~114 fields). The sync therefore enumerates via
+the list endpoints and then fetches the full resource **per entity** (N+1, run
+with limited concurrency). Earlier versions synthesised fake financials because
+they only read the thin endpoints — that is gone; data is now real.
+
 Both list endpoints accept `updated_after` (`Y-m-d H:i:s`) for incremental
-sync and `?page=N`. Properties also accept `?project=`.
+sync and `?page=N`. Properties also accept `?project=`. `runInvestagonSync`
+also accepts `projectLimit` to cap how many projects are processed (testing /
+partial syncs).
 
 ## Env vars (required)
 
@@ -39,7 +51,59 @@ The sync writes with the service-role client, so it also needs the existing
 > and to the deployment environment. Document dummy values in
 > `.env.local.example`.
 
-## Field → column mapping
+## Real field → column mapping (current)
+
+Verified against live data (org `erfolg-mit-immobilien`, 222 projects).
+
+### `Property-property.read` → `einheiten` (upsert on `investagon_id`)
+
+| Investagon field                     | einheiten column            |
+|--------------------------------------|-----------------------------|
+| `object_size`                        | `wohnflaeche`               |
+| `object_rooms`                       | `zimmer`                    |
+| `object_floor` (parsed, "2.OG"→2, "EG"→0) | `etage`                |
+| `purchase_price_apartment`           | `kaufpreis`                 |
+| `purchase_price_parking`             | `stellplatz_preis` (+ `stellplaetze_anzahl` = 1 if > 0) |
+| `rent_apartment_month`               | `miete`                     |
+| `object_balcony` ("ja"/"nein")       | `balkon`                    |
+| `rent_status` ("rented")             | `vermietet`                 |
+| `rented_since`                       | `vermietet_seit`            |
+| `depreciation_rate_building_manual`  | `afa_satz` (fallback 2.0)   |
+| `energy_efficiency_class` (upcased)  | `energieklasse`             |
+| `heating_type`                       | `heizungsart`               |
+| `property_kind` → bestand/neubau     | `objektzustand`             |
+| `property_usage` → wohnen/gewerbe    | `nutzungsart`               |
+| `operation_cost_tenant_apartment`    | `hausgeld_umlagefaehig`     |
+| `operation_cost_landlord_apartment`  | `hausgeld_nicht_umlagefaehig` |
+| `operation_cost_reserve_apartment`   | `instandhaltungsruecklage`  |
+| `object_share_owner`                 | `miteigentumsanteil`        |
+| `statusName`                         | `status` (6-value enum)     |
+| `photos[].filename` (CDN URL)        | `objekt_bilder` (ebene einheit) |
+| `files[].filename` (CDN URL)         | `objekt_dokumente` (ebene einheit) |
+| _entire object_                      | `raw` (jsonb)               |
+
+### `Project-project.read` → `projekte` (upsert on `investagon_id`)
+
+| Investagon field             | projekte column     |
+|------------------------------|---------------------|
+| `name`                       | `name`, `adresse` (until enriched) |
+| `object_building_year`       | `baujahr`           |
+| `object_operator_name`       | `bautraeger`        |
+| `photos[0].filename`         | `cover_image_url` + `objekt_bilder` (ebene projekt) |
+| `files[].filename`           | `objekt_dokumente` (ebene projekt) |
+| _entire object_              | `raw` (jsonb)       |
+
+Project address/coords are enriched from the first property:
+`adresse`, `stadt`, `plz`, `bundesland` (← property `province`), `geo`
+(← property `lat`/`lng`).
+
+**Media idempotency:** on re-sync, previously-synced media (rows whose `url`
+starts with `https://tool.investagon.com`) are deleted for the touched objects
+before re-insert, so manually-uploaded images/docs are preserved.
+
+---
+
+## Legacy mapping notes (thin endpoints — superseded)
 
 ### ApiProject → `projekte` (upsert on `investagon_id`)
 
@@ -126,14 +190,23 @@ the new `investagon_id` / `raw` columns use narrow `as` casts in
 `src/lib/actions/investagon.ts`; once types are regenerated those casts can be
 removed.
 
-## Open questions
+## Open questions / follow-ups
 
-- **Price / area fields:** the OpenAPI summary for `ApiProperty` does not list
-  price/area fields (e.g. Kaufpreis, Wohnfläche, Zimmer, Miete). They are
-  currently captured only in `raw`. Confirm the exact field names against a
-  live response, then map them to `einheiten.kaufpreis` / `wohnflaeche` /
-  `zimmer` / `miete`.
-- **Project address:** projects carry no address in Investagon; the parent
-  projekt's `adresse` is filled best-effort from its first property's address.
-  Confirm whether a canonical project-level address is available.
+- ~~Price / area fields~~ **RESOLVED** — they live on the full `Property`
+  resource (`object_size`, `object_rooms`, `purchase_price_apartment`,
+  `rent_apartment_month`, …) and are now mapped to real columns.
+- ~~Project address~~ **RESOLVED** — enriched from the first property; coords
+  also captured into `projekte.geo`.
+- **Full backfill:** the verified run only processed 1 of 222 projects
+  (`projectLimit`). A full sync (all 222 projects, ~thousands of units +
+  photos) still needs to be triggered — it makes one full-Property GET per unit
+  (N+1), so it takes several minutes. Run via the admin action `syncInvestagon`
+  or `npx tsx scripts/seed-investagon.ts erfolg-mit-immobilien`.
+- **Incremental semantics:** `updated_after` filters the *list* endpoints
+  independently for projects and properties. A property changing does not bump
+  its project's `updated`, so incremental runs may miss the parent project row
+  (units still sync). Full runs are exhaustive.
 - **Parking spots & reservations:** endpoints exist but are not synced yet.
+- **More mappable fields:** the full `Property` has ~114 fields; many finance
+  details (transaction rates, M3 financing, MaBV phases on the project) are
+  preserved in `raw` but not yet promoted to columns/`kalkulation`.

@@ -31,6 +31,92 @@ export interface InvestagonProject {
   [key: string]: unknown;
 }
 
+/**
+ * A media reference on the full Project/Property resources. `filename` is a
+ * fully-qualified CDN URL (e.g. https://tool.investagon.com/uploads/...).
+ */
+export interface InvestagonPhoto {
+  id?: number;
+  filename?: string | null;
+  position?: number | null;
+  original_filename?: string | null;
+  [key: string]: unknown;
+}
+
+export interface InvestagonFile {
+  id?: number;
+  filename?: string | null;
+  title?: string | null;
+  position?: number | null;
+  [key: string]: unknown;
+}
+
+/**
+ * The FULL project resource (GET /api/projects/{api_project_id}, schema
+ * `Project-project.read`). Unlike the thin ApiProject, this carries real
+ * descriptive data plus photos/files. Only the fields we map are typed; the
+ * rest is preserved via the index signature and stored in `raw`.
+ */
+export interface InvestagonFullProject {
+  api_project_id?: string | null;
+  name?: string | null;
+  country_code?: string | null;
+  property_kind?: string | null;
+  property_usage?: string | null;
+  object_building_year?: string | null;
+  object_renovation_year?: string | null;
+  object_operator_name?: string | null;
+  object_residential_units?: string | null;
+  photos?: InvestagonPhoto[] | null;
+  files?: InvestagonFile[] | null;
+  [key: string]: unknown;
+}
+
+/**
+ * The FULL property resource (GET /api/properties/{api_property_id}, schema
+ * `Property-property.read`, ~114 fields). This is where the real financials and
+ * structural data live (the thin ApiProperty only has address + status). Only
+ * mapped fields are typed; everything else is preserved via `raw`.
+ */
+export interface InvestagonFullProperty {
+  api_property_id?: string | null;
+  object_country?: string | null;
+  object_postal_code?: string | null;
+  object_city?: string | null;
+  object_street?: string | null;
+  object_house_number?: string | null;
+  object_apartment_number?: string | null;
+  object_size?: number | null;
+  object_rooms?: number | null;
+  object_floor?: string | null;
+  object_building_year?: number | null;
+  object_balcony?: string | null;
+  object_type?: string | null;
+  property_kind?: string | null;
+  property_usage?: string | null;
+  province?: string | null;
+  purchase_price_apartment?: number | null;
+  purchase_price_parking?: number | null;
+  purchase_price_furniture?: number | null;
+  rent_apartment_month?: number | null;
+  rent_parking_month?: number | null;
+  operation_cost_tenant_apartment?: number | null;
+  operation_cost_landlord_apartment?: number | null;
+  operation_cost_reserve_apartment?: number | null;
+  depreciation_rate_building_manual?: number | null;
+  object_share_owner?: number | null;
+  energy_efficiency_class?: string | null;
+  heating_type?: string | null;
+  rent_status?: string | null;
+  rented_since?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  statusName?: string | null;
+  photos?: InvestagonPhoto[] | null;
+  files?: InvestagonFile[] | null;
+  [key: string]: unknown;
+}
+
 /** A single Investagon property (ApiProperty). Extra fields are preserved. */
 export interface InvestagonProperty {
   id: string;
@@ -188,4 +274,26 @@ export async function fetchAllProperties(
     out.push(property);
   }
   return out;
+}
+
+/**
+ * Fetch the FULL project resource (real fields + photos/files) by its
+ * Investagon id. `id` is the ApiProject id (== api_project_id).
+ */
+export async function fetchFullProject(
+  creds: InvestagonCredentials,
+  id: string,
+): Promise<InvestagonFullProject> {
+  return fetchJson<InvestagonFullProject>(buildUrl(creds, `projects/${id}`));
+}
+
+/**
+ * Fetch the FULL property resource (real financials/structure + photos/files)
+ * by its Investagon id. `id` is the ApiProperty id (== api_property_id).
+ */
+export async function fetchFullProperty(
+  creds: InvestagonCredentials,
+  id: string,
+): Promise<InvestagonFullProperty> {
+  return fetchJson<InvestagonFullProperty>(buildUrl(creds, `properties/${id}`));
 }

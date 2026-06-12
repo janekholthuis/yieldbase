@@ -110,12 +110,14 @@ export type Database = {
           hausgeld_umlagefaehig: number | null
           id: string
           instandhaltungsruecklage: number | null
+          investagon_id: string | null
           kalkulation: Json
           kaufpreis: number | null
           keller: boolean
           miete: number | null
           mietvertrag_ende: string | null
           projekt_id: string
+          raw: Json | null
           sondereigentumsverwaltung: number | null
           status: Database["public"]["Enums"]["einheit_status"]
           updated_at: string
@@ -138,12 +140,14 @@ export type Database = {
           hausgeld_umlagefaehig?: number | null
           id?: string
           instandhaltungsruecklage?: number | null
+          investagon_id?: string | null
           kalkulation?: Json
           kaufpreis?: number | null
           keller?: boolean
           miete?: number | null
           mietvertrag_ende?: string | null
           projekt_id: string
+          raw?: Json | null
           sondereigentumsverwaltung?: number | null
           status?: Database["public"]["Enums"]["einheit_status"]
           updated_at?: string
@@ -166,12 +170,14 @@ export type Database = {
           hausgeld_umlagefaehig?: number | null
           id?: string
           instandhaltungsruecklage?: number | null
+          investagon_id?: string | null
           kalkulation?: Json
           kaufpreis?: number | null
           keller?: boolean
           miete?: number | null
           mietvertrag_ende?: string | null
           projekt_id?: string
+          raw?: Json | null
           sondereigentumsverwaltung?: number | null
           status?: Database["public"]["Enums"]["einheit_status"]
           updated_at?: string
@@ -375,6 +381,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      investagon_sync_log: {
+        Row: {
+          error: string | null
+          finished_at: string | null
+          id: string
+          projects_synced: number | null
+          properties_synced: number | null
+          raw: Json | null
+          started_at: string | null
+          status: string | null
+        }
+        Insert: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          projects_synced?: number | null
+          properties_synced?: number | null
+          raw?: Json | null
+          started_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          projects_synced?: number | null
+          properties_synced?: number | null
+          raw?: Json | null
+          started_at?: string | null
+          status?: string | null
+        }
+        Relationships: []
       }
       invites: {
         Row: {
@@ -1034,12 +1073,14 @@ export type Database = {
           geo: Json | null
           hausunterlagen: Json | null
           id: string
+          investagon_id: string | null
           kalkulations_defaults: Json | null
           lage_daten: Json | null
           mietrendite_brutto: number | null
           name: string | null
           plz: string | null
           projekt_typ: Database["public"]["Enums"]["projekt_typ"]
+          raw: Json | null
           stadt: string | null
           updated_at: string
           visibility_reviewed_at: string | null
@@ -1061,12 +1102,14 @@ export type Database = {
           geo?: Json | null
           hausunterlagen?: Json | null
           id?: string
+          investagon_id?: string | null
           kalkulations_defaults?: Json | null
           lage_daten?: Json | null
           mietrendite_brutto?: number | null
           name?: string | null
           plz?: string | null
           projekt_typ?: Database["public"]["Enums"]["projekt_typ"]
+          raw?: Json | null
           stadt?: string | null
           updated_at?: string
           visibility_reviewed_at?: string | null
@@ -1088,12 +1131,14 @@ export type Database = {
           geo?: Json | null
           hausunterlagen?: Json | null
           id?: string
+          investagon_id?: string | null
           kalkulations_defaults?: Json | null
           lage_daten?: Json | null
           mietrendite_brutto?: number | null
           name?: string | null
           plz?: string | null
           projekt_typ?: Database["public"]["Enums"]["projekt_typ"]
+          raw?: Json | null
           stadt?: string | null
           updated_at?: string
           visibility_reviewed_at?: string | null

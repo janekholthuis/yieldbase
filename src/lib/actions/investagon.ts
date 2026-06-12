@@ -11,10 +11,9 @@
 // touches rows across all tenants. Authorisation is enforced up-front via
 // requireRole().
 //
-// NOTE: the `investagon_id` and `raw` columns are added by migration
-// 20260612000000_investagon_sync.sql, which is NOT yet applied — so the
-// generated Supabase types don't know about them. Narrow `as` casts are
-// used on exactly those payloads/lookups; the rest of the client stays typed.
+// The `investagon_id` / `raw` columns and the `investagon_sync_log` table are
+// added by migration 20260612000000_investagon_sync.sql (applied) and present
+// in the generated Supabase types, so the client stays fully typed.
 
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -84,10 +83,7 @@ export async function syncInvestagon(input?: {
   await requireRole("admin", "support");
 
   const admin = createAdminClient();
-  // The log table + new columns aren't in the generated types yet. Use a
-  // loosely-typed handle for those specific operations only.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = admin as any;
+  const db = admin;
 
   // 1) Open a sync-log row.
   let logId: string | null = null;
@@ -125,8 +121,7 @@ export async function syncInvestagon(input?: {
 
       const { error } = await admin
         .from("projekte")
-        // Columns not in generated types yet -> narrow cast on the payload.
-        .upsert(projektRows as never, { onConflict: "investagon_id" });
+        .upsert(projektRows, { onConflict: "investagon_id" });
       if (error) throw new Error(`projekte upsert: ${error.message}`);
       projectsSynced = projektRows.length;
     }
@@ -213,7 +208,7 @@ export async function syncInvestagon(input?: {
       );
       const { error } = await admin
         .from("einheiten")
-        .upsert(payload as never, { onConflict: "investagon_id" });
+        .upsert(payload, { onConflict: "investagon_id" });
       if (error) throw new Error(`einheiten upsert: ${error.message}`);
       propertiesSynced = payload.length;
 

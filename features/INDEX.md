@@ -34,7 +34,10 @@
 | PROJ-11 | Domain structure audit (compare entity diagram vs. existing schema) | Deployed | — | 2026-06-11 |
 | PROJ-12 | Objekte-Revision (expert feedback: simplified project mgmt, grouped fields, new fields, doc upload) | Deployed | docs/OBJEKTE-REVISION-PLAN.md | 2026-06-12 |
 | PROJ-13 | Multi-Tenant Organisationen mit eigenem Branding + Org-Switcher (VP/Finanzierer) | In Progress (13.1+13.2 live) | docs/MULTI-TENANT-PLAN.md | 2026-06-12 |
+| PROJ-14 | „Neue Objekte"-Feed (Partner-Feed, Schlagzeilen-Posts mit Projekt-Link) | Planned (V2, Nav ausgegraut, nicht gebaut) | features/PROJ-14-neue-objekte-feed.md | 2026-06-12 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-13
+> **Objekte-Revision Runde 2 (Refine 2026-06-12, PROJ-3/PROJ-12):** Projekt-Detailseite (`/objekte/projekt/[projektId]`) mit Kaufpreisliste + Einheiten-Anzahl + Verkaufsstatus-Breakdown geplant; Status-Taxonomie auf strikt 6 Werte (Frei · Auf Anfrage · Reserviert · Notarvorbereitung · Notartermin · Verkauft). Listen-Aggregation/Ranges existieren bereits. Plan: `docs/OBJEKTE-PROJEKT-DETAIL-PLAN.md`. Noch nicht gebaut.
+
+## Next Available ID: PROJ-15

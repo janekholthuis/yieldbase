@@ -31,6 +31,7 @@ import { CompletenessCard } from "@/components/objekte/CompletenessCard";
 import { BankDatenCard } from "@/components/objekte/BankDatenCard";
 import { KarteTab } from "@/components/objekte/KarteTab";
 import { KundenPickerModal } from "@/components/objekte/KundenPickerModal";
+import { ReservierungModal } from "@/components/reservierung/ReservierungModal";
 import { KalkulationsTab } from "@/components/objekte/KalkulationsTab";
 import type { KalkulationsContext } from "@/lib/data/kalkulation-context";
 
@@ -269,6 +270,7 @@ function ZuweisungenCard({
 }) {
   const router = useRouter();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [reserveKundeId, setReserveKundeId] = useState<string | null>(null);
   return (
     <Card className="p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -283,6 +285,18 @@ function ZuweisungenCard({
         einheitId={einheitId}
         onAssigned={() => router.refresh()}
       />
+      {reserveKundeId && (
+        <ReservierungModal
+          open={!!reserveKundeId}
+          onOpenChange={(o) => !o && setReserveKundeId(null)}
+          einheitId={einheitId}
+          kundeId={reserveKundeId}
+          onDone={() => {
+            setReserveKundeId(null);
+            router.refresh();
+          }}
+        />
+      )}
       {zuweisungen.length === 0 ? (
         <p className="text-sm text-muted-foreground">Noch kein Kunde zugewiesen.</p>
       ) : (
@@ -308,6 +322,14 @@ function ZuweisungenCard({
                 <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                   {z.status}
                 </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={() => setReserveKundeId(z.kunde_id)}
+                >
+                  Reservieren
+                </Button>
               </div>
             );
           })}

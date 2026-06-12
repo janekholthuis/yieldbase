@@ -24,6 +24,25 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  getReservierungContext,
+  type ReservierungContext,
+} from "@/lib/data/reservierungen";
+
+// ───────────── getReservierungContextAction ─────────────
+// Thin client-invokable wrapper around the `server-only` data fn so the
+// ReservierungModal (a Client Component) can prefill einheit + kunde + VP data.
+const ctxInput = z.object({
+  einheitId: z.string().uuid(),
+  kundeId: z.string().uuid(),
+});
+
+export async function getReservierungContextAction(
+  input: z.input<typeof ctxInput>,
+): Promise<ReservierungContext> {
+  const data = ctxInput.parse(input);
+  return getReservierungContext(data);
+}
 
 // ───────────── createReservierung ─────────────
 const createInput = z.object({

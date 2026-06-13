@@ -36,6 +36,7 @@
 | PROJ-13 | Multi-Tenant Organisationen mit eigenem Branding + Org-Switcher (VP/Finanzierer) | In Progress (13.1+13.2 live) | docs/MULTI-TENANT-PLAN.md | 2026-06-12 |
 | PROJ-14 | „Neue Objekte"-Feed (Partner-Feed, Schlagzeilen-Posts mit Projekt-Link) | Planned (V2, Nav ausgegraut, nicht gebaut) | features/PROJ-14-neue-objekte-feed.md | 2026-06-12 |
 | PROJ-15 | Standort-Highlights-Modul (nächste POIs je Kategorie + Luftlinien-Distanz; Mapbox Search Box) | In Progress (MVP gebaut; Score & Isochronen out) | features/PROJ-15-standort-highlights.md | 2026-06-12 |
+| PROJ-16 | Objekte anlegen — Bauträger raus + Bulk-Einheiten (Excel-Paste) | Planned | features/PROJ-16-objekte-bulk-anlegen.md | 2026-06-13 |
 
 <!-- Add features above this line -->
 
@@ -57,4 +58,4 @@
 
 > **Selbstauskunft & Reservierung — Fillout-Nachbau (Plan 2026-06-13, PROJ-7/PROJ-5):** Bestehende Fillout-Formulare (`Selbstauskunft.json`, `Reservierung EMI.json` im Root) als App-Formulare **im Kundenportal** nachbauen, Unterschrift via Zeichnen (`SignaturePad`, kein E-Signing). Selbstauskunft = 8 Schritte inkl. Mitantragsteller, bedingte Felder, Immobilien-Subform. Reservierung erweitert um Steuer-ID/IBAN/Staatsangehörigkeit/Mitantragsteller/Bestätigungen. **Bauen pausiert — wird in frischem Chat ausgeführt.** Exakte Feldliste: `docs/FILLOUT-FORMSPEC.md`; vollständiger Plan: `docs/RESERVIERUNG-SELBSTAUSKUNFT-PLAN.md`. Read-only Selbstauskunft-Tab (VP-Sicht) ist bereits live (`5051c28`). Offen: Immobilien-Subform-Spalten, Migration/RLS-Freigabe.
 
-## Next Available ID: PROJ-16
+## Next Available ID: PROJ-17

@@ -27,17 +27,36 @@ type State = {
   email: string;
 };
 
-const initial: State = {
-  anrede: "herr",
-  vorname: "",
-  nachname: "",
-  email: "",
+/** Vorbefüllung + CRM-Verknüpfung aus der Close-Prefill-URL (Berater öffnet). */
+export type KundePrefill = {
+  vorname?: string;
+  nachname?: string;
+  email?: string;
+  telefon?: string;
+};
+export type KundeCrm = {
+  close_lead_id?: string;
+  close_opportunity_id?: string;
+  berater_vorname?: string;
+  berater_nachname?: string;
 };
 
-export function KundeNeuForm() {
+export function KundeNeuForm({
+  initial,
+  crm,
+}: {
+  initial?: KundePrefill;
+  crm?: KundeCrm;
+}) {
   const router = useRouter();
-  const [s, setS] = useState<State>(initial);
+  const [s, setS] = useState<State>({
+    anrede: "herr",
+    vorname: initial?.vorname ?? "",
+    nachname: initial?.nachname ?? "",
+    email: initial?.email ?? "",
+  });
   const [submitting, setSubmitting] = useState(false);
+  const fromClose = Boolean(crm?.close_lead_id || crm?.close_opportunity_id);
 
   const upd = <K extends keyof State>(k: K, v: State[K]) =>
     setS((prev) => ({ ...prev, [k]: v }));
@@ -55,6 +74,11 @@ export function KundeNeuForm() {
         vorname: s.vorname.trim(),
         nachname: s.nachname.trim(),
         email: s.email.trim() || null,
+        telefon: initial?.telefon?.trim() || null,
+        close_lead_id: crm?.close_lead_id ?? null,
+        close_opportunity_id: crm?.close_opportunity_id ?? null,
+        berater_vorname: crm?.berater_vorname ?? null,
+        berater_nachname: crm?.berater_nachname ?? null,
       });
       toast.success("Kunde angelegt");
       router.push(`/kunden/${res.id}`);
@@ -74,6 +98,16 @@ export function KundeNeuForm() {
         </Button>
         <h1 className="text-2xl font-semibold">Neuer Kunde</h1>
       </div>
+
+      {fromClose && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+          <p className="font-medium">Aus Close-Lead übernommen</p>
+          <p className="text-xs text-muted-foreground">
+            Daten vorbefüllt. Nach dem Anlegen kannst du dem Kunden den Zugang zur
+            Selbstauskunft senden (Kundenportal aktivieren → Login-Link).
+          </p>
+        </div>
+      )}
 
       <form onSubmit={submit} className="space-y-6">
         <section className="space-y-4 rounded-lg border bg-card p-4">

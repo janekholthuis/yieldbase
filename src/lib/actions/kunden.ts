@@ -59,6 +59,13 @@ const createInput = z.object({
   eigenkapital: z.number().min(0).max(100_000_000).default(0),
   kreditverpflichtungen_monatlich: z.number().min(0).max(1_000_000).default(0),
   bestehende_immobilien: z.boolean().default(false),
+  // CRM-Verknüpfung (Close.io) — kommt aus der Prefill-URL, die der Berater
+  // öffnet; wird in persoenliche_daten abgelegt, damit die Lead-Zuordnung
+  // erhalten bleibt (und später z. B. an die Selbstauskunft durchgereicht wird).
+  close_lead_id: z.string().trim().max(200).optional().nullable(),
+  close_opportunity_id: z.string().trim().max(200).optional().nullable(),
+  berater_vorname: z.string().trim().max(120).optional().nullable(),
+  berater_nachname: z.string().trim().max(120).optional().nullable(),
 });
 
 const updateInput = z
@@ -153,7 +160,16 @@ export async function createKunde(input: z.input<typeof createInput>) {
       max_finanzierbar: bon.max_finanzierbar,
       max_monatsrate: bon.max_monatsrate,
       max_darlehen: bon.max_darlehen,
-      persoenliche_daten: {},
+      persoenliche_daten: {
+        ...(data.close_lead_id ? { close_lead_id: data.close_lead_id } : {}),
+        ...(data.close_opportunity_id
+          ? { close_opportunity_id: data.close_opportunity_id }
+          : {}),
+        ...(data.berater_vorname ? { berater_vorname: data.berater_vorname } : {}),
+        ...(data.berater_nachname
+          ? { berater_nachname: data.berater_nachname }
+          : {}),
+      },
     })
     .select("id")
     .single();

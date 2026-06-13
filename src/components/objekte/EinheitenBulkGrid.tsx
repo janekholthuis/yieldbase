@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, ClipboardPaste, AlertCircle } from "lucide-react";
+import { Plus, Trash2, ClipboardPaste, AlertCircle, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,6 +74,7 @@ export function EinheitenBulkGrid({
   const [mapping, setMapping] = useState<ColumnMapping>([]);
   const [hasHeader, setHasHeader] = useState(false);
   const pasteRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   // ---- Row editing ----------------------------------------------------------
 
@@ -91,8 +92,7 @@ export function EinheitenBulkGrid({
 
   // ---- Paste parsing --------------------------------------------------------
 
-  function parsePaste(text: string) {
-    const m = parseClipboardMatrix(text);
+  function ingestMatrix(m: string[][]) {
     if (m.length === 0) {
       toast.error("Keine Daten erkannt.");
       return;
@@ -102,6 +102,42 @@ export function EinheitenBulkGrid({
     setMatrix(m);
     setHasHeader(header);
     setMapping(buildMapping(colCount, header ? m[0] : undefined));
+  }
+
+  function parsePaste(text: string) {
+    ingestMatrix(parseClipboardMatrix(text));
+  }
+
+  async function handleFile(file: File) {
+    try {
+      const buf = await file.arrayBuffer();
+      // SheetJS liest .xlsx und .csv; dynamischer Import hält es aus dem Bundle.
+      const XLSX = await import("xlsx");
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      if (!ws) {
+        toast.error("Keine Tabelle in der Datei gefunden.");
+        return;
+      }
+      // header:1 → Array von Zeilen; raw:false liefert formatierte (de) Strings.
+      const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, {
+        header: 1,
+        raw: false,
+        defval: "",
+        blankrows: false,
+      });
+      const m = aoa
+        .map((row) => (row as unknown[]).map((c) => (c == null ? "" : String(c).trim())))
+        .filter((row) => row.some((c) => c !== ""));
+      setPasteOpen(true);
+      setPasteText("");
+      ingestMatrix(m);
+      toast.success(`${m.length} Zeile(n) aus „${file.name}" gelesen.`);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Datei konnte nicht gelesen werden.",
+      );
+    }
   }
 
   function onTextareaPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
@@ -207,20 +243,44 @@ export function EinheitenBulkGrid({
 
   return (
     <div className="space-y-4">
-      {/* Paste panel */}
+      {/* Hidden file input für Excel/CSV-Upload */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void handleFile(f);
+          e.target.value = ""; // erneutes Hochladen derselben Datei erlauben
+        }}
+      />
+
+      {/* Import-Aktionen */}
       {!pasteOpen ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setPasteOpen(true);
-            setTimeout(() => pasteRef.current?.focus(), 0);
-          }}
-        >
-          <ClipboardPaste className="mr-2 h-4 w-4" />
-          Aus Excel einfügen
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileRef.current?.click()}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Excel/CSV hochladen
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setPasteOpen(true);
+              setTimeout(() => pasteRef.current?.focus(), 0);
+            }}
+          >
+            <ClipboardPaste className="mr-2 h-4 w-4" />
+            Aus Excel einfügen
+          </Button>
+        </div>
       ) : (
         <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
           <div className="space-y-1.5">

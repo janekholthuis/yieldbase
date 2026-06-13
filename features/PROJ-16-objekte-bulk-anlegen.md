@@ -163,6 +163,14 @@ _Direkt im Build-Chat umgesetzt._
 **Verifikation:** `tsc` ✓, `vitest run` → 137/137 ✓, `npm run build` ✓.
 **Offen:** manuelle/E2E-QA gegen echte Excel-Liste; Deploy.
 
+### Nachtrag 2026-06-13 — Excel/CSV-Datei-Upload (war „Out of Scope MVP")
+Auf Nutzerwunsch ergänzt: `EinheitenBulkGrid` hat jetzt zusätzlich zum
+Copy-Paste einen **Datei-Upload (.xlsx/.xls/.csv)** via SheetJS (`xlsx`,
+dynamischer Import). Die Datei wird zur selben Matrix geparst und durchläuft den
+identischen Spalten-Mapping-/Header-/Validierungs-Flow wie der Paste
+(`ingestMatrix`). Damit ist der frühere „Out of Scope"-Punkt CSV/XLSX-Upload
+erledigt.
+
 ## QA Test Results (Code-Level QA + Security-Audit, 2026-06-13)
 
 > **Methodik:** Statische Analyse (tsc + `npm run build` grün), 152 Unit-Tests

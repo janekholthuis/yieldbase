@@ -1,8 +1,9 @@
 # PROJ-16: Objekte anlegen — Bauträger raus + Bulk-Einheiten (Excel-Paste)
 
-## Status: In Progress (gebaut, QA/Deploy offen)
+## Status: Deployed
 **Created:** 2026-06-13
 **Last Updated:** 2026-06-13
+**Deployed:** 2026-06-13 — https://objekt-pilot.vercel.app (Commit `a21c7ba`, Vercel-Build „Ready")
 
 > Auslöser: Praxis-Input von Chris zum „Objekt anlegen"-Flow
 > (`ProjektWizard`). Zwei Punkte: (1) Bauträger nicht prominent machen,

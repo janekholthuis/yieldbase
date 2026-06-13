@@ -11,10 +11,14 @@ export const metadata = {
 
 export default async function ProjektDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ projektId: string }>;
+  searchParams: Promise<{ einheit?: string | string[] }>;
 }) {
   const { projektId } = await params;
+  const sp = await searchParams;
+  const initialEinheitId = Array.isArray(sp.einheit) ? sp.einheit[0] : sp.einheit;
   const [{ projekt, error }, kalkContext] = await Promise.all([
     getProjektDetail(projektId),
     getKalkulationsContext(),
@@ -35,5 +39,11 @@ export default async function ProjektDetailPage({
     );
   }
 
-  return <ProjektDetailView projekt={projekt} kalkContext={kalkContext} />;
+  return (
+    <ProjektDetailView
+      projekt={projekt}
+      kalkContext={kalkContext}
+      initialEinheitId={initialEinheitId}
+    />
+  );
 }

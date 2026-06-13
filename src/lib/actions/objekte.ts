@@ -8,9 +8,11 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
+import { getEinheitDetail } from "@/lib/data/objekte";
 import type {
   ObjektListItem,
   EinheitStatus,
+  EinheitDetail,
   KalkulationsEinheit,
 } from "@/lib/data/objekte";
 import type {
@@ -25,6 +27,18 @@ import type {
  * the calculator can be run for a selected Wohneinheit with accurate per-unit
  * values. RLS-scoped via the authed client.
  */
+/**
+ * Full unit detail for lazy-loading in the project-page master-detail. Thin
+ * client-invokable wrapper around the `server-only` data fn so ProjektTabs can
+ * fetch a unit's detail when it is selected (RLS-scoped via the authed client).
+ */
+export async function getEinheitDetailAction(input: {
+  einheitId: string;
+}): Promise<{ einheit: EinheitDetail | null; error: string | null }> {
+  const { einheitId } = z.object({ einheitId: z.string().uuid() }).parse(input);
+  return getEinheitDetail(einheitId);
+}
+
 export async function getEinheitKalkulation(input: {
   einheitId: string;
 }): Promise<KalkulationsEinheit | null> {

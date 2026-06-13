@@ -92,9 +92,13 @@ const DOK_KAT_LABEL: Record<string, string> = {
 export function EinheitDetailView({
   einheit,
   kalkContext,
+  embedded = false,
 }: {
   einheit: EinheitDetail;
   kalkContext: KalkulationsContext;
+  /** When rendered inside the project page master-detail: drop the outer page
+   * chrome (container padding + back/all-objects nav) so it sits in a panel. */
+  embedded?: boolean;
 }) {
   const e = einheit;
   const router = useRouter();
@@ -116,12 +120,16 @@ export function EinheitDetailView({
   }`;
 
   return (
-    <div className="container mx-auto p-4 md:p-6 space-y-4">
-      {/* Back */}
+    <div className={embedded ? "space-y-4" : "container mx-auto p-4 md:p-6 space-y-4"}>
+      {/* Back / actions */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="mr-1 h-4 w-4" /> Zurück
-        </Button>
+        {!embedded ? (
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+            <ArrowLeft className="mr-1 h-4 w-4" /> Zurück
+          </Button>
+        ) : (
+          <span />
+        )}
         <div className="flex flex-wrap items-center gap-2">
           {canEdit && (
             <>
@@ -156,9 +164,11 @@ export function EinheitDetailView({
           >
             <FileDown className="h-4 w-4" /> Exposé
           </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/objekte">Alle Objekte</Link>
-          </Button>
+          {!embedded && (
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/objekte">Alle Objekte</Link>
+            </Button>
+          )}
         </div>
       </div>
 

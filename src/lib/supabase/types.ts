@@ -646,6 +646,7 @@ export type Database = {
           plz: string | null
           selbstauskunft_step: number
           selbstauskunft_submitted_at: string | null
+          selbstauskunft_token: string
           stadt: string | null
           status: Database["public"]["Enums"]["kunde_status"]
           steuersatz_durchschnitt: number | null
@@ -681,6 +682,7 @@ export type Database = {
           plz?: string | null
           selbstauskunft_step?: number
           selbstauskunft_submitted_at?: string | null
+          selbstauskunft_token?: string
           stadt?: string | null
           status?: Database["public"]["Enums"]["kunde_status"]
           steuersatz_durchschnitt?: number | null
@@ -716,6 +718,7 @@ export type Database = {
           plz?: string | null
           selbstauskunft_step?: number
           selbstauskunft_submitted_at?: string | null
+          selbstauskunft_token?: string
           stadt?: string | null
           status?: Database["public"]["Enums"]["kunde_status"]
           steuersatz_durchschnitt?: number | null

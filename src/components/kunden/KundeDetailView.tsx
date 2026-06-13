@@ -88,6 +88,7 @@ export function KundeDetailView({
   const [resending, setResending] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [portalLink, setPortalLink] = useState<string | null>(null);
+  const [saLink, setSaLink] = useState<string | null>(null);
   const k = kunde;
 
   const fullName =
@@ -133,6 +134,18 @@ export function KundeDetailView({
     }
   };
 
+  // Selbstauskunft-Link OHNE Login — der Kunde füllt ohne Account aus.
+  const showSelbstauskunftLink = async () => {
+    const url = `${window.location.origin}/selbstauskunft/${k.selbstauskunft_token}`;
+    setSaLink(url);
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Selbstauskunft-Link kopiert");
+    } catch {
+      /* Panel zeigt den Link weiterhin zum manuellen Kopieren */
+    }
+  };
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center gap-2">
@@ -143,7 +156,10 @@ export function KundeDetailView({
         </Button>
         <h1 className="text-2xl font-semibold">{fullName}</h1>
         <Badge variant="outline">{STATUS_LABEL[k.status] ?? k.status}</Badge>
-        <div className="ml-auto">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={showSelbstauskunftLink}>
+            <ExternalLink className="mr-1 h-4 w-4" /> Selbstauskunft-Link
+          </Button>
           {!k.user_id ? (
             <Button onClick={activate} disabled={activating}>
               <KeyRound className="mr-1 h-4 w-4" />
@@ -165,6 +181,41 @@ export function KundeDetailView({
           )}
         </div>
       </div>
+
+      {saLink && (
+        <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-4">
+          <p className="text-sm font-medium">Selbstauskunft-Link (ohne Login)</p>
+          <p className="text-xs text-muted-foreground">
+            Der Kunde füllt die Selbstauskunft <strong>ohne Account</strong> aus.
+            Diesen Link kopieren und dem Kunden senden — ein Login ist erst ab der
+            Reservierung nötig.
+          </p>
+          <div className="flex items-center gap-2">
+            <Input
+              readOnly
+              value={saLink}
+              className="text-xs"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(saLink);
+                  toast.success("Link kopiert");
+                } catch {
+                  toast.error("Kopieren fehlgeschlagen");
+                }
+              }}
+            >
+              Kopieren
+            </Button>
+          </div>
+        </div>
+      )}
 
       {portalLink && (
         <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-4">

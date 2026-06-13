@@ -48,6 +48,10 @@ import {
   saveSelbstauskunftDraft,
   submitMySelbstauskunft,
 } from "@/lib/actions/selbstauskunft";
+import {
+  saveSelbstauskunftDraftByToken,
+  submitSelbstauskunftByToken,
+} from "@/lib/actions/selbstauskunft-public";
 
 export interface SelbstauskunftCrm {
   close_lead_id: string | null;
@@ -62,6 +66,9 @@ export interface SelbstauskunftWizardProps {
   submittedAt: string | null;
   startStep: number;
   crm: SelbstauskunftCrm;
+  /** Token-Modus (öffentlicher Link, ohne Login): save/submit laufen token-basiert,
+   *  nach dem Absenden gibt es keinen Portal-Redirect, nur einen Dank-Screen. */
+  token?: string;
 }
 
 const STEP_TITLES = [
@@ -88,13 +95,16 @@ export function SelbstauskunftWizard({
   submittedAt,
   startStep,
   crm,
+  token,
 }: SelbstauskunftWizardProps) {
   const router = useRouter();
+  const publicMode = Boolean(token);
   const [data, setData] = useState<SelbstauskunftData>(initialData);
   const [step, setStep] = useState(() => Math.min(TOTAL - 1, Math.max(0, startStep)));
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [publicDone, setPublicDone] = useState(false);
 
   const sigHaupt = useRef<SignaturePadHandle>(null);
   const sigMit = useRef<SignaturePadHandle>(null);
@@ -131,14 +141,19 @@ export function SelbstauskunftWizard({
   }
 
   async function persist(nextStep: number) {
-    await saveSelbstauskunftDraft({
+    const payload = {
       step: nextStep,
       data: data as unknown as Record<string, unknown>,
       close_lead_id: crm.close_lead_id,
       close_opportunity_id: crm.close_opportunity_id,
       berater_vorname: crm.berater_vorname,
       berater_nachname: crm.berater_nachname,
-    });
+    };
+    if (token) {
+      await saveSelbstauskunftDraftByToken({ token, ...payload });
+    } else {
+      await saveSelbstauskunftDraft(payload);
+    }
   }
 
   async function next() {
@@ -207,7 +222,7 @@ export function SelbstauskunftWizard({
 
     try {
       setSubmitting(true);
-      await submitMySelbstauskunft({
+      const payload = {
         data: data as unknown as Record<string, unknown>,
         signaturHaupt: sigHaupt.current!.toDataURL(),
         signaturMit: data.mitantragsteller ? (sigMit.current?.toDataURL() ?? null) : null,
@@ -215,14 +230,42 @@ export function SelbstauskunftWizard({
         close_opportunity_id: crm.close_opportunity_id,
         berater_vorname: crm.berater_vorname,
         berater_nachname: crm.berater_nachname,
-      });
+      };
+      if (token) {
+        await submitSelbstauskunftByToken({ token, ...payload });
+      } else {
+        await submitMySelbstauskunft(payload);
+      }
       toast.success("Selbstauskunft eingereicht. Vielen Dank!");
-      router.push("/portal");
+      if (publicMode) {
+        setPublicDone(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        router.push("/portal");
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Einreichen fehlgeschlagen.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Token-Modus: Dank-Screen nach dem Absenden (kein Login/Portal).
+  if (publicDone) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-10 md:py-16">
+        <div className="rounded-3xl border border-brand-border bg-brand-surface p-8 text-center shadow-card">
+          <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-brand-success" />
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-brand-ink">
+            Vielen Dank!
+          </h1>
+          <p className="mt-2 text-sm text-brand-body">
+            Ihre Selbstauskunft wurde übermittelt. Ihr Ansprechpartner meldet sich
+            bei Ihnen zu den nächsten Schritten. Sie können dieses Fenster schließen.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Success screen before re-edit.
@@ -249,9 +292,11 @@ export function SelbstauskunftWizard({
             <Button onClick={() => { setStep(0); setEditMode(true); }} className="rounded-2xl">
               Daten bearbeiten
             </Button>
-            <Button asChild variant="outline" className="rounded-2xl">
-              <Link href="/portal">Zurück zum Dashboard</Link>
-            </Button>
+            {!publicMode && (
+              <Button asChild variant="outline" className="rounded-2xl">
+                <Link href="/portal">Zurück zum Dashboard</Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>

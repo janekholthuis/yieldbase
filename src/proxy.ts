@@ -15,6 +15,7 @@ const PUBLIC_PREFIXES = [
   "/reset-password",
   "/invite",
   "/kunde-portal",
+  "/selbstauskunft", // Token-Link: Selbstauskunft ohne Login
   "/auth", // callback routes
 ];
 

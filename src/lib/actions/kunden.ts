@@ -22,19 +22,6 @@ type AuthedClient = SupabaseClient<Database>;
 const Anrede = z.enum(["herr", "frau", "divers"]);
 const BerufStatus = z.enum(["angestellter", "selbststaendiger", "unternehmer"]);
 
-const persoenlichSchema = z.object({
-  anrede: Anrede,
-  vorname: z.string().trim().min(1).max(60),
-  nachname: z.string().trim().min(1).max(80),
-  geburtsdatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-  email: z.string().trim().email().max(200).optional().nullable(),
-  telefon: z.string().trim().max(60).optional().nullable(),
-  adresse: z.string().trim().max(200).optional().nullable(),
-  plz: z.string().trim().max(10).optional().nullable(),
-  stadt: z.string().trim().max(100).optional().nullable(),
-  bundesland: z.string().trim().max(60).optional().nullable(),
-});
-
 const beruflichSchema = z.object({
   beruf_status: BerufStatus,
   brutto_jahreseinkommen: z.number().min(0).max(10_000_000),
@@ -49,7 +36,30 @@ const finanziellSchema = z.object({
   bestehende_immobilien: z.boolean(),
 });
 
-const createInput = persoenlichSchema.merge(beruflichSchema).merge(finanziellSchema);
+// Kunde anlegen erfasst bewusst nur die Stammdaten (Anrede/Name/Email) — Beruf,
+// Einkommen, Haushalt und Finanzen gibt der Kunde selbst in der Selbstauskunft
+// an. Alle übrigen Felder sind optional und defaulten serverseitig, damit die
+// Bonitäts-Berechnung (zunächst 0) und der Insert weiter funktionieren.
+const createInput = z.object({
+  anrede: Anrede.default("herr"),
+  vorname: z.string().trim().min(1).max(60),
+  nachname: z.string().trim().min(1).max(80),
+  email: z.string().trim().email().max(200).optional().nullable(),
+  geburtsdatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  telefon: z.string().trim().max(60).optional().nullable(),
+  adresse: z.string().trim().max(200).optional().nullable(),
+  plz: z.string().trim().max(10).optional().nullable(),
+  stadt: z.string().trim().max(100).optional().nullable(),
+  bundesland: z.string().trim().max(60).optional().nullable(),
+  beruf_status: BerufStatus.default("angestellter"),
+  brutto_jahreseinkommen: z.number().min(0).max(10_000_000).default(0),
+  verheiratet: z.boolean().default(false),
+  erwachsene_im_haushalt: z.union([z.literal(1), z.literal(2)]).default(1),
+  kinder_anzahl: z.number().int().min(0).max(15).default(0),
+  eigenkapital: z.number().min(0).max(100_000_000).default(0),
+  kreditverpflichtungen_monatlich: z.number().min(0).max(1_000_000).default(0),
+  bestehende_immobilien: z.boolean().default(false),
+});
 
 const updateInput = z
   .object({ id: z.string().uuid() })
@@ -283,7 +293,10 @@ export async function activateKundenportal(input: { id: string }): Promise<{
   revalidatePath("/kunden");
   revalidatePath(`/kunden/${id}`);
 
-  // 5) Magic-Link generieren (Supabase versendet Mail automatisch)
+  // 5) Login-Link generieren. WICHTIG: generateLink ERZEUGT nur den Link und
+  // versendet KEINE E-Mail (anders als signInWithOtp/inviteUserByEmail). Der
+  // Link wird daher zurückgegeben, damit ihn der VP dem Kunden zustellen kann
+  // (oder später via eigenem Mailer/SMTP versendet wird).
   const { data: link, error: lErr } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email: k.email,
@@ -294,7 +307,7 @@ export async function activateKundenportal(input: { id: string }): Promise<{
   return {
     ok: true,
     userId: newUserId,
-    magicLinkSent: true,
+    magicLinkSent: false,
     action_link: link?.properties?.action_link ?? null,
   };
 }

@@ -76,6 +76,7 @@ export function KundeDetailView({
 }) {
   const router = useRouter();
   const [activating, setActivating] = useState(false);
+  const [portalLink, setPortalLink] = useState<string | null>(null);
   const k = kunde;
 
   const fullName =
@@ -86,10 +87,13 @@ export function KundeDetailView({
     try {
       const res = await activateKundenportal({ id: k.id });
       toast.success(
-        res.magicLinkSent
-          ? "Kundenportal aktiviert, Magic-Link versandt"
-          : "Kundenportal aktiviert (Magic-Link nicht versandt)",
+        res.alreadyActive ? "Portal ist bereits aktiv" : "Kundenportal aktiviert",
       );
+      if (res.action_link) {
+        setPortalLink(res.action_link);
+      } else if (res.warning) {
+        toast.warning(`Login-Link konnte nicht erzeugt werden: ${res.warning}`);
+      }
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Aktivierung fehlgeschlagen");
@@ -119,6 +123,41 @@ export function KundeDetailView({
           )}
         </div>
       </div>
+
+      {portalLink && (
+        <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-4">
+          <p className="text-sm font-medium">Login-Link für den Kunden</p>
+          <p className="text-xs text-muted-foreground">
+            Es wird <strong>keine E-Mail automatisch versendet</strong>. Kopiere
+            diesen einmaligen Anmelde-Link und schicke ihn dem Kunden (zeitlich
+            begrenzt gültig).
+          </p>
+          <div className="flex items-center gap-2">
+            <Input
+              readOnly
+              value={portalLink}
+              className="text-xs"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(portalLink);
+                  toast.success("Link kopiert");
+                } catch {
+                  toast.error("Kopieren fehlgeschlagen");
+                }
+              }}
+            >
+              Kopieren
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Tabs defaultValue="daten">
         <TabsList>

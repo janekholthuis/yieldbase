@@ -55,6 +55,21 @@ const createInput = z.object({
   bank_kontoinhaber: z.string().max(200).optional().nullable(),
   bank_iban: z.string().max(50).optional().nullable(),
   bank_bic: z.string().max(20).optional().nullable(),
+  // PROJ-5 (Fillout): zusätzliche Antragsteller-/Bestätigungsfelder.
+  steuer_id: z.string().max(40).optional().nullable(),
+  staatsangehoerigkeit: z.string().max(80).optional().nullable(),
+  antragsteller_iban: z.string().max(50).optional().nullable(),
+  mitantragsteller: z.boolean().optional().default(false),
+  datenschutz_bestaetigt: z.boolean().optional().default(false),
+  gebuehr_ueberwiesen: z.boolean().optional().default(false),
+  ort: z.string().max(120).optional().nullable(),
+  datum: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .nullable(),
+  // Mitantragsteller-Detailblock + sonstige variable Felder.
+  daten: z.record(z.string(), z.unknown()).optional(),
 });
 
 export async function createReservierung(input: z.input<typeof createInput>) {
@@ -110,6 +125,15 @@ export async function createReservierung(input: z.input<typeof createInput>) {
       audit_timestamp: now.toISOString(),
       ip,
       bemerkungen: data.bemerkungen ?? null,
+      steuer_id: data.steuer_id ?? null,
+      staatsangehoerigkeit: data.staatsangehoerigkeit ?? null,
+      antragsteller_iban: data.antragsteller_iban ?? null,
+      mitantragsteller: data.mitantragsteller ?? false,
+      datenschutz_bestaetigt: data.datenschutz_bestaetigt ?? false,
+      gebuehr_ueberwiesen: data.gebuehr_ueberwiesen ?? false,
+      ort: data.ort ?? null,
+      datum: data.datum ?? null,
+      daten: (data.daten ?? {}) as never,
     })
     .select("id, expires_at")
     .single();

@@ -47,6 +47,22 @@ export interface ReservierungContext {
     bank_iban: string | null;
     bank_bic: string | null;
   } | null;
+  /** Prefill aus einer eingereichten Selbstauskunft (falls vorhanden). */
+  selbstauskunft: {
+    staatsangehoerigkeit: string | null;
+    mitantragsteller: boolean;
+    mit: {
+      vorname: string | null;
+      nachname: string | null;
+      email: string | null;
+      telefon: string | null;
+      strasse: string | null;
+      plz: string | null;
+      ort: string | null;
+      geburtsdatum: string | null;
+      staatsangehoerigkeit: string | null;
+    } | null;
+  } | null;
 }
 
 export interface ReservierungListItem {
@@ -87,7 +103,7 @@ export async function getReservierungContext(input: {
 }): Promise<ReservierungContext> {
   const { supabase, userId } = await requireUser();
 
-  const [eRes, kRes, vpRes] = await Promise.all([
+  const [eRes, kRes, vpRes, saRes] = await Promise.all([
     supabase
       .from("einheiten")
       .select(
@@ -110,6 +126,11 @@ export async function getReservierungContext(input: {
       .from("profiles")
       .select("id, name, vorname, nachname, email, phone, bank_kontoinhaber, bank_iban, bank_bic")
       .eq("id", userId)
+      .maybeSingle(),
+    supabase
+      .from("selbstauskuenfte")
+      .select("status, mitantragsteller, daten")
+      .eq("kunde_id", input.kundeId)
       .maybeSingle(),
   ]);
 
@@ -141,8 +162,34 @@ export async function getReservierungContext(input: {
       : null,
      
     kunde: (kRes.data as any) ?? null,
-     
+
     vp: (vpRes.data as any) ?? null,
+
+    selbstauskunft: (() => {
+
+      const sa: any = saRes.data;
+      if (!sa) return null;
+      const d = sa.daten ?? {};
+      const h = d.haupt ?? {};
+      const m = d.mit ?? {};
+      return {
+        staatsangehoerigkeit: h.staatsangehoerigkeit || null,
+        mitantragsteller: Boolean(sa.mitantragsteller),
+        mit: sa.mitantragsteller
+          ? {
+              vorname: m.vorname || null,
+              nachname: m.nachname || null,
+              email: m.email || null,
+              telefon: m.telefon || null,
+              strasse: m.strasse || null,
+              plz: m.plz || null,
+              ort: m.ort || null,
+              geburtsdatum: m.geburtsdatum || null,
+              staatsangehoerigkeit: m.staatsangehoerigkeit || null,
+            }
+          : null,
+      };
+    })(),
   };
 }
 

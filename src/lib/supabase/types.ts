@@ -1381,20 +1381,31 @@ export type Database = {
       }
       reservierungen: {
         Row: {
+          antragsteller_iban: string | null
           audit_timestamp: string | null
           audit_user_agent: string | null
           bank_bic: string | null
           bank_iban: string | null
           bank_kontoinhaber: string | null
           bemerkungen: string | null
+          berater_nachname: string | null
+          berater_vorname: string | null
+          close_lead_id: string | null
+          close_opportunity_id: string | null
           created_at: string
+          daten: Json
+          datenschutz_bestaetigt: boolean
+          datum: string | null
           einheit_id: string
           expired_notified_at: string | null
           expires_at: string
+          gebuehr_ueberwiesen: boolean
           id: string
           ip: unknown
           kunde_id: string
+          mitantragsteller: boolean
           organisation_id: string | null
+          ort: string | null
           pdf_url: string | null
           reminder_3d_sent_at: string | null
           reminder_7d_sent_at: string | null
@@ -1402,25 +1413,38 @@ export type Database = {
           signatur_data_url: string | null
           signatur_pdf: string | null
           signed_at: string | null
+          staatsangehoerigkeit: string | null
           status: Database["public"]["Enums"]["reservierung_status"]
+          steuer_id: string | null
           updated_at: string
           vp_id: string
         }
         Insert: {
+          antragsteller_iban?: string | null
           audit_timestamp?: string | null
           audit_user_agent?: string | null
           bank_bic?: string | null
           bank_iban?: string | null
           bank_kontoinhaber?: string | null
           bemerkungen?: string | null
+          berater_nachname?: string | null
+          berater_vorname?: string | null
+          close_lead_id?: string | null
+          close_opportunity_id?: string | null
           created_at?: string
+          daten?: Json
+          datenschutz_bestaetigt?: boolean
+          datum?: string | null
           einheit_id: string
           expired_notified_at?: string | null
           expires_at?: string
+          gebuehr_ueberwiesen?: boolean
           id?: string
           ip?: unknown
           kunde_id: string
+          mitantragsteller?: boolean
           organisation_id?: string | null
+          ort?: string | null
           pdf_url?: string | null
           reminder_3d_sent_at?: string | null
           reminder_7d_sent_at?: string | null
@@ -1428,25 +1452,38 @@ export type Database = {
           signatur_data_url?: string | null
           signatur_pdf?: string | null
           signed_at?: string | null
+          staatsangehoerigkeit?: string | null
           status?: Database["public"]["Enums"]["reservierung_status"]
+          steuer_id?: string | null
           updated_at?: string
           vp_id: string
         }
         Update: {
+          antragsteller_iban?: string | null
           audit_timestamp?: string | null
           audit_user_agent?: string | null
           bank_bic?: string | null
           bank_iban?: string | null
           bank_kontoinhaber?: string | null
           bemerkungen?: string | null
+          berater_nachname?: string | null
+          berater_vorname?: string | null
+          close_lead_id?: string | null
+          close_opportunity_id?: string | null
           created_at?: string
+          daten?: Json
+          datenschutz_bestaetigt?: boolean
+          datum?: string | null
           einheit_id?: string
           expired_notified_at?: string | null
           expires_at?: string
+          gebuehr_ueberwiesen?: boolean
           id?: string
           ip?: unknown
           kunde_id?: string
+          mitantragsteller?: boolean
           organisation_id?: string | null
+          ort?: string | null
           pdf_url?: string | null
           reminder_3d_sent_at?: string | null
           reminder_7d_sent_at?: string | null
@@ -1454,7 +1491,9 @@ export type Database = {
           signatur_data_url?: string | null
           signatur_pdf?: string | null
           signed_at?: string | null
+          staatsangehoerigkeit?: string | null
           status?: Database["public"]["Enums"]["reservierung_status"]
+          steuer_id?: string | null
           updated_at?: string
           vp_id?: string
         }
@@ -1485,6 +1524,155 @@ export type Database = {
             columns: ["vp_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      selbstauskuenfte: {
+        Row: {
+          ausgaben_summe_monat: number | null
+          berater_nachname: string | null
+          berater_vorname: string | null
+          beschaeftigung: string | null
+          close_lead_id: string | null
+          close_opportunity_id: string | null
+          created_at: string
+          daten: Json
+          datenschutz_bestaetigt: boolean
+          datum: string | null
+          einnahmen_summe_monat: number | null
+          id: string
+          ip: unknown
+          kunde_id: string
+          kv_status: string | null
+          mitantragsteller: boolean
+          organisation_id: string | null
+          ort: string | null
+          signatur_haupt_url: string | null
+          signatur_mit_url: string | null
+          status: string
+          step: number
+          submitted_at: string | null
+          updated_at: string
+          user_agent: string | null
+          vermoegen_summe: number | null
+        }
+        Insert: {
+          ausgaben_summe_monat?: number | null
+          berater_nachname?: string | null
+          berater_vorname?: string | null
+          beschaeftigung?: string | null
+          close_lead_id?: string | null
+          close_opportunity_id?: string | null
+          created_at?: string
+          daten?: Json
+          datenschutz_bestaetigt?: boolean
+          datum?: string | null
+          einnahmen_summe_monat?: number | null
+          id?: string
+          ip?: unknown
+          kunde_id: string
+          kv_status?: string | null
+          mitantragsteller?: boolean
+          organisation_id?: string | null
+          ort?: string | null
+          signatur_haupt_url?: string | null
+          signatur_mit_url?: string | null
+          status?: string
+          step?: number
+          submitted_at?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          vermoegen_summe?: number | null
+        }
+        Update: {
+          ausgaben_summe_monat?: number | null
+          berater_nachname?: string | null
+          berater_vorname?: string | null
+          beschaeftigung?: string | null
+          close_lead_id?: string | null
+          close_opportunity_id?: string | null
+          created_at?: string
+          daten?: Json
+          datenschutz_bestaetigt?: boolean
+          datum?: string | null
+          einnahmen_summe_monat?: number | null
+          id?: string
+          ip?: unknown
+          kunde_id?: string
+          kv_status?: string | null
+          mitantragsteller?: boolean
+          organisation_id?: string | null
+          ort?: string | null
+          signatur_haupt_url?: string | null
+          signatur_mit_url?: string | null
+          status?: string
+          step?: number
+          submitted_at?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          vermoegen_summe?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "selbstauskuenfte_kunde_id_fkey"
+            columns: ["kunde_id"]
+            isOneToOne: true
+            referencedRelation: "kunden"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "selbstauskuenfte_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisationen"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      selbstauskunft_immobilien: {
+        Row: {
+          adresse: string | null
+          created_at: string
+          daten: Json
+          eigennutzung: boolean | null
+          id: string
+          mieteinnahme_monat: number | null
+          objektart: string | null
+          restdarlehen: number | null
+          selbstauskunft_id: string
+          verkehrswert: number | null
+        }
+        Insert: {
+          adresse?: string | null
+          created_at?: string
+          daten?: Json
+          eigennutzung?: boolean | null
+          id?: string
+          mieteinnahme_monat?: number | null
+          objektart?: string | null
+          restdarlehen?: number | null
+          selbstauskunft_id: string
+          verkehrswert?: number | null
+        }
+        Update: {
+          adresse?: string | null
+          created_at?: string
+          daten?: Json
+          eigennutzung?: boolean | null
+          id?: string
+          mieteinnahme_monat?: number | null
+          objektart?: string | null
+          restdarlehen?: number | null
+          selbstauskunft_id?: string
+          verkehrswert?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "selbstauskunft_immobilien_selbstauskunft_id_fkey"
+            columns: ["selbstauskunft_id"]
+            isOneToOne: false
+            referencedRelation: "selbstauskuenfte"
             referencedColumns: ["id"]
           },
         ]

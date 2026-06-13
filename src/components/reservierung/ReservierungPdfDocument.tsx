@@ -120,6 +120,26 @@ export interface ReservierungPdfData {
     email: string | null;
     phone: string | null;
   } | null;
+  // PROJ-5 (Fillout): optionale Zusatzangaben.
+  antragsteller?: {
+    steuer_id: string | null;
+    iban: string | null;
+    staatsangehoerigkeit: string | null;
+  } | null;
+  mitantragsteller?: {
+    vorname: string | null;
+    nachname: string | null;
+    email: string | null;
+    telefon: string | null;
+    strasse: string | null;
+    plz: string | null;
+    ort: string | null;
+    geburtsdatum: string | null;
+    staatsangehoerigkeit: string | null;
+    steuer_id: string | null;
+    iban: string | null;
+  } | null;
+  bestaetigungen?: { datenschutz: boolean; gebuehr_ueberwiesen: boolean } | null;
 }
 
 const eur = (n: number | null | undefined) =>
@@ -167,7 +187,47 @@ export function ReservierungPdfDocument({ data }: { data: ReservierungPdfData })
           <Row k="Anschrift" v={kundeAdresse} />
           <Row k="E-Mail" v={data.kunde.email ?? "—"} />
           <Row k="Telefon" v={data.kunde.telefon ?? "—"} />
+          {data.antragsteller?.staatsangehoerigkeit ? (
+            <Row k="Staatsangehörigkeit" v={data.antragsteller.staatsangehoerigkeit} />
+          ) : null}
+          {data.antragsteller?.steuer_id ? (
+            <Row k="Steuer-ID" v={data.antragsteller.steuer_id} />
+          ) : null}
+          {data.antragsteller?.iban ? (
+            <Row k="IBAN" v={data.antragsteller.iban} />
+          ) : null}
         </View>
+
+        {data.mitantragsteller ? (
+          <>
+            <Text style={s.h2}>Mitantragsteller</Text>
+            <View style={s.table}>
+              <Row
+                k="Name"
+                v={`${data.mitantragsteller.vorname ?? ""} ${data.mitantragsteller.nachname ?? ""}`.trim() || "—"}
+              />
+              <Row
+                k="Geburtsdatum"
+                v={data.mitantragsteller.geburtsdatum ? dateDE(data.mitantragsteller.geburtsdatum) : "—"}
+              />
+              <Row
+                k="Anschrift"
+                v={joinAddr(data.mitantragsteller.strasse, data.mitantragsteller.plz, data.mitantragsteller.ort)}
+              />
+              <Row k="E-Mail" v={data.mitantragsteller.email ?? "—"} />
+              <Row k="Telefon" v={data.mitantragsteller.telefon ?? "—"} />
+              {data.mitantragsteller.staatsangehoerigkeit ? (
+                <Row k="Staatsangehörigkeit" v={data.mitantragsteller.staatsangehoerigkeit} />
+              ) : null}
+              {data.mitantragsteller.steuer_id ? (
+                <Row k="Steuer-ID" v={data.mitantragsteller.steuer_id} />
+              ) : null}
+              {data.mitantragsteller.iban ? (
+                <Row k="IBAN" v={data.mitantragsteller.iban} />
+              ) : null}
+            </View>
+          </>
+        ) : null}
 
         <Text style={s.h2}>Reserviertes Objekt</Text>
         <View style={s.table}>
@@ -236,6 +296,17 @@ export function ReservierungPdfDocument({ data }: { data: ReservierungPdfData })
         <Text style={s.signLabel}>
           {kundeName} · {dtDE(data.signedAt)}
         </Text>
+
+        {data.bestaetigungen ? (
+          <View style={s.block}>
+            <Text>
+              {data.bestaetigungen.datenschutz ? "☑" : "☐"} Datenschutzerklärung bestätigt
+            </Text>
+            <Text>
+              {data.bestaetigungen.gebuehr_ueberwiesen ? "☑" : "☐"} Reservierungsgebühr überwiesen
+            </Text>
+          </View>
+        ) : null}
 
         <View style={[s.accentBox, { marginTop: 16 }]}>
           <Text style={{ fontFamily: HEAD, fontWeight: 600, marginBottom: 4, color: colors.primary }}>

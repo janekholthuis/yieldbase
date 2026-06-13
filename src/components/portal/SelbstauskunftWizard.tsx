@@ -1,18 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+// PROJ-7 — Selbstauskunft (Fillout-Nachbau): 8-Schritt-Wizard im Kundenportal.
+// Haupt- + Mitantragsteller (toggle), bedingte Felder, Immobilien-Subform,
+// Autosave je Schritt, Unterschrift (Zeichnen). Ersetzt den alten Kurz-Wizard.
+
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import type { PortalDashboard } from "@/lib/data/portal";
-import { calculateBonitaet } from "@/lib/bonitaet";
-import {
-  saveSelbstauskunftStep,
-  submitSelbstauskunft,
-} from "@/lib/actions/portal";
+import { ArrowLeft, ArrowRight, CheckCircle2, Plus, Trash2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -20,46 +23,57 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, ArrowRight, CheckCircle2, Pencil } from "lucide-react";
+import {
+  SignaturePad,
+  type SignaturePadHandle,
+} from "@/components/reservierung/SignaturePad";
 
-type Familienstand = "ledig" | "verheiratet" | "geschieden" | "verwitwet";
+import {
+  type SelbstauskunftData,
+  type PersonData,
+  type ImmobilieData,
+  emptyImmobilie,
+  WOHNSITUATION,
+  FAMILIENSTAND,
+  BESCHAEFTIGUNG,
+  DAUER,
+  EINNAHMEQUELLEN,
+  VERMOEGENSWERTE,
+  KV_STATUS,
+  AUSGABENPOSTEN,
+  IMMOBILIEN_OBJEKTART,
+  validatePersonStep,
+} from "@/lib/selbstauskunft";
+import {
+  saveSelbstauskunftDraft,
+  submitMySelbstauskunft,
+} from "@/lib/actions/selbstauskunft";
 
-interface FormState {
-  anrede: "herr" | "frau" | "divers" | "";
-  vorname: string;
-  nachname: string;
-  geburtsdatum: string;
-  familienstand: Familienstand | "";
-  adresse: string;
-  plz: string;
-  stadt: string;
-  bundesland: string;
-  telefon: string;
-  beruf_status: "angestellter" | "selbststaendiger" | "unternehmer" | "";
-  brutto_jahreseinkommen: string;
-  erwachsene_im_haushalt: string;
-  kinder_anzahl: string;
-  bestehende_immobilien: string;
-  eigenkapital: string;
-  kreditverpflichtungen_monatlich: string;
+export interface SelbstauskunftCrm {
+  close_lead_id: string | null;
+  close_opportunity_id: string | null;
+  berater_vorname: string | null;
+  berater_nachname: string | null;
+}
+
+export interface SelbstauskunftWizardProps {
+  initialData: SelbstauskunftData;
+  alreadySubmitted: boolean;
+  submittedAt: string | null;
+  startStep: number;
+  crm: SelbstauskunftCrm;
 }
 
 const STEP_TITLES = [
   "Persönliche Daten",
-  "Beruf und Einkommen",
-  "Haushalt",
-  "Vermögen und Verpflichtungen",
-  "Zusammenfassung",
+  "Aktuelle Tätigkeit",
+  "Einnahmen",
+  "Vermögen",
+  "Immobilienvermögen",
+  "Ausgaben",
+  "Unterschrift",
 ];
-
-const fmtEUR = (n: number) =>
-  new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 0,
-  }).format(n);
-
-const fmtNum = (n: number) => new Intl.NumberFormat("de-DE").format(n);
+const TOTAL = STEP_TITLES.length;
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString("de-DE", {
@@ -68,158 +82,76 @@ const fmtDate = (iso: string) =>
     year: "numeric",
   });
 
-const parseNum = (s: string): number => {
-  const cleaned = s.replace(/\./g, "").replace(",", ".").trim();
-  const n = parseFloat(cleaned);
-  return Number.isFinite(n) ? n : 0;
-};
-
-type Kunde = PortalDashboard["kunde"];
-
-function buildInitialForm(k: Kunde): FormState {
-  return {
-    anrede: (k?.anrede as FormState["anrede"]) ?? "",
-    vorname: k?.vorname ?? "",
-    nachname: k?.nachname ?? "",
-    geburtsdatum: k?.geburtsdatum ?? "",
-    familienstand: "",
-    adresse: k?.adresse ?? "",
-    plz: k?.plz ?? "",
-    stadt: k?.stadt ?? "",
-    bundesland: k?.bundesland ?? "",
-    telefon: k?.telefon ?? "",
-    beruf_status: (k?.beruf_status as FormState["beruf_status"]) ?? "",
-    brutto_jahreseinkommen:
-      k?.brutto_jahreseinkommen != null
-        ? fmtNum(Number(k.brutto_jahreseinkommen))
-        : "",
-    erwachsene_im_haushalt: "1",
-    kinder_anzahl: "0",
-    bestehende_immobilien: "false",
-    eigenkapital: k?.eigenkapital != null ? fmtNum(Number(k.eigenkapital)) : "",
-    kreditverpflichtungen_monatlich: "0",
-  };
-}
-
-export function SelbstauskunftWizard({ kunde }: { kunde: Kunde }) {
+export function SelbstauskunftWizard({
+  initialData,
+  alreadySubmitted,
+  submittedAt,
+  startStep,
+  crm,
+}: SelbstauskunftWizardProps) {
   const router = useRouter();
-
-  const [step, setStep] = useState(() =>
-    Math.min(4, Math.max(0, kunde?.selbstauskunft_step ?? 0)),
-  );
-  const [form, setForm] = useState<FormState>(() => buildInitialForm(kunde));
-  const [submitting, setSubmitting] = useState(false);
+  const [data, setData] = useState<SelbstauskunftData>(initialData);
+  const [step, setStep] = useState(() => Math.min(TOTAL - 1, Math.max(0, startStep)));
   const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
-  const alreadySubmitted = !!kunde?.selbstauskunft_submitted_at;
+  const sigHaupt = useRef<SignaturePadHandle>(null);
+  const sigMit = useRef<SignaturePadHandle>(null);
 
-  // Live-Bonität für Step 5
-  const bon = useMemo(() => {
-    if (!form.beruf_status || !form.brutto_jahreseinkommen || !form.eigenkapital)
-      return null;
-    return calculateBonitaet({
-      brutto: parseNum(form.brutto_jahreseinkommen),
-      verheiratet: form.familienstand === "verheiratet",
-      eigenkapital: parseNum(form.eigenkapital),
-      kreditverpflichtungen_monatlich: parseNum(
-        form.kreditverpflichtungen_monatlich,
-      ),
-      erwachsene_im_haushalt: (Number(form.erwachsene_im_haushalt) === 2
-        ? 2
-        : 1) as 1 | 2,
-      kinder_anzahl: Number(form.kinder_anzahl) || 0,
-      beruf_status: form.beruf_status,
-    });
-  }, [form]);
+  const setHaupt = (patch: Partial<PersonData>) =>
+    setData((d) => ({ ...d, haupt: { ...d.haupt, ...patch } }));
+  const setMit = (patch: Partial<PersonData>) =>
+    setData((d) => ({ ...d, mit: { ...d.mit, ...patch } }));
 
-  function validateStep(s: number): string | null {
-    if (s === 0) {
-      if (!form.vorname.trim()) return "Vorname ist Pflicht.";
-      if (!form.nachname.trim()) return "Nachname ist Pflicht.";
-      if (!form.geburtsdatum) return "Geburtsdatum ist Pflicht.";
-      if (!form.familienstand) return "Familienstand ist Pflicht.";
-      if (!form.adresse.trim()) return "Adresse ist Pflicht.";
-      if (!/^\d{5}$/.test(form.plz)) return "PLZ muss 5 Ziffern haben.";
-      if (!form.stadt.trim()) return "Stadt ist Pflicht.";
-    } else if (s === 1) {
-      if (!form.beruf_status) return "Beruf-Status ist Pflicht.";
-      if (parseNum(form.brutto_jahreseinkommen) <= 0)
-        return "Brutto-Jahreseinkommen ist Pflicht.";
-    } else if (s === 2) {
-      if (Number(form.erwachsene_im_haushalt) < 1)
-        return "Mindestens eine erwachsene Person im Haushalt.";
-      if (Number(form.kinder_anzahl) < 0) return "Kinder-Anzahl ungültig.";
-    } else if (s === 3) {
-      if (parseNum(form.eigenkapital) < 0) return "Eigenkapital ungültig.";
-      if (parseNum(form.kreditverpflichtungen_monatlich) < 0)
-        return "Kreditverpflichtungen ungültig.";
+  // 0-based step -> validation step number used in lib (1,2,3,4,_,6).
+  const VALID_STEP: Record<number, number | null> = {
+    0: 1,
+    1: 2,
+    2: 3,
+    3: 4,
+    4: null, // Immobilien
+    5: 6,
+    6: null, // Unterschrift
+  };
+
+  function validateCurrent(): string | null {
+    const vs = VALID_STEP[step];
+    if (vs != null) {
+      const eH = validatePersonStep(data.haupt, vs);
+      if (eH) return `Hauptantragsteller: ${eH}`;
+      if (data.mitantragsteller) {
+        const eM = validatePersonStep(data.mit, vs);
+        if (eM) return `Mitantragsteller: ${eM}`;
+      }
     }
+    if (step === 4 && data.immobilienvermoegen === "")
+      return "Bitte Ja/Nein zum Immobilienvermögen wählen.";
     return null;
   }
 
-  async function persistStep(s: number) {
-    if (s === 0) {
-      await saveSelbstauskunftStep({
-        step: 1,
-        data: {
-          anrede: (form.anrede || null) as "herr" | "frau" | "divers" | null,
-          vorname: form.vorname.trim(),
-          nachname: form.nachname.trim(),
-          geburtsdatum: form.geburtsdatum,
-          verheiratet: form.familienstand === "verheiratet",
-          adresse: form.adresse.trim(),
-          plz: form.plz.trim(),
-          stadt: form.stadt.trim(),
-          bundesland: form.bundesland.trim() || null,
-          telefon: form.telefon.trim() || null,
-        },
-      });
-    } else if (s === 1) {
-      await saveSelbstauskunftStep({
-        step: 2,
-        data: {
-          beruf_status: form.beruf_status as
-            | "angestellter"
-            | "selbststaendiger"
-            | "unternehmer",
-          brutto_jahreseinkommen: parseNum(form.brutto_jahreseinkommen),
-        },
-      });
-    } else if (s === 2) {
-      await saveSelbstauskunftStep({
-        step: 3,
-        data: {
-          erwachsene_im_haushalt: (Number(form.erwachsene_im_haushalt) === 2
-            ? 2
-            : 1) as 1 | 2,
-          kinder_anzahl: Number(form.kinder_anzahl) || 0,
-          bestehende_immobilien: form.bestehende_immobilien === "true",
-        },
-      });
-    } else if (s === 3) {
-      await saveSelbstauskunftStep({
-        step: 4,
-        data: {
-          eigenkapital: parseNum(form.eigenkapital),
-          kreditverpflichtungen_monatlich: parseNum(
-            form.kreditverpflichtungen_monatlich,
-          ),
-        },
-      });
-    }
+  async function persist(nextStep: number) {
+    await saveSelbstauskunftDraft({
+      step: nextStep,
+      data: data as unknown as Record<string, unknown>,
+      close_lead_id: crm.close_lead_id,
+      close_opportunity_id: crm.close_opportunity_id,
+      berater_vorname: crm.berater_vorname,
+      berater_nachname: crm.berater_nachname,
+    });
   }
 
   async function next() {
-    const err = validateStep(step);
+    const err = validateCurrent();
     if (err) {
       toast.error(err);
       return;
     }
     try {
       setSaving(true);
-      await persistStep(step);
-      setStep((s) => Math.min(4, s + 1));
+      await persist(step + 1);
+      setStep((s) => Math.min(TOTAL - 1, s + 1));
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Speichern fehlgeschlagen.");
     } finally {
@@ -229,44 +161,60 @@ export function SelbstauskunftWizard({ kunde }: { kunde: Kunde }) {
 
   function prev() {
     setStep((s) => Math.max(0, s - 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function onSubmit() {
-    for (let s = 0; s < 4; s++) {
-      const err = validateStep(s);
-      if (err) {
-        toast.error(`Schritt ${s + 1}: ${err}`);
-        setStep(s);
+    // Validate all content steps client-side first for fast feedback.
+    for (const [zero, vs] of Object.entries(VALID_STEP)) {
+      if (vs == null) continue;
+      const eH = validatePersonStep(data.haupt, vs);
+      if (eH) {
+        toast.error(`Hauptantragsteller, ${STEP_TITLES[Number(zero)]}: ${eH}`);
+        setStep(Number(zero));
         return;
       }
+      if (data.mitantragsteller) {
+        const eM = validatePersonStep(data.mit, vs);
+        if (eM) {
+          toast.error(`Mitantragsteller, ${STEP_TITLES[Number(zero)]}: ${eM}`);
+          setStep(Number(zero));
+          return;
+        }
+      }
     }
+    if (data.immobilienvermoegen === "") {
+      toast.error("Bitte Ja/Nein zum Immobilienvermögen wählen.");
+      setStep(4);
+      return;
+    }
+    if (!data.datenschutz) {
+      toast.error("Bitte die Datenschutzerklärung bestätigen.");
+      return;
+    }
+    if (!data.ort.trim()) {
+      toast.error("Bitte den Ort angeben.");
+      return;
+    }
+    if (sigHaupt.current?.isEmpty() ?? true) {
+      toast.error("Bitte unterschreiben.");
+      return;
+    }
+    if (data.mitantragsteller && (sigMit.current?.isEmpty() ?? true)) {
+      toast.error("Bitte auch als Mitantragsteller unterschreiben.");
+      return;
+    }
+
     try {
       setSubmitting(true);
-      await submitSelbstauskunft({
-        anrede: (form.anrede || null) as "herr" | "frau" | "divers" | null,
-        vorname: form.vorname.trim(),
-        nachname: form.nachname.trim(),
-        geburtsdatum: form.geburtsdatum,
-        verheiratet: form.familienstand === "verheiratet",
-        adresse: form.adresse.trim(),
-        plz: form.plz.trim(),
-        stadt: form.stadt.trim(),
-        bundesland: form.bundesland.trim() || null,
-        telefon: form.telefon.trim() || null,
-        beruf_status: form.beruf_status as
-          | "angestellter"
-          | "selbststaendiger"
-          | "unternehmer",
-        brutto_jahreseinkommen: parseNum(form.brutto_jahreseinkommen),
-        erwachsene_im_haushalt: (Number(form.erwachsene_im_haushalt) === 2
-          ? 2
-          : 1) as 1 | 2,
-        kinder_anzahl: Number(form.kinder_anzahl) || 0,
-        bestehende_immobilien: form.bestehende_immobilien === "true",
-        eigenkapital: parseNum(form.eigenkapital),
-        kreditverpflichtungen_monatlich: parseNum(
-          form.kreditverpflichtungen_monatlich,
-        ),
+      await submitMySelbstauskunft({
+        data: data as unknown as Record<string, unknown>,
+        signaturHaupt: sigHaupt.current!.toDataURL(),
+        signaturMit: data.mitantragsteller ? (sigMit.current?.toDataURL() ?? null) : null,
+        close_lead_id: crm.close_lead_id,
+        close_opportunity_id: crm.close_opportunity_id,
+        berater_vorname: crm.berater_vorname,
+        berater_nachname: crm.berater_nachname,
       });
       toast.success("Selbstauskunft eingereicht. Vielen Dank!");
       router.push("/portal");
@@ -277,7 +225,7 @@ export function SelbstauskunftWizard({ kunde }: { kunde: Kunde }) {
     }
   }
 
-  // Erfolgs-Card vor Re-Edit
+  // Success screen before re-edit.
   if (alreadySubmitted && !editMode) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-8 md:py-12">
@@ -292,18 +240,13 @@ export function SelbstauskunftWizard({ kunde }: { kunde: Kunde }) {
             Deine Selbstauskunft
           </h1>
           <p className="mt-2 text-sm text-brand-body">
-            Du hast deine Selbstauskunft am{" "}
-            <strong>{fmtDate(kunde!.selbstauskunft_submitted_at!)}</strong>{" "}
-            eingereicht. Hier kannst du deine Daten aktualisieren.
+            {submittedAt ? (
+              <>Eingereicht am <strong>{fmtDate(submittedAt)}</strong>. </>
+            ) : null}
+            Du kannst deine Angaben aktualisieren.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button
-              onClick={() => {
-                setStep(0);
-                setEditMode(true);
-              }}
-              className="rounded-2xl"
-            >
+            <Button onClick={() => { setStep(0); setEditMode(true); }} className="rounded-2xl">
               Daten bearbeiten
             </Button>
             <Button asChild variant="outline" className="rounded-2xl">
@@ -322,19 +265,13 @@ export function SelbstauskunftWizard({ kunde }: { kunde: Kunde }) {
           Deine Selbstauskunft
         </h1>
         <p className="mt-2 text-sm text-brand-body">
-          Diese Daten helfen uns, deine Finanzierung realistisch einzuschätzen.
-          Du kannst alles später ändern.
+          Bitte fülle nur aus, was auf dich zutrifft. Du kannst jederzeit
+          pausieren — dein Fortschritt wird gespeichert.
         </p>
-
-        {/* Progress */}
         <div className="mt-6">
           <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-brand-muted">
-            <span>
-              Schritt {step + 1} von 5: {STEP_TITLES[step]}
-            </span>
-            <span className="tabular-nums">
-              {Math.round(((step + 1) / 5) * 100)}%
-            </span>
+            <span>Schritt {step + 1} von {TOTAL}: {STEP_TITLES[step]}</span>
+            <span className="tabular-nums">{Math.round(((step + 1) / TOTAL) * 100)}%</span>
           </div>
           <div className="flex gap-1.5">
             {STEP_TITLES.map((_, i) => (
@@ -349,12 +286,48 @@ export function SelbstauskunftWizard({ kunde }: { kunde: Kunde }) {
         </div>
       </header>
 
-      <div className="rounded-3xl border border-brand-border bg-brand-surface p-6 shadow-card md:p-8">
-        {step === 0 && <Step1 form={form} setForm={setForm} />}
-        {step === 1 && <Step2 form={form} setForm={setForm} />}
-        {step === 2 && <Step3 form={form} setForm={setForm} />}
-        {step === 3 && <Step4 form={form} setForm={setForm} />}
-        {step === 4 && <Step5 form={form} bon={bon} onEdit={(s) => setStep(s)} />}
+      <div className="space-y-6 rounded-3xl border border-brand-border bg-brand-surface p-6 shadow-card md:p-8">
+        {/* Mitantragsteller-Toggle nur auf Schritt 1 */}
+        {step === 0 && (
+          <label className="flex items-center justify-between gap-3 rounded-2xl border border-brand-border bg-brand-surfaceMuted px-4 py-3">
+            <span className="text-sm font-medium text-brand-ink">
+              Gibt es einen Mitantragsteller?
+            </span>
+            <Switch
+              checked={data.mitantragsteller}
+              onCheckedChange={(v) => setData((d) => ({ ...d, mitantragsteller: v }))}
+            />
+          </label>
+        )}
+
+        {/* Immobilien-Schritt */}
+        {step === 4 ? (
+          <ImmobilienStep data={data} setData={setData} />
+        ) : step === 6 ? (
+          <UnterschriftStep
+            data={data}
+            setData={setData}
+            sigHaupt={sigHaupt}
+            sigMit={sigMit}
+          />
+        ) : (
+          <div className="space-y-8">
+            <PersonBlock
+              title={data.mitantragsteller ? "Hauptantragsteller" : undefined}
+              person={data.haupt}
+              set={setHaupt}
+              section={VALID_STEP[step]!}
+            />
+            {data.mitantragsteller && (
+              <PersonBlock
+                title="Mitantragsteller"
+                person={data.mit}
+                set={setMit}
+                section={VALID_STEP[step]!}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mt-6 flex items-center justify-between gap-3">
@@ -366,7 +339,7 @@ export function SelbstauskunftWizard({ kunde }: { kunde: Kunde }) {
         >
           <ArrowLeft className="mr-1 h-4 w-4" /> Zurück
         </Button>
-        {step < 4 ? (
+        {step < TOTAL - 1 ? (
           <Button onClick={next} disabled={saving} className="rounded-2xl">
             {saving ? "Speichern …" : "Weiter"}
             <ArrowRight className="ml-1 h-4 w-4" />
@@ -374,7 +347,7 @@ export function SelbstauskunftWizard({ kunde }: { kunde: Kunde }) {
         ) : (
           <Button
             onClick={onSubmit}
-            disabled={submitting || !bon}
+            disabled={submitting}
             size="lg"
             className="rounded-2xl bg-brand-accent text-white hover:bg-brand-accent/90"
           >
@@ -386,468 +359,440 @@ export function SelbstauskunftWizard({ kunde }: { kunde: Kunde }) {
   );
 }
 
-type StepProps = {
-  form: FormState;
-  setForm: React.Dispatch<React.SetStateAction<FormState>>;
-};
+// ===========================================================================
+// PersonBlock — rendert die Felder einer Person für einen Abschnitt
+// ===========================================================================
 
-const PflichtStar = () => (
-  <span aria-label="Pflichtfeld" className="ml-0.5 text-brand-accent">
-    *
-  </span>
-);
-
-const Hint = ({ children }: { children: React.ReactNode }) => (
-  <p className="mt-1 text-xs text-brand-muted">{children}</p>
-);
-
-function Field({
-  label,
-  required,
-  children,
-  hint,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-  hint?: React.ReactNode;
-}) {
-  return (
-    <div>
-      <Label className="text-sm font-medium text-brand-ink">
-        {label}
-        {required ? <PflichtStar /> : null}
-      </Label>
-      <div className="mt-1.5">{children}</div>
-      {hint ? <Hint>{hint}</Hint> : null}
-    </div>
-  );
-}
-
-function Step1({ form, setForm }: StepProps) {
-  return (
-    <div className="space-y-5">
-      <div className="grid gap-5 md:grid-cols-2">
-        <Field label="Anrede">
-          <Select
-            value={form.anrede || undefined}
-            onValueChange={(v) =>
-              setForm((f) => ({ ...f, anrede: v as FormState["anrede"] }))
-            }
-          >
-            <SelectTrigger className="rounded-2xl">
-              <SelectValue placeholder="Bitte wählen" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="herr">Herr</SelectItem>
-              <SelectItem value="frau">Frau</SelectItem>
-              <SelectItem value="divers">Divers</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field label="Geburtsdatum" required>
-          <Input
-            type="date"
-            value={form.geburtsdatum}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, geburtsdatum: e.target.value }))
-            }
-          />
-        </Field>
-        <Field label="Vorname" required>
-          <Input
-            value={form.vorname}
-            onChange={(e) => setForm((f) => ({ ...f, vorname: e.target.value }))}
-          />
-        </Field>
-        <Field label="Nachname" required>
-          <Input
-            value={form.nachname}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, nachname: e.target.value }))
-            }
-          />
-        </Field>
-        <Field label="Familienstand" required>
-          <Select
-            value={form.familienstand || undefined}
-            onValueChange={(v) =>
-              setForm((f) => ({ ...f, familienstand: v as Familienstand }))
-            }
-          >
-            <SelectTrigger className="rounded-2xl">
-              <SelectValue placeholder="Bitte wählen" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ledig">ledig</SelectItem>
-              <SelectItem value="verheiratet">verheiratet</SelectItem>
-              <SelectItem value="geschieden">geschieden</SelectItem>
-              <SelectItem value="verwitwet">verwitwet</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-      </div>
-      <Field label="Adresse" required>
-        <Input
-          value={form.adresse}
-          placeholder="Straße und Hausnummer"
-          onChange={(e) => setForm((f) => ({ ...f, adresse: e.target.value }))}
-        />
-      </Field>
-      <div className="grid gap-5 md:grid-cols-[160px_1fr]">
-        <Field label="PLZ" required>
-          <Input
-            inputMode="numeric"
-            maxLength={5}
-            value={form.plz}
-            onChange={(e) =>
-              setForm((f) => ({
-                ...f,
-                plz: e.target.value.replace(/\D/g, "").slice(0, 5),
-              }))
-            }
-          />
-        </Field>
-        <Field label="Stadt" required>
-          <Input
-            value={form.stadt}
-            onChange={(e) => setForm((f) => ({ ...f, stadt: e.target.value }))}
-          />
-        </Field>
-      </div>
-      <div className="grid gap-5 md:grid-cols-2">
-        <Field label="Bundesland">
-          <Input
-            value={form.bundesland}
-            placeholder="z. B. Bayern"
-            onChange={(e) =>
-              setForm((f) => ({ ...f, bundesland: e.target.value }))
-            }
-          />
-        </Field>
-        <Field label="Telefon">
-          <Input
-            type="tel"
-            value={form.telefon}
-            placeholder="+49 …"
-            onChange={(e) => setForm((f) => ({ ...f, telefon: e.target.value }))}
-          />
-        </Field>
-      </div>
-    </div>
-  );
-}
-
-function NumericFormatted({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <Input
-      inputMode="numeric"
-      value={value}
-      placeholder={placeholder}
-      onChange={(e) => {
-        const digits = e.target.value.replace(/\D/g, "");
-        if (!digits) {
-          onChange("");
-          return;
-        }
-        onChange(fmtNum(Number(digits)));
-      }}
-    />
-  );
-}
-
-function Step2({ form, setForm }: StepProps) {
-  return (
-    <div className="space-y-5">
-      <Field label="Beruf-Status" required>
-        <Select
-          value={form.beruf_status || undefined}
-          onValueChange={(v) =>
-            setForm((f) => ({
-              ...f,
-              beruf_status: v as FormState["beruf_status"],
-            }))
-          }
-        >
-          <SelectTrigger className="rounded-2xl">
-            <SelectValue placeholder="Bitte wählen" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="angestellter">Angestellter</SelectItem>
-            <SelectItem value="selbststaendiger">Selbstständiger</SelectItem>
-            <SelectItem value="unternehmer">Unternehmer</SelectItem>
-          </SelectContent>
-        </Select>
-      </Field>
-      <Field
-        label="Brutto-Jahreseinkommen (EUR)"
-        required
-        hint="Bei Selbstständigen / Unternehmern: durchschnittliches Brutto-Jahreseinkommen der letzten 24 Monate."
-      >
-        <NumericFormatted
-          value={form.brutto_jahreseinkommen}
-          onChange={(v) =>
-            setForm((f) => ({ ...f, brutto_jahreseinkommen: v }))
-          }
-          placeholder="z. B. 75.000"
-        />
-      </Field>
-    </div>
-  );
-}
-
-function Step3({ form, setForm }: StepProps) {
-  return (
-    <div className="space-y-5">
-      <div className="grid gap-5 md:grid-cols-2">
-        <Field label="Erwachsene im Haushalt" required>
-          <Select
-            value={form.erwachsene_im_haushalt}
-            onValueChange={(v) =>
-              setForm((f) => ({ ...f, erwachsene_im_haushalt: v }))
-            }
-          >
-            <SelectTrigger className="rounded-2xl">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">1</SelectItem>
-              <SelectItem value="2">2</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field label="Kinder" required>
-          <Input
-            inputMode="numeric"
-            value={form.kinder_anzahl}
-            onChange={(e) =>
-              setForm((f) => ({
-                ...f,
-                kinder_anzahl: e.target.value.replace(/\D/g, ""),
-              }))
-            }
-          />
-        </Field>
-      </div>
-      <Field
-        label="Bestehende Immobilien"
-        required
-        hint="Besitzt du bereits eine Immobilie, unabhängig von dieser geplanten Investition?"
-      >
-        <Select
-          value={form.bestehende_immobilien}
-          onValueChange={(v) =>
-            setForm((f) => ({ ...f, bestehende_immobilien: v }))
-          }
-        >
-          <SelectTrigger className="rounded-2xl">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="false">Nein</SelectItem>
-            <SelectItem value="true">Ja</SelectItem>
-          </SelectContent>
-        </Select>
-      </Field>
-    </div>
-  );
-}
-
-function Step4({ form, setForm }: StepProps) {
-  return (
-    <div className="space-y-5">
-      <Field
-        label="Eigenkapital (EUR)"
-        required
-        hint="Liquide Mittel, die du für Kaufpreis und Nebenkosten einsetzen kannst."
-      >
-        <NumericFormatted
-          value={form.eigenkapital}
-          onChange={(v) => setForm((f) => ({ ...f, eigenkapital: v }))}
-          placeholder="z. B. 50.000"
-        />
-      </Field>
-      <Field
-        label="Kreditverpflichtungen monatlich (EUR)"
-        required
-        hint="Summe aller monatlichen Raten für bestehende Kredite, ohne Miete."
-      >
-        <NumericFormatted
-          value={form.kreditverpflichtungen_monatlich}
-          onChange={(v) =>
-            setForm((f) => ({ ...f, kreditverpflichtungen_monatlich: v }))
-          }
-          placeholder="0"
-        />
-      </Field>
-    </div>
-  );
-}
-
-function Step5({
-  form,
-  bon,
-  onEdit,
-}: {
-  form: FormState;
-  bon: ReturnType<typeof calculateBonitaet> | null;
-  onEdit: (step: number) => void;
-}) {
-  const anredeLabel: Record<string, string> = {
-    herr: "Herr",
-    frau: "Frau",
-    divers: "Divers",
-  };
-  const berufLabel: Record<string, string> = {
-    angestellter: "Angestellter",
-    selbststaendiger: "Selbstständiger",
-    unternehmer: "Unternehmer",
-  };
-
-  return (
-    <div className="space-y-6">
-      <SummaryGroup title="Persönliche Daten" onEdit={() => onEdit(0)}>
-        <SummaryRow label="Anrede" v={anredeLabel[form.anrede] ?? "—"} />
-        <SummaryRow label="Name" v={`${form.vorname} ${form.nachname}`.trim()} />
-        <SummaryRow
-          label="Geburtsdatum"
-          v={form.geburtsdatum ? fmtDate(form.geburtsdatum) : "—"}
-        />
-        <SummaryRow label="Familienstand" v={form.familienstand || "—"} />
-        <SummaryRow
-          label="Adresse"
-          v={[form.adresse, [form.plz, form.stadt].filter(Boolean).join(" ")]
-            .filter(Boolean)
-            .join(", ")}
-        />
-        <SummaryRow label="Bundesland" v={form.bundesland || "—"} />
-        <SummaryRow label="Telefon" v={form.telefon || "—"} />
-      </SummaryGroup>
-
-      <SummaryGroup title="Beruf und Einkommen" onEdit={() => onEdit(1)}>
-        <SummaryRow
-          label="Beruf-Status"
-          v={berufLabel[form.beruf_status] ?? "—"}
-        />
-        <SummaryRow
-          label="Brutto/Jahr"
-          v={`${form.brutto_jahreseinkommen || "—"} EUR`}
-        />
-      </SummaryGroup>
-
-      <SummaryGroup title="Haushalt" onEdit={() => onEdit(2)}>
-        <SummaryRow label="Erwachsene" v={form.erwachsene_im_haushalt} />
-        <SummaryRow label="Kinder" v={form.kinder_anzahl} />
-        <SummaryRow
-          label="Bestehende Immobilien"
-          v={form.bestehende_immobilien === "true" ? "Ja" : "Nein"}
-        />
-      </SummaryGroup>
-
-      <SummaryGroup title="Vermögen und Verpflichtungen" onEdit={() => onEdit(3)}>
-        <SummaryRow label="Eigenkapital" v={`${form.eigenkapital || "—"} EUR`} />
-        <SummaryRow
-          label="Kreditverpflichtungen / Monat"
-          v={`${form.kreditverpflichtungen_monatlich || "0"} EUR`}
-        />
-      </SummaryGroup>
-
-      {/* Bonitäts-Vorschau */}
-      <div className="rounded-3xl border-2 border-brand-accent bg-brand-accentSoft p-6">
-        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-accent">
-          Bonitäts-Vorschau
-        </div>
-        {bon ? (
-          <>
-            <div className="mt-2 font-display text-3xl font-semibold tabular-nums tracking-tight text-brand-ink md:text-4xl">
-              {fmtEUR(bon.max_finanzierbar)}
-            </div>
-            <p className="text-xs text-brand-muted">
-              Maximaler Finanzierungsrahmen
-            </p>
-            <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
-              <BonRow label="Max. Monatsrate" v={fmtEUR(bon.max_monatsrate)} />
-              <BonRow label="Max. Darlehen" v={fmtEUR(bon.max_darlehen)} />
-              <BonRow
-                label="Persönlicher Steuersatz"
-                v={`${(bon.steuersatz_grenze * 100).toFixed(0)}%`}
-              />
-              <BonRow
-                label="Durchschnittsteuersatz"
-                v={`${(bon.steuersatz_durchschnitt * 100).toFixed(1)}%`}
-              />
-            </div>
-          </>
-        ) : (
-          <p className="mt-2 text-sm text-brand-body">
-            Vervollständige bitte die vorherigen Schritte für deine
-            Bonitäts-Vorschau.
-          </p>
-        )}
-      </div>
-
-      <p className="text-xs text-brand-muted">
-        Mit Klick auf „Selbstauskunft einreichen&quot; bestätigst du die
-        Richtigkeit deiner Angaben und stimmst der Verarbeitung zur
-        Bonitätsprüfung zu. Deine Daten werden ausschließlich zur Prüfung deiner
-        Finanzierung verwendet.
-      </p>
-    </div>
-  );
-}
-
-function SummaryGroup({
+function PersonBlock({
   title,
-  onEdit,
-  children,
+  person,
+  set,
+  section,
 }: {
-  title: string;
-  onEdit: () => void;
-  children: React.ReactNode;
+  title?: string;
+  person: PersonData;
+  set: (patch: Partial<PersonData>) => void;
+  section: number;
 }) {
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between">
+    <div className="space-y-5">
+      {title && (
         <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-muted">
           {title}
         </h3>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="inline-flex items-center gap-1 text-xs font-medium text-brand-primary hover:underline"
-        >
-          <Pencil className="h-3 w-3" /> Bearbeiten
-        </button>
+      )}
+      {section === 1 && <SectionPersoenlich person={person} set={set} />}
+      {section === 2 && <SectionTaetigkeit person={person} set={set} />}
+      {section === 3 && <SectionEinnahmen person={person} set={set} />}
+      {section === 4 && <SectionVermoegen person={person} set={set} />}
+      {section === 6 && <SectionAusgaben person={person} set={set} />}
+    </div>
+  );
+}
+
+type PS = { person: PersonData; set: (patch: Partial<PersonData>) => void };
+
+function SectionPersoenlich({ person, set }: PS) {
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-5 md:grid-cols-2">
+        <TextField label="Vorname" req value={person.vorname} onChange={(v) => set({ vorname: v })} />
+        <TextField label="Nachname" req value={person.nachname} onChange={(v) => set({ nachname: v })} />
+        <TextField label="E-Mail" req type="email" value={person.email} onChange={(v) => set({ email: v })} />
+        <TextField label="Telefon" req type="tel" value={person.telefon} onChange={(v) => set({ telefon: v })} />
+        <DateField label="Geburtsdatum" req value={person.geburtsdatum} onChange={(v) => set({ geburtsdatum: v })} />
+        <TextField label="Staatsangehörigkeit" req value={person.staatsangehoerigkeit} onChange={(v) => set({ staatsangehoerigkeit: v })} />
       </div>
-      <dl className="grid gap-1.5 rounded-2xl bg-brand-surfaceMuted p-4 text-sm">
-        {children}
-      </dl>
+      <TextField label="Straße & Hausnr." req value={person.strasse} onChange={(v) => set({ strasse: v })} />
+      <div className="grid gap-5 md:grid-cols-[160px_1fr]">
+        <TextField
+          label="PLZ" req inputMode="numeric" value={person.plz}
+          onChange={(v) => set({ plz: v.replace(/\D/g, "").slice(0, 5) })}
+        />
+        <TextField label="Ort" req value={person.ort} onChange={(v) => set({ ort: v })} />
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <SelectField label="Wohnsituation" req options={WOHNSITUATION} value={person.wohnsituation} onChange={(v) => set({ wohnsituation: v })} />
+        <DateField label="Dort wohnhaft seit" value={person.wohnhaft_seit} onChange={(v) => set({ wohnhaft_seit: v })} />
+        <SelectField label="Familienstand" req options={FAMILIENSTAND} value={person.familienstand} onChange={(v) => set({ familienstand: v })} />
+        <TextField label="Kindergeldberechtigte Kinder (Anzahl)" inputMode="numeric" value={person.kinder_anzahl} onChange={(v) => set({ kinder_anzahl: v.replace(/\D/g, "") })} />
+      </div>
     </div>
   );
 }
 
-function SummaryRow({ label, v }: { label: string; v: string }) {
+function SectionTaetigkeit({ person, set }: PS) {
+  const erwerbstaetig = ["Angestellt", "Beamter", "Freiberufler"].includes(person.beschaeftigung);
   return (
-    <div className="grid grid-cols-[160px_1fr] gap-3">
-      <dt className="text-brand-muted">{label}</dt>
-      <dd className="font-medium text-brand-ink">{v || "—"}</dd>
+    <div className="space-y-5">
+      <SelectField label="Beschäftigungsverhältnis" req options={BESCHAEFTIGUNG} value={person.beschaeftigung} onChange={(v) => set({ beschaeftigung: v })} />
+      {erwerbstaetig && (
+        <>
+          <div className="grid gap-5 md:grid-cols-2">
+            <TextField label="Beruf / Tätigkeit" req value={person.beruf} onChange={(v) => set({ beruf: v })} />
+            <TextField label="Arbeitgeber" value={person.arbeitgeber} onChange={(v) => set({ arbeitgeber: v })} />
+          </div>
+          <SwitchField label="Arbeitgeber in Deutschland ansässig?" checked={person.arbeitgeber_deutschland} onChange={(v) => set({ arbeitgeber_deutschland: v })} />
+          <div className="grid gap-5 md:grid-cols-2">
+            <DateField label="Tätig seit" value={person.taetig_seit} onChange={(v) => set({ taetig_seit: v })} />
+            <SelectField label="Dauer" req options={DAUER} value={person.dauer} onChange={(v) => set({ dauer: v })} />
+          </div>
+          {person.dauer === "Befristet bis" && (
+            <DateField label="Befristet bis" req value={person.befristet_bis} onChange={(v) => set({ befristet_bis: v })} />
+          )}
+        </>
+      )}
     </div>
   );
 }
 
-function BonRow({ label, v }: { label: string; v: string }) {
+function SectionEinnahmen({ person, set }: PS) {
+  const has = (q: string) => person.einnahmequellen.includes(q);
   return (
-    <div className="flex items-baseline justify-between rounded-xl bg-brand-surface px-3 py-2">
-      <span className="text-brand-muted">{label}</span>
-      <span className="font-semibold tabular-nums text-brand-ink">{v}</span>
+    <div className="space-y-5">
+      <CheckboxGroup
+        label="Einnahmequellen" req options={EINNAHMEQUELLEN}
+        selected={person.einnahmequellen} onChange={(v) => set({ einnahmequellen: v })}
+      />
+      {has("Lohn / Gehalt / Bezüge") && (
+        <div className="grid gap-5 md:grid-cols-2">
+          <EuroField label="Lohn / Gehalt netto pro Monat" req value={person.lohn_netto_monat} onChange={(v) => set({ lohn_netto_monat: v })} />
+          <TextField label="Anzahl Gehälter pro Jahr" req inputMode="numeric" value={person.anzahl_gehaelter} onChange={(v) => set({ anzahl_gehaelter: v.replace(/\D/g, "") })} />
+        </div>
+      )}
+      {has("Einnahmen aus selbstständiger/freiberuflicher Arbeit") && (
+        <EuroField label="Einnahmen selbstständig pro Jahr" req value={person.selbststaendig_jahr} onChange={(v) => set({ selbststaendig_jahr: v })} />
+      )}
+      {has("Einnahmen aus nebenberuflicher Tätigkeit") && (
+        <div className="grid gap-5 md:grid-cols-2">
+          <EuroField label="Einnahmen Nebenberuf pro Jahr" req value={person.nebenberuf_jahr} onChange={(v) => set({ nebenberuf_jahr: v })} />
+          <DateField label="Beginn Nebenberuf" value={person.nebenberuf_beginn} onChange={(v) => set({ nebenberuf_beginn: v })} />
+        </div>
+      )}
+      {has("Renten und Pensionen") && (
+        <EuroField label="Renten / Pensionen pro Monat" req value={person.renten_monat} onChange={(v) => set({ renten_monat: v })} />
+      )}
+      {has("Mieteinnahmen") && (
+        <EuroField label="Mieteinnahmen pro Monat" req value={person.mieteinnahmen_monat} onChange={(v) => set({ mieteinnahmen_monat: v })} />
+      )}
+      {has("Kindergeld") && (
+        <EuroField label="Kindergeld pro Monat" req value={person.kindergeld_monat} onChange={(v) => set({ kindergeld_monat: v })} />
+      )}
+      {has("Unterhalt") && (
+        <EuroField label="Unterhalt pro Monat" req value={person.unterhalt_monat} onChange={(v) => set({ unterhalt_monat: v })} />
+      )}
+      {has("sonstige Einkünfte") && (
+        <div className="grid gap-5 md:grid-cols-2">
+          <EuroField label="Sonstige Einkünfte pro Jahr" req value={person.sonstige_einkuenfte_jahr} onChange={(v) => set({ sonstige_einkuenfte_jahr: v })} />
+          <TextField label="Art der Einkünfte" req value={person.sonstige_einkuenfte_art} onChange={(v) => set({ sonstige_einkuenfte_art: v })} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionVermoegen({ person, set }: PS) {
+  const has = (q: string) => person.vermoegenswerte.includes(q);
+  return (
+    <div className="space-y-5">
+      <CheckboxGroup
+        label="Liquide Vermögenswerte" req options={VERMOEGENSWERTE}
+        selected={person.vermoegenswerte} onChange={(v) => set({ vermoegenswerte: v })}
+      />
+      {has("Bank- und Sparguthaben") && (
+        <EuroField label="Bank- und Sparguthaben" req value={person.bank_sparguthaben} onChange={(v) => set({ bank_sparguthaben: v })} />
+      )}
+      {has("Wertpapiere/Aktien") && (
+        <EuroField label="Wertpapiere / Aktien (Kurswert)" req value={person.wertpapiere} onChange={(v) => set({ wertpapiere: v })} />
+      )}
+      {has("Kapitalbildende Lebens-/Rentenversicherungen") && (
+        <EuroField label="Lebens-/Rentenversicherungen (Rückkaufswert)" req value={person.lebensversicherung} onChange={(v) => set({ lebensversicherung: v })} />
+      )}
+      {has("Bausparvertrag") && (
+        <div className="grid gap-5 md:grid-cols-2">
+          <EuroField label="Bausparvertrag: Guthaben" req value={person.bausparen_guthaben} onChange={(v) => set({ bausparen_guthaben: v })} />
+          <EuroField label="Bausparvertrag: Sparrate pro Monat" value={person.bausparen_rate} onChange={(v) => set({ bausparen_rate: v })} />
+        </div>
+      )}
+      {has("Sonstiges Vermögen") && (
+        <div className="grid gap-5 md:grid-cols-2">
+          <EuroField label="Sonstiges Vermögen" req value={person.sonstiges_vermoegen} onChange={(v) => set({ sonstiges_vermoegen: v })} />
+          <TextField label="Art des sonstigen Vermögens" req value={person.sonstiges_vermoegen_art} onChange={(v) => set({ sonstiges_vermoegen_art: v })} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionAusgaben({ person, set }: PS) {
+  const has = (q: string) => person.ausgabenposten.includes(q);
+  return (
+    <div className="space-y-5">
+      <EuroField label="Lebenshaltungskosten (ca.) pro Monat" req value={person.lebenshaltung_monat} onChange={(v) => set({ lebenshaltung_monat: v })} />
+      <SelectField label="Krankenversicherungsstatus" req options={KV_STATUS} value={person.kv_status} onChange={(v) => set({ kv_status: v })} />
+      {person.kv_status === "Privat krankenversichert" && (
+        <EuroField label="Privater Krankenversicherungsbeitrag pro Monat" req value={person.pkv_beitrag_monat} onChange={(v) => set({ pkv_beitrag_monat: v })} />
+      )}
+      <CheckboxGroup
+        label="Weitere Ausgabenposten" options={AUSGABENPOSTEN}
+        selected={person.ausgabenposten} onChange={(v) => set({ ausgabenposten: v })}
+      />
+      {has("Wohnkosten") && (
+        <EuroField label="Warmmiete pro Monat" req value={person.warmmiete_monat} onChange={(v) => set({ warmmiete_monat: v })} />
+      )}
+      {has("Kredite / Leasing / 0% Finanzierungen") && (
+        <div className="grid gap-5 md:grid-cols-2">
+          <EuroField label="Kreditrate pro Monat" req value={person.kreditrate_monat} onChange={(v) => set({ kreditrate_monat: v })} />
+          <EuroField label="Restschuld" value={person.restschuld} onChange={(v) => set({ restschuld: v })} />
+        </div>
+      )}
+      {has("Unterhaltsverpflichtungen") && (
+        <EuroField label="Unterhaltsverpflichtungen pro Monat" req value={person.unterhaltsverpflichtung_monat} onChange={(v) => set({ unterhaltsverpflichtung_monat: v })} />
+      )}
+      {has("sonstige Verbindlichkeiten") && (
+        <div className="grid gap-5 md:grid-cols-2">
+          <EuroField label="Sonstige Verbindlichkeiten pro Monat" req value={person.sonstige_verbindlichkeit_monat} onChange={(v) => set({ sonstige_verbindlichkeit_monat: v })} />
+          <TextField label="Art der Verbindlichkeit" req value={person.verbindlichkeit_art} onChange={(v) => set({ verbindlichkeit_art: v })} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===========================================================================
+// Immobilien-Subform (Schritt 5)
+// ===========================================================================
+
+function ImmobilienStep({
+  data,
+  setData,
+}: {
+  data: SelbstauskunftData;
+  setData: React.Dispatch<React.SetStateAction<SelbstauskunftData>>;
+}) {
+  const setImm = (idx: number, patch: Partial<ImmobilieData>) =>
+    setData((d) => ({
+      ...d,
+      immobilien: d.immobilien.map((im, i) => (i === idx ? { ...im, ...patch } : im)),
+    }));
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <Label className="text-sm font-medium text-brand-ink">
+          Ist bereits Immobilienvermögen vorhanden?
+          <span className="ml-0.5 text-brand-accent">*</span>
+        </Label>
+        <RadioGroup
+          className="mt-2 flex gap-6"
+          value={data.immobilienvermoegen || undefined}
+          onValueChange={(v) =>
+            setData((d) => ({
+              ...d,
+              immobilienvermoegen: v as "ja" | "nein",
+              immobilien:
+                v === "ja" && d.immobilien.length === 0 ? [emptyImmobilie()] : d.immobilien,
+            }))
+          }
+        >
+          <label className="flex items-center gap-2 text-sm">
+            <RadioGroupItem value="ja" id="imm-ja" /> Ja
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <RadioGroupItem value="nein" id="imm-nein" /> Nein
+          </label>
+        </RadioGroup>
+      </div>
+
+      {data.immobilienvermoegen === "ja" && (
+        <div className="space-y-4">
+          {data.immobilien.map((im, idx) => (
+            <div key={idx} className="space-y-4 rounded-2xl border border-brand-border p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-muted">
+                  Immobilie {idx + 1}
+                </span>
+                <Button
+                  type="button" variant="ghost" size="sm"
+                  onClick={() => setData((d) => ({ ...d, immobilien: d.immobilien.filter((_, i) => i !== idx) }))}
+                >
+                  <Trash2 className="h-4 w-4" /> Entfernen
+                </Button>
+              </div>
+              <div className="grid gap-5 md:grid-cols-2">
+                <SelectField label="Objektart" options={IMMOBILIEN_OBJEKTART} value={im.objektart} onChange={(v) => setImm(idx, { objektart: v })} />
+                <TextField label="Adresse" value={im.adresse} onChange={(v) => setImm(idx, { adresse: v })} />
+                <EuroField label="Verkehrswert" value={im.verkehrswert} onChange={(v) => setImm(idx, { verkehrswert: v })} />
+                <EuroField label="Restdarlehen" value={im.restdarlehen} onChange={(v) => setImm(idx, { restdarlehen: v })} />
+                <EuroField label="Mieteinnahme pro Monat" value={im.mieteinnahme_monat} onChange={(v) => setImm(idx, { mieteinnahme_monat: v })} />
+                <SwitchField label="Eigennutzung" checked={im.eigennutzung} onChange={(v) => setImm(idx, { eigennutzung: v })} />
+              </div>
+            </div>
+          ))}
+          <Button
+            type="button" variant="outline"
+            onClick={() => setData((d) => ({ ...d, immobilien: [...d.immobilien, emptyImmobilie()] }))}
+            className="rounded-2xl"
+          >
+            <Plus className="mr-1 h-4 w-4" /> Immobilie erfassen
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===========================================================================
+// Unterschrift (Schritt 7)
+// ===========================================================================
+
+function UnterschriftStep({
+  data,
+  setData,
+  sigHaupt,
+  sigMit,
+}: {
+  data: SelbstauskunftData;
+  setData: React.Dispatch<React.SetStateAction<SelbstauskunftData>>;
+  sigHaupt: React.RefObject<SignaturePadHandle | null>;
+  sigMit: React.RefObject<SignaturePadHandle | null>;
+}) {
+  const today = useMemo(() => data.datum, [data.datum]);
+  return (
+    <div className="space-y-5">
+      <label className="flex items-start gap-3 rounded-2xl border border-brand-border bg-brand-surfaceMuted px-4 py-3">
+        <Checkbox
+          checked={data.datenschutz}
+          onCheckedChange={(c) => setData((d) => ({ ...d, datenschutz: Boolean(c) }))}
+          className="mt-0.5"
+        />
+        <span className="text-sm text-brand-body">
+          Ich bestätige die Richtigkeit meiner Angaben und die Datenschutzerklärung.
+        </span>
+      </label>
+      <div className="grid gap-5 md:grid-cols-2">
+        <TextField label="Ort" req value={data.ort} onChange={(v) => setData((d) => ({ ...d, ort: v }))} />
+        <DateField label="Datum" value={today} onChange={(v) => setData((d) => ({ ...d, datum: v }))} />
+      </div>
+      <div>
+        <Label className="text-sm font-medium text-brand-ink">
+          Unterschrift {data.mitantragsteller ? "Hauptantragsteller" : ""}
+          <span className="ml-0.5 text-brand-accent">*</span>
+        </Label>
+        <div className="mt-2">
+          <SignaturePad ref={sigHaupt} />
+        </div>
+      </div>
+      {data.mitantragsteller && (
+        <div>
+          <Label className="text-sm font-medium text-brand-ink">
+            Unterschrift Mitantragsteller<span className="ml-0.5 text-brand-accent">*</span>
+          </Label>
+          <div className="mt-2">
+            <SignaturePad ref={sigMit} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===========================================================================
+// Feld-Primitive
+// ===========================================================================
+
+const Star = () => <span className="ml-0.5 text-brand-accent">*</span>;
+
+function Wrap({ label, req, children }: { label: string; req?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <Label className="text-sm font-medium text-brand-ink">
+        {label}{req ? <Star /> : null}
+      </Label>
+      <div className="mt-1.5">{children}</div>
+    </div>
+  );
+}
+
+function TextField({
+  label, req, value, onChange, type = "text", inputMode,
+}: {
+  label: string; req?: boolean; value: string; onChange: (v: string) => void;
+  type?: string; inputMode?: "numeric" | "text";
+}) {
+  return (
+    <Wrap label={label} req={req}>
+      <Input type={type} inputMode={inputMode} value={value} onChange={(e) => onChange(e.target.value)} />
+    </Wrap>
+  );
+}
+
+function EuroField({ label, req, value, onChange }: { label: string; req?: boolean; value: string; onChange: (v: string) => void }) {
+  return (
+    <Wrap label={label} req={req}>
+      <div className="relative">
+        <Input
+          inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)}
+          placeholder="0,00" className="pr-7"
+        />
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-brand-muted">€</span>
+      </div>
+    </Wrap>
+  );
+}
+
+function DateField({ label, req, value, onChange }: { label: string; req?: boolean; value: string; onChange: (v: string) => void }) {
+  return (
+    <Wrap label={label} req={req}>
+      <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} />
+    </Wrap>
+  );
+}
+
+function SelectField({
+  label, req, options, value, onChange,
+}: {
+  label: string; req?: boolean; options: readonly string[]; value: string; onChange: (v: string) => void;
+}) {
+  return (
+    <Wrap label={label} req={req}>
+      <Select value={value || undefined} onValueChange={onChange}>
+        <SelectTrigger className="rounded-2xl"><SelectValue placeholder="Bitte wählen" /></SelectTrigger>
+        <SelectContent>
+          {options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </Wrap>
+  );
+}
+
+function SwitchField({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center justify-between gap-3 rounded-2xl border border-brand-border px-4 py-3 text-sm">
+      <span className="font-medium text-brand-ink">{label}</span>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </label>
+  );
+}
+
+function CheckboxGroup({
+  label, req, options, selected, onChange,
+}: {
+  label: string; req?: boolean; options: readonly string[]; selected: string[]; onChange: (v: string[]) => void;
+}) {
+  const toggle = (o: string) =>
+    onChange(selected.includes(o) ? selected.filter((x) => x !== o) : [...selected, o]);
+  return (
+    <div>
+      <Label className="text-sm font-medium text-brand-ink">{label}{req ? <Star /> : null}</Label>
+      <div className="mt-2 space-y-2">
+        {options.map((o) => (
+          <label key={o} className="flex items-start gap-3 rounded-xl border border-brand-border px-3 py-2 text-sm">
+            <Checkbox checked={selected.includes(o)} onCheckedChange={() => toggle(o)} className="mt-0.5" />
+            <span className="text-brand-body">{o}</span>
+          </label>
+        ))}
+      </div>
     </div>
   );
 }

@@ -34,6 +34,12 @@ interface Props {
   onDone?: () => void;
 }
 
+const EMPTY_MIT = {
+  vorname: "", nachname: "", email: "", telefon: "", strasse: "",
+  plz: "", ort: "", geburtsdatum: "", staatsangehoerigkeit: "",
+  steuer_id: "", iban: "",
+};
+
 export function ReservierungModal({ open, onOpenChange, einheitId, kundeId, onDone }: Props) {
   const router = useRouter();
   const padRef = useRef<SignaturePadHandle>(null);
@@ -43,7 +49,15 @@ export function ReservierungModal({ open, onOpenChange, einheitId, kundeId, onDo
   const [bemerkungen, setBemerkungen] = useState("");
   const [agb1, setAgb1] = useState(false);
   const [agb2, setAgb2] = useState(false);
+  const [gebuehrUeberwiesen, setGebuehrUeberwiesen] = useState(false);
   const [bank, setBank] = useState({ kontoinhaber: "", iban: "", bic: "" });
+
+  // PROJ-5 (Fillout): Antragsteller-Zusatzfelder + Mitantragsteller.
+  const [antrag, setAntrag] = useState({ steuer_id: "", iban: "", staatsangehoerigkeit: "" });
+  const [mitOn, setMitOn] = useState(false);
+  const [mit, setMit] = useState({ ...EMPTY_MIT });
+  const [ort, setOrt] = useState("");
+  const [datum, setDatum] = useState("");
 
   const [ctx, setCtx] = useState<ReservierungContext | null>(null);
   const [ctxLoading, setCtxLoading] = useState(false);
@@ -63,6 +77,32 @@ export function ReservierungModal({ open, onOpenChange, einheitId, kundeId, onDo
         iban: p?.bank_iban || vp?.bank_iban || "",
         bic: p?.bank_bic || vp?.bank_bic || "",
       });
+      // Antragsteller-/Mitantragsteller-Prefill aus der Selbstauskunft.
+      const sa = data.selbstauskunft;
+      setAntrag({
+        steuer_id: "",
+        iban: "",
+        staatsangehoerigkeit: sa?.staatsangehoerigkeit || "",
+      });
+      setMitOn(Boolean(sa?.mitantragsteller));
+      setMit(
+        sa?.mit
+          ? {
+              vorname: sa.mit.vorname || "",
+              nachname: sa.mit.nachname || "",
+              email: sa.mit.email || "",
+              telefon: sa.mit.telefon || "",
+              strasse: sa.mit.strasse || "",
+              plz: sa.mit.plz || "",
+              ort: sa.mit.ort || "",
+              geburtsdatum: sa.mit.geburtsdatum || "",
+              staatsangehoerigkeit: sa.mit.staatsangehoerigkeit || "",
+              steuer_id: "",
+              iban: "",
+            }
+          : { ...EMPTY_MIT },
+      );
+      setOrt(data.kunde?.stadt || "");
     } catch (e) {
       console.error(e);
       setCtxError(e instanceof Error ? e.message : "Daten konnten nicht geladen werden");
@@ -77,8 +117,14 @@ export function ReservierungModal({ open, onOpenChange, einheitId, kundeId, onDo
       setBemerkungen("");
       setAgb1(false);
       setAgb2(false);
+      setGebuehrUeberwiesen(false);
       setDauerTage(30);
       setGebuehr(500);
+      setAntrag({ steuer_id: "", iban: "", staatsangehoerigkeit: "" });
+      setMitOn(false);
+      setMit({ ...EMPTY_MIT });
+      setOrt("");
+      setDatum(new Date().toISOString().slice(0, 10));
       setCtx(null);
       void loadCtx();
     }
@@ -111,6 +157,22 @@ export function ReservierungModal({ open, onOpenChange, einheitId, kundeId, onDo
         bank_kontoinhaber: bank.kontoinhaber || null,
         bank_iban: bank.iban || null,
         bank_bic: bank.bic || null,
+        steuer_id: antrag.steuer_id || null,
+        staatsangehoerigkeit: antrag.staatsangehoerigkeit || null,
+        antragsteller_iban: antrag.iban || null,
+        mitantragsteller: mitOn,
+        datenschutz_bestaetigt: agb1,
+        gebuehr_ueberwiesen: gebuehrUeberwiesen,
+        ort: ort || null,
+        datum: datum || null,
+        daten: {
+          antragsteller: {
+            steuer_id: antrag.steuer_id || null,
+            iban: antrag.iban || null,
+            staatsangehoerigkeit: antrag.staatsangehoerigkeit || null,
+          },
+          mitantragsteller: mitOn ? mit : null,
+        },
       });
 
       // PDF clientseitig rendern (gleicher Stack wie Exposé)
@@ -151,6 +213,30 @@ export function ReservierungModal({ open, onOpenChange, einheitId, kundeId, onDo
             },
             kunde,
             vp: ctx.vp,
+            antragsteller: {
+              steuer_id: antrag.steuer_id || null,
+              iban: antrag.iban || null,
+              staatsangehoerigkeit: antrag.staatsangehoerigkeit || null,
+            },
+            mitantragsteller: mitOn
+              ? {
+                  vorname: mit.vorname || null,
+                  nachname: mit.nachname || null,
+                  email: mit.email || null,
+                  telefon: mit.telefon || null,
+                  strasse: mit.strasse || null,
+                  plz: mit.plz || null,
+                  ort: mit.ort || null,
+                  geburtsdatum: mit.geburtsdatum || null,
+                  staatsangehoerigkeit: mit.staatsangehoerigkeit || null,
+                  steuer_id: mit.steuer_id || null,
+                  iban: mit.iban || null,
+                }
+              : null,
+            bestaetigungen: {
+              datenschutz: agb1,
+              gebuehr_ueberwiesen: gebuehrUeberwiesen,
+            },
           }}
         />,
       ).toBlob();
@@ -305,6 +391,74 @@ export function ReservierungModal({ open, onOpenChange, einheitId, kundeId, onDo
               )}
             </section>
 
+            <section className="space-y-2">
+              <h4 className="text-sm font-semibold">Angaben Antragsteller</h4>
+              {ctx.selbstauskunft && (
+                <p className="text-xs text-muted-foreground">
+                  Teilweise aus der Selbstauskunft vorausgefüllt — bitte prüfen.
+                </p>
+              )}
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Input
+                  placeholder="Steuer-ID"
+                  value={antrag.steuer_id}
+                  onChange={(e) => setAntrag({ ...antrag, steuer_id: e.target.value })}
+                />
+                <Input
+                  placeholder="Staatsangehörigkeit"
+                  value={antrag.staatsangehoerigkeit}
+                  onChange={(e) =>
+                    setAntrag({ ...antrag, staatsangehoerigkeit: e.target.value })
+                  }
+                />
+                <Input
+                  className="sm:col-span-2"
+                  placeholder="IBAN des Antragstellers"
+                  value={antrag.iban}
+                  onChange={(e) => setAntrag({ ...antrag, iban: e.target.value })}
+                />
+              </div>
+            </section>
+
+            <section className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-semibold">
+                <Checkbox
+                  checked={mitOn}
+                  onCheckedChange={(v) => setMitOn(v === true)}
+                />
+                Mitantragsteller vorhanden
+              </label>
+              {mitOn && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Input placeholder="Vorname" value={mit.vorname} onChange={(e) => setMit({ ...mit, vorname: e.target.value })} />
+                  <Input placeholder="Nachname" value={mit.nachname} onChange={(e) => setMit({ ...mit, nachname: e.target.value })} />
+                  <Input placeholder="E-Mail" value={mit.email} onChange={(e) => setMit({ ...mit, email: e.target.value })} />
+                  <Input placeholder="Telefon" value={mit.telefon} onChange={(e) => setMit({ ...mit, telefon: e.target.value })} />
+                  <Input className="sm:col-span-2" placeholder="Straße & Hausnr." value={mit.strasse} onChange={(e) => setMit({ ...mit, strasse: e.target.value })} />
+                  <Input placeholder="PLZ" value={mit.plz} onChange={(e) => setMit({ ...mit, plz: e.target.value })} />
+                  <Input placeholder="Ort" value={mit.ort} onChange={(e) => setMit({ ...mit, ort: e.target.value })} />
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Geburtsdatum</Label>
+                    <Input type="date" value={mit.geburtsdatum} onChange={(e) => setMit({ ...mit, geburtsdatum: e.target.value })} />
+                  </div>
+                  <Input placeholder="Staatsangehörigkeit" value={mit.staatsangehoerigkeit} onChange={(e) => setMit({ ...mit, staatsangehoerigkeit: e.target.value })} />
+                  <Input placeholder="Steuer-ID" value={mit.steuer_id} onChange={(e) => setMit({ ...mit, steuer_id: e.target.value })} />
+                  <Input placeholder="IBAN" value={mit.iban} onChange={(e) => setMit({ ...mit, iban: e.target.value })} />
+                </div>
+              )}
+            </section>
+
+            <section className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="res-ort">Ort</Label>
+                <Input id="res-ort" value={ort} onChange={(e) => setOrt(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="res-datum">Datum</Label>
+                <Input id="res-datum" type="date" value={datum} onChange={(e) => setDatum(e.target.value)} />
+              </div>
+            </section>
+
             <section>
               <Label htmlFor="bemerkungen">Bemerkungen (optional)</Label>
               <Textarea
@@ -337,6 +491,14 @@ export function ReservierungModal({ open, onOpenChange, einheitId, kundeId, onDo
                   Ich verstehe, dass die Reservierungsgebühr bei Beurkundung
                   vollständig auf den Kaufpreis angerechnet wird.
                 </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <Checkbox
+                  checked={gebuehrUeberwiesen}
+                  onCheckedChange={(v) => setGebuehrUeberwiesen(v === true)}
+                  className="mt-0.5"
+                />
+                <span>Ich habe die Reservierungsgebühr überwiesen.</span>
               </label>
             </section>
 

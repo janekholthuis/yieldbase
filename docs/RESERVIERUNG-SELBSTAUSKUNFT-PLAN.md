@@ -1,8 +1,8 @@
 # Plan: Selbstauskunft & Reservierung als App-Formulare (Fillout-Nachbau)
 
-> **Status:** Geplant 2026-06-13. Noch nicht gebaut. Dieser Plan ist so
-> geschrieben, dass er in einem **frischen Chat** ohne Vorwissen ausgeführt
-> werden kann.
+> **Status:** ✅ **Gebaut 2026-06-13** (tsc + 152 Tests + `npm run build` grün;
+> Migration auf Prod angewendet). Manuelle/E2E-QA + visuelle Verifikation offen.
+> Umsetzungs-Notizen am Ende dieses Dokuments.
 >
 > **Quellen (im Repo-Root):** `Selbstauskunft.json`, `Reservierung EMI.json`
 > (Fillout-Exporte). **Exakte Feldliste:** [`docs/FILLOUT-FORMSPEC.md`](FILLOUT-FORMSPEC.md)
@@ -241,3 +241,127 @@ Signatur sind laut PRD ohnehin Pflicht (IP, User-Agent, Timestamp).
 Optionen in `widget.template.options.staticOptions[].label.logic.value`,
 Pflicht via `widget.template.required.logic === true`. Das Generator-Snippet
 steht in der Git-Historie dieses Commits (Bash-Aufruf, der FORMSPEC erzeugt hat).
+
+---
+
+## Umsetzungs-Notizen (2026-06-13)
+
+**Migration (Prod ffagjzkkzlywejzjfgue, freigegeben):**
+`supabase/migrations/20260613090000_fillout_selbstauskunft_reservierung.sql`.
+Neu: `selbstauskuenfte` (1:1 kunde, `daten jsonb` + Auswertungsspalten + Audit +
+versteckte CRM-Felder), `selbstauskunft_immobilien` (Subform). `reservierungen`
+um `steuer_id, staatsangehoerigkeit, antragsteller_iban, mitantragsteller,
+datenschutz_bestaetigt, gebuehr_ueberwiesen, ort, datum, daten jsonb, close_*,
+berater_*` erweitert. RLS analog `kunden` (Self/VP-Subtree/VL/Support/Admin).
+Supabase-Advisors: 0 ERROR. Types neu generiert.
+
+**Selbstauskunft (PROJ-7) — neuer 8-Schritt-Wizard ersetzt den alten 5-Schritt:**
+- `src/lib/selbstauskunft.ts` — reines Domänenmodell (Optionen exakt nach FORMSPEC,
+  `PersonData`/`SelbstauskunftData`, `parseEuro`, Summen-Ableitung für
+  Auswertung/Bonität, `applyPrefill`, bedingte Validierung). Tests:
+  `selbstauskunft.test.ts` (15 Fälle).
+- `src/lib/actions/selbstauskunft.ts` — `getMySelbstauskunftContext`,
+  `saveSelbstauskunftDraft` (Autosave/Upsert, authed/RLS-self),
+  `submitMySelbstauskunft` (finalisiert, Immobilien-Subform ersetzt, **kunden-
+  Mirror + Bonität via Admin-Client** — der `kunden_protect_system_fields`-
+  Trigger greift mangels auth.uid() nicht). Audit ip/user_agent aus Headers.
+- `src/components/portal/SelbstauskunftWizard.tsx` — 7 Inhalts-Schritte
+  (Persönlich · Tätigkeit · Einnahmen · Vermögen · Immobilien · Ausgaben ·
+  Unterschrift), `PersonBlock` 2× (Haupt + Mitantragsteller), bedingte Felder,
+  Immobilien-`useState`-Liste, Autosave je „Weiter", `SignaturePad` (Haupt + Mit).
+- `src/app/(portal)/portal/selbstauskunft/page.tsx` — Prefill: URL-Param
+  (`vorname,nachname,mail|email,telefon`) vor DB (`kunden`), versteckte CRM-Felder
+  (`close_lead_id,close_opportunity_id,berater_*`) aus URL bzw. gespeicherter Zeile/VP.
+
+**Bonität aus Netto-Einnahmen:** Die Selbstauskunft erfasst (wie Fillout) NETTO.
+Als Einkommensbasis dient die annualisierte Gesamteinnahme → konservativ
+(netto < brutto). Nur gerechnet, wenn Beschäftigung einen Bonitäts-Status ergibt
+(Angestellt/Beamter→angestellter, Freiberufler→selbststaendiger). VP kann
+`brutto_jahreseinkommen` im Bonitäts-Tab nachschärfen.
+
+**Reservierung (PROJ-5) — Felder ergänzt + Prefill:**
+- `reservierungen.ts` `createReservierung`: persistiert Steuer-ID,
+  Staatsangehörigkeit, Antragsteller-IBAN, Mitantragsteller-Flag, Datenschutz-/
+  Überweisungs-Bestätigung, Ort/Datum, `daten` (Mitantragsteller-Block).
+- `data/reservierungen.ts`: Context liefert Prefill aus eingereichter
+  Selbstauskunft (Staatsangehörigkeit + kompletter Mitantragsteller-Block).
+- `ReservierungModal.tsx`: neue Abschnitte „Angaben Antragsteller" (Steuer-ID/
+  IBAN/Staatsangehörigkeit, vorausgefüllt), Mitantragsteller-Toggle + Block,
+  Ort/Datum, Zusatz-Bestätigung „Gebühr überwiesen".
+- `ReservierungPdfDocument.tsx`: zeigt Antragsteller-Zusatzfelder,
+  Mitantragsteller-Tabelle und Bestätigungs-Häkchen.
+
+**Read-only Selbstauskunft-Tab (VP, `KundeDetailView`)** bleibt unverändert —
+er liest die flachen `kunden`-Felder, die der Submit weiter spiegelt → konsistent.
+Eine reichere VP-Ansicht (Einnahmen-/Ausgaben-Breakdown, Immobilien, Mitantrag-
+steller) aus `selbstauskuenfte` wäre ein optionaler Folgeschritt.
+
+**Offen:** manuelle/E2E-QA (Portal-Flow inkl. Prefill-URL aus Close); exakte
+URL-Param-Namen am Close-Mapping verifizieren (`mail` vs. `email`, `telefon`);
+Immobilien-Subform-Spalten ggf. erweitern; optionaler Close-Sync der versteckten
+CRM-IDs.
+
+---
+
+## QA-Ergebnisse (Code-Level QA + Security-Audit, 2026-06-13)
+
+> **Methodik:** tsc + `npm run build` grün, 152 Unit-Tests grün (inkl. 15 für
+> `selbstauskunft.ts`), Feldabgleich gegen `FILLOUT-FORMSPEC.md`, Red-Team-Audit
+> der Server-Actions. **Browser-E2E nicht ausgeführt** — braucht laufende
+> authentifizierte App + Portal-Kunde-Seed + Live-Supabase. Offen als Folgeschritt
+> (idealerweise auf Staging mit Beispiel-Prefill-URL aus Close).
+
+### Feldabdeckung Selbstauskunft (vs. FORMSPEC)
+- ✅ 7 Inhalts-Schritte: Persönlich, Tätigkeit, Einnahmen, Vermögen, Immobilien,
+  Ausgaben, Unterschrift. Optionen exakt nach FORMSPEC.
+- ✅ Mitantragsteller doppelt (Toggle), bedingte Felder (Beruf nur bei
+  Erwerbstätigkeit; Befristet-bis nur bei „Befristet bis"; PKV nur bei privat;
+  Betragsfelder nur bei gewählter Quelle).
+- ✅ Immobilien-Subform (Ja/Nein + wiederholbare Liste).
+- ✅ Unterschrift Haupt + (bedingt) Mitantragsteller, Datenschutz, Ort, Datum.
+- ✅ Prefill: URL-Param (`vorname/nachname/mail|email/telefon`) vor DB; versteckte
+  CRM-Felder (`close_*`, `berater_*`) durchgereicht, nicht angezeigt.
+
+### Security-Audit — neue Actions
+- ✅ `saveSelbstauskunftDraft` / `submitMySelbstauskunft`: `kunde_id` wird aus
+  `findMyKunde(userId)` abgeleitet, **nicht** aus Input → kein IDOR. Schreiben via
+  authed Client (RLS `sa_self_*`). Immobilien via `sai_self_all` (Parent-Ownership).
+- ✅ kunden-Mirror via Admin-Client ist auf `eq("id", eigene kunde.id)` beschränkt;
+  setzt **nicht** `status/vp_id/user_id` → keine Rechte-Eskalation. Bonität wird
+  serverseitig neu gerechnet.
+- ✅ `submitMySelbstauskunft` validiert alle Pflicht-Schritte **serverseitig**
+  (vertraut nicht dem Client), Unterschrift Pflicht.
+- ✅ `createReservierung`: unveränderter Auth-Pfad (`requireUser`, `vp_id=userId`),
+  nur zusätzliche Spalten — keine neue Autorisierungslücke. RLS unverändert.
+- ✅ Supabase-Advisors nach Migration: **0 ERROR**.
+
+### Gefundene Punkte
+- **BUG-Q3 (Low–Medium) — Unterschrift ohne Längenlimit.** `submitMySelbstauskunft`
+  `signaturHaupt/signaturMit` = `z.string().min(1)` ohne Max (Reservierung cappt bei
+  2 MB). Großer DataURL landet ungebremst in `text`-Spalte. *Empfehlung:* `.max(2_000_000)`.
+- **BUG-Q4 (Low) — IP-Audit ungeprüft.** `ip: ipRaw as never` (inet). Ein
+  manipulierter `x-forwarded-for` mit ungültigem Wert könnte den inet-Cast und
+  damit den Submit brechen (Self-DoS). Auf Vercel ist XFF plattformkontrolliert →
+  Realrisiko gering. *Empfehlung:* IP validieren / try-catch / bei Ungültigkeit null.
+- **BUG-Q5 (Low, by design) — Kundengetriebene Bonität.** Der Kunde kann durch
+  Selbstauskunft seine eigenen Bonitäts-Kennzahlen (max_*) beeinflussen (Admin-Client
+  umgeht den protect-Trigger — konsistent mit der bestehenden `submit_selbstauskunft`-
+  RPC). VP-Review im Bonitäts-Tab bleibt die Kontrolle. *Optional:* Bonität erst nach
+  VP-Freigabe als „bestätigt" markieren.
+- **INFO — PII.** Steuer-ID/IBAN werden als Klartext gespeichert (konsistent mit
+  bestehendem `bank_iban`). Kein neues Risiko; für Compliance vormerken.
+- **OFFEN — Close-URL-Param-Namen** (`mail` vs. `email`, `telefon` vs. `telefonnr`)
+  am echten Fillout-Share-Link/Close-Mapping verifizieren, sonst greift Prefill nicht.
+
+### Fazit
+Keine Critical/High-Bugs; Auth/RLS/Org-Isolation sauber. **Empfehlung:** BUG-Q3
+(Längenlimit) vor Deploy fixen, BUG-Q4 defensiv härten; danach manuelle/E2E-QA auf
+Staging + Close-Param-Verifikation.
+
+### Fixes nach QA (2026-06-13)
+- **BUG-Q3** ✅ gefixt: `signaturHaupt/signaturMit` in `submitMySelbstauskunft` auf
+  `.max(2_000_000)` begrenzt (wie Reservierung).
+- **BUG-Q4** ✅ gefixt: `sanitizeIp()` validiert den `x-forwarded-for`-Wert vor dem
+  inet-Cast (ungültig → null), kein Submit-Bruch mehr möglich.
+- **BUG-Q5 / PII / Close-Params:** unverändert (by design bzw. offen — s. o.).
+- Verifikation: `tsc` + **156 Tests** + `npm run build` grün.

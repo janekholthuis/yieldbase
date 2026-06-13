@@ -1,7 +1,16 @@
 import Link from "next/link";
-import { ArrowLeft, Building2, MapPin } from "lucide-react";
+import {
+  ArrowLeft,
+  MapPin,
+  Building2,
+  Ruler,
+  DoorClosed,
+  Percent,
+  CalendarDays,
+  Layers,
+  Euro,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -12,6 +21,8 @@ import {
 } from "@/components/ui/table";
 import { VerkaufsstatusTabelle } from "@/components/objekte/VerkaufsstatusTabelle";
 import { ProjektKalkulation } from "@/components/objekte/ProjektKalkulation";
+import { ProjektGalerie } from "@/components/objekte/ProjektGalerie";
+import { KarteTab } from "@/components/objekte/KarteTab";
 import type { KalkulationsContext } from "@/lib/data/kalkulation-context";
 import {
   STATUS_BADGE_CLASS,
@@ -33,6 +44,11 @@ function fmtRange(r: [number, number] | null, fmt: (n: number) => string): strin
   if (!r) return "—";
   return r[0] === r[1] ? fmt(r[0]) : `${fmt(r[0])} – ${fmt(r[1])}`;
 }
+/** Brutto-Mietrendite aus Kaltmiete & Kaufpreis (Projekt-Wert fehlt nach Sync). */
+function bruttoRendite(kp: number | null, miete: number | null): number | null {
+  if (!kp || !miete || kp <= 0) return null;
+  return ((miete * 12) / kp) * 100;
+}
 
 export function ProjektDetailView({
   projekt,
@@ -46,7 +62,7 @@ export function ProjektDetailView({
   const flaechen = units.map((u) => u.wohnflaeche).filter((v): v is number => v != null);
   const zimmer = units.map((u) => u.zimmer).filter((v): v is number => v != null);
   const renditen = units
-    .map((u) => u.mietrendite_brutto)
+    .map((u) => bruttoRendite(u.kaufpreis, u.miete))
     .filter((v): v is number => v != null);
 
   const freiCount = units.filter((u) => u.status === "frei").length;
@@ -60,67 +76,93 @@ export function ProjektDetailView({
         </Link>
       </Button>
 
-      {/* Header */}
-      <Card className="overflow-hidden">
-        <div className="grid gap-0 md:grid-cols-[minmax(0,360px)_1fr]">
-          <div className="relative h-56 w-full bg-muted md:h-full">
-            {projekt.cover_image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={projekt.cover_image_url}
-                alt={projekt.name ?? "Projekt"}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground">
-                <Building2 className="h-12 w-12" />
+      {/* Visueller Kopf: Galerie + Karte */}
+      <div className="grid items-start gap-4 lg:grid-cols-[1fr_minmax(0,340px)]">
+        <ProjektGalerie
+          bilder={projekt.bilder}
+          alt={projekt.name ?? adresse ?? "Projekt"}
+        />
+        <KarteTab adresse={projekt.adresse} plz={projekt.plz} stadt={projekt.stadt} />
+      </div>
+
+      {/* Titel + Preis + Kennzahlen */}
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {TYP_LABEL[projekt.projekt_typ]}
+            </div>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-foreground">
+              {projekt.name ?? adresse ?? "Projekt"}
+            </h1>
+            {adresse && (
+              <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4 shrink-0" />
+                {adresse}
               </div>
             )}
           </div>
-          <div className="space-y-4 p-6">
-            <div>
-              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {TYP_LABEL[projekt.projekt_typ]}
-              </div>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-                {projekt.name ?? adresse ?? "Projekt"}
-              </h1>
-              {adresse && (
-                <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4 shrink-0" />
-                  {adresse}
-                </div>
-              )}
+          <div className="text-right">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Kaufpreis
             </div>
-
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-foreground md:text-3xl">
               {fmtRange(range(prices), (n) => formatEUR(n))}
             </div>
-
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
-              <Metric label="Einheiten" value={`${units.length}`} sub={`${freiCount} frei`} />
-              <Metric
-                label="Zimmer"
-                value={fmtRange(range(zimmer), (n) => formatNumber(n))}
-              />
-              <Metric label="Baujahr" value={projekt.baujahr ? `${projekt.baujahr}` : "—"} />
-              <Metric
-                label="Größe"
-                value={fmtRange(range(flaechen), (n) => formatNumber(n))}
-                unit="m²"
-              />
-              <Metric
-                label="Bruttorendite"
-                value={fmtRange(range(renditen), (n) => formatNumber(n))}
-                unit="%"
-              />
-              {projekt.bautraeger && (
-                <Metric label="Bauträger" value={projekt.bautraeger} />
-              )}
-            </dl>
           </div>
         </div>
-      </Card>
+
+        {/* Kennzahlen-Karten */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <StatCard
+            icon={<Layers className="h-4 w-4" />}
+            label="Einheiten"
+            value={`${units.length}`}
+            sub={`${freiCount} frei`}
+          />
+          <StatCard
+            icon={<Ruler className="h-4 w-4" />}
+            label="Wohnfläche"
+            value={fmtRange(range(flaechen), (n) => formatNumber(n))}
+            sub="m²"
+          />
+          <StatCard
+            icon={<DoorClosed className="h-4 w-4" />}
+            label="Zimmer"
+            value={fmtRange(range(zimmer), (n) => formatNumber(n))}
+          />
+          <StatCard
+            icon={<Percent className="h-4 w-4" />}
+            label="Bruttorendite"
+            value={fmtRange(range(renditen), (n) => formatNumber(n))}
+            sub="%"
+            accent
+          />
+          <StatCard
+            icon={<CalendarDays className="h-4 w-4" />}
+            label="Baujahr"
+            value={projekt.baujahr ? `${projekt.baujahr}` : "—"}
+          />
+          <StatCard
+            icon={<Euro className="h-4 w-4" />}
+            label="€ / m²"
+            value={fmtRange(
+              range(
+                units
+                  .map((u) => pricePerSqm(u.kaufpreis, u.wohnflaeche))
+                  .filter((v): v is number => v != null)
+                  .map((v) => Math.round(v)),
+              ),
+              (n) => formatEUR(n),
+            )}
+          />
+        </div>
+        {projekt.bautraeger && (
+          <p className="text-sm text-muted-foreground">
+            Bauträger: <span className="text-foreground">{projekt.bautraeger}</span>
+          </p>
+        )}
+      </div>
 
       {/* Verkaufsstatus + Kaufpreisliste */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr]">
@@ -158,6 +200,7 @@ export function ProjektDetailView({
                 <TableBody>
                   {units.map((u) => {
                     const ppsm = pricePerSqm(u.kaufpreis, u.wohnflaeche);
+                    const rend = bruttoRendite(u.kaufpreis, u.miete);
                     return (
                       <TableRow key={u.einheit_id} className="cursor-pointer">
                         <TableCell className="font-medium">
@@ -184,7 +227,7 @@ export function ProjektDetailView({
                           {ppsm != null ? formatEUR(Math.round(ppsm)) : "—"}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {formatNumber(u.mietrendite_brutto, " %")}
+                          {formatNumber(rend, " %")}
                         </TableCell>
                         <TableCell>
                           <span
@@ -217,25 +260,43 @@ export function ProjektDetailView({
   );
 }
 
-function Metric({
+function StatCard({
+  icon,
   label,
   value,
-  unit,
   sub,
+  accent,
 }: {
+  icon: React.ReactNode;
   label: string;
   value: string;
-  unit?: string;
   sub?: string;
+  accent?: boolean;
 }) {
   return (
-    <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 text-sm font-semibold">
+    <div
+      className={`rounded-xl border p-3 ${
+        accent ? "border-brand-accent/40 bg-brand-accent/5" : "bg-card"
+      }`}
+    >
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <span className={accent ? "text-brand-accent" : "text-muted-foreground"}>
+          {icon}
+        </span>
+        {label}
+      </div>
+      <div
+        className={`mt-1 text-base font-semibold tabular-nums ${
+          accent ? "text-brand-accent" : "text-foreground"
+        }`}
+      >
         {value}
-        {unit && <span className="ml-1 text-xs font-normal text-muted-foreground">{unit}</span>}
-      </dd>
-      {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
+        {sub && (
+          <span className="ml-1 text-xs font-normal text-muted-foreground">
+            {sub}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

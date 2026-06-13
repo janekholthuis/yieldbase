@@ -55,4 +55,6 @@
 
 > **Autonome Bau-Session Wave 3 (2026-06-12) — Hygiene:** (1) Lint-Status korrigiert (war fälschlich als „defekt" notiert; läuft mit 0 Errors); CommandPalette-Reset sauberer (über `onOpenChange` statt Effect); (2) toter `KarteStub` + ungenutzter `MapPin`-Import aus `EinheitDetailView` entfernt; (3) USER-TODO Investagon-Notiz auf „echte Daten erledigt" aktualisiert.
 
+> **Selbstauskunft & Reservierung — Fillout-Nachbau (Plan 2026-06-13, PROJ-7/PROJ-5):** Bestehende Fillout-Formulare (`Selbstauskunft.json`, `Reservierung EMI.json` im Root) als App-Formulare **im Kundenportal** nachbauen, Unterschrift via Zeichnen (`SignaturePad`, kein E-Signing). Selbstauskunft = 8 Schritte inkl. Mitantragsteller, bedingte Felder, Immobilien-Subform. Reservierung erweitert um Steuer-ID/IBAN/Staatsangehörigkeit/Mitantragsteller/Bestätigungen. **Bauen pausiert — wird in frischem Chat ausgeführt.** Exakte Feldliste: `docs/FILLOUT-FORMSPEC.md`; vollständiger Plan: `docs/RESERVIERUNG-SELBSTAUSKUNFT-PLAN.md`. Read-only Selbstauskunft-Tab (VP-Sicht) ist bereits live (`5051c28`). Offen: Immobilien-Subform-Spalten, Migration/RLS-Freigabe.
+
 ## Next Available ID: PROJ-16

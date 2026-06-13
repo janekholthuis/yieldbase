@@ -123,6 +123,7 @@ export function KundeDetailView({
       <Tabs defaultValue="daten">
         <TabsList>
           <TabsTrigger value="daten">Daten</TabsTrigger>
+          <TabsTrigger value="selbstauskunft">Selbstauskunft</TabsTrigger>
           <TabsTrigger value="bonitaet">Bonität</TabsTrigger>
           <TabsTrigger value="zuweisungen">Zuweisungen</TabsTrigger>
           <TabsTrigger value="dokumente">Dokumente</TabsTrigger>
@@ -152,6 +153,10 @@ export function KundeDetailView({
               <KV label="Bundesland" v={k.bundesland} />
             </dl>
           </section>
+        </TabsContent>
+
+        <TabsContent value="selbstauskunft">
+          <SelbstauskunftTab k={k} />
         </TabsContent>
 
         <TabsContent value="bonitaet">
@@ -204,6 +209,124 @@ function KV({ label, v }: { label: string; v: string | null | undefined }) {
     <div>
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd>{v || "—"}</dd>
+    </div>
+  );
+}
+
+const BERUF_LABEL: Record<string, string> = {
+  angestellter: "Angestellt",
+  selbststaendiger: "Selbstständig",
+  unternehmer: "Unternehmer",
+};
+
+function fmtDate(value: string | null): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+}
+
+/** Read-only view of the customer's self-disclosure (filled in the portal). */
+function SelbstauskunftTab({ k }: { k: KundeDetail }) {
+  const submitted = k.selbstauskunft_submitted_at;
+  const step = k.selbstauskunft_step ?? 0;
+  const hasAny =
+    submitted != null ||
+    step > 0 ||
+    k.beruf_status != null ||
+    k.brutto_jahreseinkommen != null ||
+    k.eigenkapital != null;
+
+  return (
+    <div className="space-y-4">
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4">
+        <div>
+          <h3 className="font-medium">Selbstauskunft</h3>
+          <p className="text-sm text-muted-foreground">
+            {submitted
+              ? `Eingereicht am ${fmtDate(submitted)}`
+              : step > 0
+                ? `In Bearbeitung (Schritt ${step})`
+                : "Noch nicht ausgefüllt"}
+          </p>
+        </div>
+        <Badge variant={submitted ? "default" : "outline"}>
+          {submitted ? "Vollständig" : step > 0 ? "In Bearbeitung" : "Offen"}
+        </Badge>
+      </section>
+
+      {!hasAny ? (
+        <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+          Der Kunde hat die Selbstauskunft im Portal noch nicht begonnen.
+        </div>
+      ) : (
+        <>
+          <section className="rounded-lg border bg-card p-4">
+            <h3 className="mb-3 font-medium">Angaben des Kunden</h3>
+            <dl className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
+              <KV
+                label="Beruflicher Status"
+                v={
+                  k.beruf_status
+                    ? (BERUF_LABEL[k.beruf_status] ?? k.beruf_status)
+                    : null
+                }
+              />
+              <KV
+                label="Brutto / Jahr"
+                v={k.brutto_jahreseinkommen != null ? fmt(k.brutto_jahreseinkommen) : null}
+              />
+              <KV
+                label="Eigenkapital"
+                v={k.eigenkapital != null ? fmt(k.eigenkapital) : null}
+              />
+              <KV
+                label="Pers. Steuersatz"
+                v={
+                  k.persoenlicher_steuersatz != null
+                    ? `${k.persoenlicher_steuersatz} %`
+                    : null
+                }
+              />
+              <KV
+                label="Kreditverpflichtungen / Monat"
+                v={
+                  k.kreditverpflichtungen_monatlich != null
+                    ? fmt(k.kreditverpflichtungen_monatlich)
+                    : null
+                }
+              />
+              <KV
+                label="Erwachsene im Haushalt"
+                v={
+                  k.erwachsene_im_haushalt != null
+                    ? String(k.erwachsene_im_haushalt)
+                    : null
+                }
+              />
+              <KV
+                label="Kinder"
+                v={k.kinder_anzahl != null ? String(k.kinder_anzahl) : null}
+              />
+              <KV
+                label="Bestehende Immobilien"
+                v={k.bestehende_immobilien ? "Ja" : "Nein"}
+              />
+            </dl>
+          </section>
+
+          <section className="grid gap-4 md:grid-cols-3">
+            <Stat label="Max. Kaufpreis" value={fmt(k.max_finanzierbar)} highlight />
+            <Stat label="Max. Monatsrate" value={fmt(k.max_monatsrate)} />
+            <Stat label="Max. Darlehen" value={fmt(k.max_darlehen)} />
+          </section>
+        </>
+      )}
     </div>
   );
 }

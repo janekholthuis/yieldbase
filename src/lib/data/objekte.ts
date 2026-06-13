@@ -172,22 +172,55 @@ function mapEinheitRow(row: any): ObjektListItem {
   };
 }
 
+// Einheit columns WITHOUT the projekte embed. Embedding projekte directly in
+// the full-table list query forces a per-row nested-loop join against projekte
+// (each row re-evaluating projekte RLS), which is ~240ms warm but blows past the
+// 8s statement_timeout on a cold cache (e.g. right after a large Investagon
+// sync). We instead fetch projekte once and join in memory — both queries stay
+// simple, indexed and robust. RLS still scopes each table independently.
+const EINHEIT_LIST_COLS = `id, projekt_id, wohnungsnummer, etage, wohnflaeche, zimmer,
+  kaufpreis, miete, status, vermietet, balkon, keller, aufzug, afa_satz, created_at`;
+
+const PROJEKT_LIST_COLS = `id, name, projekt_typ, bautraeger, cover_image_url, adresse,
+  baujahr, stadt, plz, bundesland, mietrendite_brutto`;
+
 /** Flat einheit list. RLS handles role-based visibility (VP deny-list, Finanzierer scoping). */
 export async function listObjekte(): Promise<{
   items: ObjektListItem[];
   error: string | null;
 }> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("einheiten")
-    .select(EINHEIT_SELECT)
-    .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("listObjekte error:", error);
-    return { items: [], error: error.message };
+  const [eRes, pRes] = await Promise.all([
+    supabase
+      .from("einheiten")
+      .select(EINHEIT_LIST_COLS)
+      .order("created_at", { ascending: false }),
+    supabase.from("projekte").select(PROJEKT_LIST_COLS),
+  ]);
+
+  if (eRes.error) {
+    console.error("listObjekte einheiten error:", eRes.error);
+    return { items: [], error: eRes.error.message };
   }
-  const items = (data ?? []).filter((row: any) => row.projekte).map(mapEinheitRow);
+  if (pRes.error) {
+    console.error("listObjekte projekte error:", pRes.error);
+    return { items: [], error: pRes.error.message };
+  }
+
+  // Join in memory: attach each unit's (RLS-visible) projekt; drop units whose
+  // projekt is not visible — same semantics as the previous inner-embed filter.
+
+  const projektById = new Map<string, any>(
+
+    (pRes.data ?? []).map((p: any) => [p.id, p]),
+  );
+  const items = (eRes.data ?? [])
+
+    .map((row: any) => ({ ...row, projekte: projektById.get(row.projekt_id) }))
+    .filter((row: any) => row.projekte)
+    .map(mapEinheitRow);
+
   return { items, error: null };
 }
 

@@ -383,9 +383,8 @@ export async function activateKundenportal(input: { id: string }): Promise<{
   revalidatePath(`/kunden/${id}`);
 
   // 5) Login-Link generieren. WICHTIG: generateLink ERZEUGT nur den Link und
-  // versendet KEINE E-Mail (anders als signInWithOtp/inviteUserByEmail). Der
-  // Link wird daher zurückgegeben, damit ihn der VP dem Kunden zustellen kann
-  // (oder später via eigenem Mailer/SMTP versendet wird).
+  // versendet KEINE E-Mail. Wir versenden ihn daher selbst via Resend
+  // (send-portal-link) und geben den Link zusätzlich als Fallback zurück.
   const { data: link, error: lErr } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email: k.email,
@@ -393,12 +392,36 @@ export async function activateKundenportal(input: { id: string }): Promise<{
   if (lErr) {
     return { ok: true, userId: newUserId, magicLinkSent: false, warning: lErr.message };
   }
-  return {
-    ok: true,
-    userId: newUserId,
-    magicLinkSent: false,
-    action_link: link?.properties?.action_link ?? null,
-  };
+  const action_link = link?.properties?.action_link ?? null;
+  const magicLinkSent = await sendPortalLinkEmail(admin, {
+    to: k.email,
+    name: `${k.vorname ?? ""} ${k.nachname ?? ""}`.trim() || null,
+    loginUrl: action_link,
+  });
+  return { ok: true, userId: newUserId, magicLinkSent, action_link };
+}
+
+// Versendet den Portal-Login-Link via Resend-Edge-Function (best-effort).
+// Liefert true bei Erfolg; bei fehlender Resend-Konfiguration / nicht
+// verifizierter Domain false → der Aufrufer zeigt den Link zum Kopieren.
+async function sendPortalLinkEmail(
+  admin: ReturnType<typeof createAdminClient>,
+  args: { to: string; name: string | null; loginUrl: string | null },
+): Promise<boolean> {
+  if (!args.loginUrl) return false;
+  try {
+    const { error } = await admin.functions.invoke("send-portal-link", {
+      body: {
+        to: args.to,
+        kundeName: args.name,
+        orgName: null,
+        loginUrl: args.loginUrl,
+      },
+    });
+    return !error;
+  } catch {
+    return false;
+  }
 }
 
 // ───────────── resendPortalLink ─────────────
@@ -408,6 +431,7 @@ export async function activateKundenportal(input: { id: string }): Promise<{
 // damit der VP ihn dem Kunden zustellt. Service-Role; Autorisierung zuerst.
 export async function resendPortalLink(input: { id: string }): Promise<{
   action_link: string | null;
+  magicLinkSent: boolean;
 }> {
   const { supabase, userId: actorId } = await requireUser();
   const { id } = z.object({ id: z.string().uuid() }).parse(input);
@@ -416,7 +440,7 @@ export async function resendPortalLink(input: { id: string }): Promise<{
   const admin = createAdminClient();
   const { data: k, error: kErr } = await admin
     .from("kunden")
-    .select("email, user_id")
+    .select("email, user_id, vorname, nachname")
     .eq("id", id)
     .maybeSingle();
   if (kErr || !k) throw new Error("Kunde nicht gefunden");
@@ -430,5 +454,11 @@ export async function resendPortalLink(input: { id: string }): Promise<{
   });
   if (lErr) throw new Error(`Login-Link konnte nicht erzeugt werden: ${lErr.message}`);
 
-  return { action_link: link?.properties?.action_link ?? null };
+  const action_link = link?.properties?.action_link ?? null;
+  const magicLinkSent = await sendPortalLinkEmail(admin, {
+    to: k.email,
+    name: `${k.vorname ?? ""} ${k.nachname ?? ""}`.trim() || null,
+    loginUrl: action_link,
+  });
+  return { action_link, magicLinkSent };
 }

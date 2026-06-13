@@ -100,6 +100,9 @@ export function KundeDetailView({
       toast.success(
         res.alreadyActive ? "Portal ist bereits aktiv" : "Kundenportal aktiviert",
       );
+      if (res.magicLinkSent) {
+        toast.success("Login-Link per E-Mail an den Kunden gesendet");
+      }
       if (res.action_link) {
         setPortalLink(res.action_link);
       } else if (res.warning) {

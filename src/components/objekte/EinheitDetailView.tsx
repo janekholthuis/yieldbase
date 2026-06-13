@@ -268,10 +268,17 @@ export function EinheitDetailView({
           <TabsTrigger value="kalkulation">Kalkulation</TabsTrigger>
           <TabsTrigger value="bilder">Bilder</TabsTrigger>
           <TabsTrigger value="dokumente">Dokumente</TabsTrigger>
-          <TabsTrigger value="bankdaten">Bankdaten</TabsTrigger>
-          <TabsTrigger value="karte">Karte</TabsTrigger>
-          {canManagePool && (
-            <TabsTrigger value="finanzierer-pool">Finanzierer-Pool</TabsTrigger>
+          {/* Bankdaten/Karte/Pool sind projekt-scoped — eingebettet in die
+              Projektseite zeigt diese bereits die Pill-Tabs Lage/Bankdaten/Pool,
+              daher hier nur im Standalone-Modus. */}
+          {!embedded && (
+            <>
+              <TabsTrigger value="bankdaten">Bankdaten</TabsTrigger>
+              <TabsTrigger value="karte">Karte</TabsTrigger>
+              {canManagePool && (
+                <TabsTrigger value="finanzierer-pool">Finanzierer-Pool</TabsTrigger>
+              )}
+            </>
           )}
         </TabsList>
 
@@ -314,22 +321,28 @@ export function EinheitDetailView({
           />
         </TabsContent>
 
-        {/* Bankdaten */}
-        <TabsContent value="bankdaten" className="space-y-4">
-          <BankDatenCard projektId={e.projekt_id} />
-        </TabsContent>
+        {/* Bankdaten/Karte/Pool nur im Standalone-Modus — eingebettet liefern
+            die Projekt-Pill-Tabs (Lage/Bankdaten/Finanzierer-Pool) dasselbe. */}
+        {!embedded && (
+          <>
+            {/* Bankdaten */}
+            <TabsContent value="bankdaten" className="space-y-4">
+              <BankDatenCard projektId={e.projekt_id} />
+            </TabsContent>
 
-        {/* Karte */}
-        <TabsContent value="karte" className="space-y-4">
-          <KarteTab adresse={e.adresse} plz={e.plz} stadt={e.stadt} />
-          <StandortHighlights adresse={e.adresse} plz={e.plz} stadt={e.stadt} />
-        </TabsContent>
+            {/* Karte */}
+            <TabsContent value="karte" className="space-y-4">
+              <KarteTab adresse={e.adresse} plz={e.plz} stadt={e.stadt} />
+              <StandortHighlights adresse={e.adresse} plz={e.plz} stadt={e.stadt} />
+            </TabsContent>
 
-        {/* Finanzierer-Pool (admin/support only) */}
-        {canManagePool && (
-          <TabsContent value="finanzierer-pool" className="space-y-4">
-            <FinanziererPoolTab projektId={e.projekt_id} />
-          </TabsContent>
+            {/* Finanzierer-Pool (admin/support only) */}
+            {canManagePool && (
+              <TabsContent value="finanzierer-pool" className="space-y-4">
+                <FinanziererPoolTab projektId={e.projekt_id} />
+              </TabsContent>
+            )}
+          </>
         )}
       </Tabs>
     </div>

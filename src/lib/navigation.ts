@@ -19,6 +19,7 @@ export interface NavItem {
   roles: AppRole[]; // roles that may see it
   mobile?: boolean; // include in mobile bottom tabs
   comingSoon?: boolean; // V1: shown greyed-out + non-navigable (code kept, feature deferred)
+  hidden?: boolean; // V1: completely removed from all nav surfaces (route + code kept)
 }
 
 const ALL_INTERNAL: AppRole[] = [
@@ -51,20 +52,20 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/finanzierungen",
     icon: Banknote,
     roles: [...ALL_INTERNAL, "finanzierer"],
-    comingSoon: true, // V1: deferred — greyed out (code kept)
+    hidden: true, // V1: komplett ausgeblendet (Route + Code bleiben)
   },
   {
     title: "Provisionen",
     to: "/provisionen",
     icon: Wallet,
     roles: ["admin", "vertriebsleiter", "vp_l1", "vp_l2", "vp_l3"],
-    comingSoon: true, // V1: deferred — greyed out (code kept)
+    hidden: true, // V1: komplett ausgeblendet (Route + Code bleiben)
   },
   {
     title: "Mein Team",
     to: "/team",
     icon: UsersRound,
-    roles: ["vertriebsleiter", "vp_l1", "vp_l2"],
+    roles: ["admin", "support", "vertriebsleiter", "vp_l1", "vp_l2"],
   },
   {
     title: "Einstellungen",
@@ -83,7 +84,9 @@ export const NAV_ITEMS: NavItem[] = [
 
 export function visibleNav(roles: AppRole[]): NavItem[] {
   if (roles.length === 0) return [];
-  return NAV_ITEMS.filter((item) => item.roles.some((r) => roles.includes(r)));
+  return NAV_ITEMS.filter(
+    (item) => !item.hidden && item.roles.some((r) => roles.includes(r)),
+  );
 }
 
 /** Nav the user can actually navigate to — excludes V1-deferred (comingSoon) areas. */

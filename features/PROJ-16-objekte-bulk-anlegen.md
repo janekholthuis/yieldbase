@@ -1,6 +1,6 @@
 # PROJ-16: Objekte anlegen — Bauträger raus + Bulk-Einheiten (Excel-Paste)
 
-## Status: Planned
+## Status: In Progress (gebaut, QA/Deploy offen)
 **Created:** 2026-06-13
 **Last Updated:** 2026-06-13
 
@@ -116,7 +116,89 @@ anderen** über `EinheitForm` erfasst (Key-Bump + „Fertig"). Das skaliert nich
 ---
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture (oder direkt im Build-Chat)._
+_Direkt im Build-Chat umgesetzt._
 
-## QA Test Results
-_To be added by /qa._
+## Implementation Notes (2026-06-13)
+
+**Teil A — Bauträger ausgeblendet:**
+- `ProjektWizard.tsx`: Bauträger-State, Reset, `createProjekt`-Param und das
+  Eingabefeld entfernt.
+- Anzeige entfernt: `ProjektCard.tsx` (Metric + Feld aus `ProjektCardData`-Typ),
+  `ProjektDetailView.tsx` (Bauträger-Zeile), `ObjekteListView.tsx`
+  (Card-Plumbing `groupForGrid`).
+- Suche: „Bauträger" aus den Such-Placeholdern (`ObjekteListView`,
+  `ObjekteFilterSidebar`) und aus dem Volltext-Index (`objekte-filter.ts` —
+  `bautraeger` aus `hay` entfernt) genommen; Filter-Kommentar neutralisiert.
+- **DB-Spalte `projekte.bautraeger` bleibt** (keine Migration). `createProjekt`/
+  `updateProjekt` akzeptieren das Feld weiterhin (für Investagon-Sync), das UI
+  setzt/zeigt es aber nicht mehr. → Open Question „auch synchronisierte Werte
+  ausblenden": **ja, Anzeige überall entfernt**; der Wert bleibt nur in der DB.
+
+**Teil B — Bulk-Einheiten (Excel-Paste):**
+- Neue Server-Action `createEinheitenBulk({ projekt_id, einheiten[] })` in
+  `objekte-crud.ts`: gleicher `assertOrgAccess`-Guard wie `createEinheit`,
+  Insert in Chunks à 100, gibt `{ count }` zurück. Entscheidung: **pro Chunk
+  atomar** (kein Rollback über Chunks hinweg) — Fehler werden mit Kontext
+  zurückgemeldet.
+- Reine, getestete Hilfslogik in `src/lib/objekte-bulk.ts`: `parseDeNumber`
+  (de-Zahlen „1.234,56" → 1234.56), `parseClipboardMatrix`, `looksLikeHeaderRow`,
+  `guessFieldFromHeader`/`buildMapping` (Spalten-Auto-Mapping per Synonymen),
+  `matrixToRows`, `rowError`. Tests: `objekte-bulk.test.ts` (24 Fälle).
+- Neue Komponente `EinheitenBulkGrid.tsx`: editierbares Tabellen-Grid
+  (Wohnungsnr.*, Etage, Zimmer, Fläche, Kaltmiete, Kaufpreis, Stellplatzpreis),
+  Excel-Paste-Panel mit Spalten-Mapping-UI + Header-Erkennung, Zeilen-Validierung
+  (Wohnungsnr. Pflicht, Zahlen plausibel) mit Inline-Fehler, gültig/ungültig-Zähler.
+- `ProjektWizard.tsx` (mfh-Schritt): Standard ist jetzt das Bulk-Grid; ein
+  Modus-Umschalter „Mehrere (Tabelle)" / „Einzeln mit Details" erhält den alten
+  Einzel-Flow. Nach dem Speichern → `/objekte/projekt/[projektId]`.
+
+**Offene Entscheidungen umgesetzt/zurückgestellt:**
+- Standard-Spaltenreihenfolge = `wohnungsnummer, etage, zimmer, wohnflaeche,
+  miete, kaufpreis, stellplatz_preis` (Fallback ohne Header). Beispiel-Excel von
+  Chris für besseres Default-Mapping noch offen.
+- Speichern: pro-Chunk atomar (s. o.).
+- CSV/XLSX-Upload: weiterhin Out of Scope.
+
+**Verifikation:** `tsc` ✓, `vitest run` → 137/137 ✓, `npm run build` ✓.
+**Offen:** manuelle/E2E-QA gegen echte Excel-Liste; Deploy.
+
+## QA Test Results (Code-Level QA + Security-Audit, 2026-06-13)
+
+> **Methodik:** Statische Analyse (tsc + `npm run build` grün), 152 Unit-Tests
+> grün (inkl. 24 für `objekte-bulk.ts`), Akzeptanzkriterien-Review gegen den Code,
+> Red-Team-Audit der Server-Action. **Browser-E2E nicht ausgeführt** — erfordert
+> laufende authentifizierte App + Seed-Daten; als Folgeschritt offen.
+
+### Akzeptanzkriterien
+| # | Kriterium | Status |
+|---|---|---|
+| 1 | Kein Bauträger-Eingabefeld | ✅ Pass (`ProjektWizard` Feld entfernt) |
+| 2 | Synchronisierter Bauträger nicht angezeigt | ✅ Pass (Card + Detail entfernt) |
+| 3 | mfh → Tabellen-Grid statt Einzelformular | ✅ Pass (Bulk = Default, Umschalter) |
+| 4 | Excel-Paste → Zeilen/Spalten + Entwürfe | ✅ Pass (`parseClipboardMatrix` + Vorschau) |
+| 5 | Spalten-Mapping anpassbar | ✅ Pass (Mapping-Selects + Auto-Mapping) |
+| 6 | de-Zahl „1.234,56" → 1234,56 | ✅ Pass (getestet) |
+| 7 | Zeile ohne Wohnungsnr. → ungültig, Speichern verhindert | ✅ Pass (`rowError`, gültig-Zähler) |
+| 8 | N gültige Zeilen → N Einheiten + Bestätigung | ✅ Pass (`createEinheitenBulk` → count + Toast) |
+| 9 | etw_einzeln-Flow unverändert | ✅ Pass |
+
+### Security-Audit — `createEinheitenBulk`
+- ✅ Rollen-Gate `requireRole(INTERNAL_ROLES)` (Kunde/extern ausgeschlossen).
+- ✅ Mandanten-Isolation: `assertOrgAccess(session, parentProjekt.organisation_id)`
+  vor dem Admin-Client-Insert; Einheiten erben `organisation_id` des Projekts.
+  Cross-Org-Insert für VP/VL blockiert (nur admin/support dürfen cross-org).
+- ✅ Zod-Validierung je Zeile (Wohnungsnr. Pflicht, Zahlen coerced).
+
+### Gefundene Punkte
+- **BUG-Q1 (Medium) — Doppelte Wohnungsnummern.** ✅ **Gefixt 2026-06-13.**
+  Helper `duplicateWohnungsnummern()` (getestet) markiert Duplikate (im Paste +
+  gegen bestehende Projekt-Einheiten) im Grid als „Wohnungsnr. doppelt" und
+  schließt sie aus dem gültig-Zähler/Speichern aus. Zusätzlich serverseitiger
+  Hard-Block in `createEinheitenBulk` (Batch-intern + gegen vorhandene Einheiten).
+- **BUG-Q2 (Low) — Mengenlimit.** ✅ **Gefixt 2026-06-13.** `createEinheitenBulk`
+  begrenzt auf `.max(500)` Einheiten pro Vorgang.
+
+### Fazit
+Keine Critical/High-Bugs; beide Funde (Q1 Medium, Q2 Low) gefixt, `tsc` + 156 Tests
++ `npm run build` grün. **Offen:** manuelle/E2E-Verifikation auf Staging. Bereit für
+Deploy nach kurzer manueller Sichtprüfung.

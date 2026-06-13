@@ -11,7 +11,6 @@ export function applyObjekteFilters(
       const hay = [
         it.projekt_name,
         it.stadt,
-        it.bautraeger,
         it.wohnungsnummer,
         it.plz,
       ]

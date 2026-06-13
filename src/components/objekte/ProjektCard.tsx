@@ -8,7 +8,6 @@ export interface ProjektCardData {
   projekt_id: string;
   projekt_name: string | null;
   projekt_typ: "mfh" | "etw_einzeln";
-  bautraeger: string | null;
   cover_image_url: string | null;
   adresse: string | null;
   stadt: string | null;
@@ -156,7 +155,6 @@ export function ProjektCard({ data }: { data: ProjektCardData }) {
             unit="%"
           />
           <Metric label="Anlageklasse" value={TYP_LABEL[data.projekt_typ]} />
-          {data.bautraeger && <Metric label="Bauträger" value={data.bautraeger} />}
         </dl>
 
         {/* Footer Adresse */}

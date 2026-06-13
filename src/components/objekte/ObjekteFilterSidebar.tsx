@@ -122,7 +122,7 @@ export function ObjekteFilterSidebar({ filters, onChange, items }: Props) {
         <Label htmlFor="f-q">Suche</Label>
         <Input
           id="f-q"
-          placeholder="Adresse, Wohnung, Stadt, Bauträger…"
+          placeholder="Adresse, Wohnung, Stadt…"
           value={filters.q}
           onChange={(e) => set("q", e.target.value)}
         />
@@ -275,7 +275,7 @@ export function ObjekteFilterSidebar({ filters, onChange, items }: Props) {
         </div>
       </div>
 
-      {/* Projekt / Bauträger */}
+      {/* Projekt */}
       <div className="space-y-2">
         <Label>Projekt</Label>
         <div className="max-h-44 space-y-1 overflow-auto rounded-md border p-2">

@@ -26,6 +26,7 @@ import {
 import { createProjekt } from "@/lib/actions/objekte-crud";
 import { BUNDESLAENDER } from "@/lib/objekt-kosten";
 import { EinheitForm } from "@/components/objekte/EinheitForm";
+import { EinheitenBulkGrid } from "@/components/objekte/EinheitenBulkGrid";
 
 type ProjektTyp = "etw_einzeln" | "mfh";
 
@@ -61,7 +62,6 @@ export function ProjektWizard({
   const [stadt, setStadt] = useState("");
   const [bundesland, setBundesland] = useState("");
   const [baujahr, setBaujahr] = useState("");
-  const [bautraeger, setBautraeger] = useState("");
   const [name, setName] = useState("");
   const [ihrGesamt, setIhrGesamt] = useState("");
   const [creating, setCreating] = useState(false);
@@ -72,6 +72,8 @@ export function ProjektWizard({
   const [unitKey, setUnitKey] = useState(0);
   const [lastUnitId, setLastUnitId] = useState<string | null>(null);
   const [addedCount, setAddedCount] = useState(0);
+  // MFH: erfassen mehrerer Einheiten — "bulk" (Tabelle/Excel) oder "single" (Detail).
+  const [mfhMode, setMfhMode] = useState<"bulk" | "single">("bulk");
 
   function resetAll() {
     setProjektTyp("etw_einzeln");
@@ -80,7 +82,6 @@ export function ProjektWizard({
     setStadt("");
     setBundesland("");
     setBaujahr("");
-    setBautraeger("");
     setName("");
     setIhrGesamt("");
     setCreating(false);
@@ -88,6 +89,7 @@ export function ProjektWizard({
     setUnitKey(0);
     setLastUnitId(null);
     setAddedCount(0);
+    setMfhMode("bulk");
   }
 
   function handleOpenChange(next: boolean) {
@@ -112,7 +114,6 @@ export function ProjektWizard({
         bundesland: str(bundesland),
         projekt_typ: projektTyp,
         baujahr: num(baujahr),
-        bautraeger: str(bautraeger),
         instandhaltungsruecklage_gesamt: num(ihrGesamt),
       });
       toast.success("Projekt angelegt.");
@@ -151,46 +152,107 @@ export function ProjektWizard({
     );
   }
 
-  // Step 2: MFH -> add one unit at a time, with "weitere Einheit" + "Fertig".
+  // Step 2: MFH -> erfasse mehrere Einheiten. Standard: Tabellen-Grid mit
+  // Excel-Paste (Bulk); alternativ Einzelerfassung mit allen Detailfeldern.
   if (created && created.typ === "mfh") {
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Projekt angelegt — Einheiten hinzufügen</DialogTitle>
             <DialogDescription>
-              {addedCount === 0
-                ? "Fügen Sie die erste Einheit hinzu."
-                : `${addedCount} ${addedCount === 1 ? "Einheit" : "Einheiten"} hinzugefügt. Weitere Einheit erfassen oder fertigstellen.`}
+              {mfhMode === "bulk"
+                ? "Erfassen Sie mehrere Einheiten in der Tabelle — oder fügen Sie eine Excel-Kaufpreisliste ein."
+                : addedCount === 0
+                  ? "Fügen Sie die erste Einheit hinzu."
+                  : `${addedCount} ${addedCount === 1 ? "Einheit" : "Einheiten"} hinzugefügt. Weitere Einheit erfassen oder fertigstellen.`}
             </DialogDescription>
           </DialogHeader>
 
-          <EinheitForm
-            key={unitKey}
-            projektId={created.id}
-            bundesland={created.bundesland}
-            submitLabel="Einheit speichern"
-            onSaved={(id) => {
-              setLastUnitId(id);
-              setAddedCount((c) => c + 1);
-              // Reset the form for the next unit.
-              setUnitKey((k) => k + 1);
-              toast.success("Einheit gespeichert. Nächste Einheit kann erfasst werden.");
-            }}
-          />
-
-          <div className="flex flex-wrap justify-end gap-2 border-t pt-3">
-            <Button
+          {/* Modus-Umschalter */}
+          <div className="inline-flex w-fit rounded-md border p-0.5 text-sm">
+            <button
               type="button"
-              variant="outline"
-              onClick={() => {
-                handleOpenChange(false);
-                router.push(lastUnitId ? `/objekte/${lastUnitId}` : "/objekte");
-              }}
+              onClick={() => setMfhMode("bulk")}
+              className={`rounded px-3 py-1 transition-colors ${
+                mfhMode === "bulk"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
             >
-              Fertig
-            </Button>
+              Mehrere (Tabelle)
+            </button>
+            <button
+              type="button"
+              onClick={() => setMfhMode("single")}
+              className={`rounded px-3 py-1 transition-colors ${
+                mfhMode === "single"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Einzeln mit Details
+            </button>
           </div>
+
+          {mfhMode === "bulk" ? (
+            <>
+              <EinheitenBulkGrid
+                projektId={created.id}
+                onSaved={() => {
+                  const pid = created.id;
+                  handleOpenChange(false);
+                  router.push(`/objekte/projekt/${pid}`);
+                }}
+              />
+              <div className="flex flex-wrap justify-end gap-2 border-t pt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const pid = created.id;
+                    handleOpenChange(false);
+                    router.push(`/objekte/projekt/${pid}`);
+                  }}
+                >
+                  Ohne Einheiten fertig
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <EinheitForm
+                key={unitKey}
+                projektId={created.id}
+                bundesland={created.bundesland}
+                submitLabel="Einheit speichern"
+                onSaved={(id) => {
+                  setLastUnitId(id);
+                  setAddedCount((c) => c + 1);
+                  // Reset the form for the next unit.
+                  setUnitKey((k) => k + 1);
+                  toast.success("Einheit gespeichert. Nächste Einheit kann erfasst werden.");
+                }}
+              />
+
+              <div className="flex flex-wrap justify-end gap-2 border-t pt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    handleOpenChange(false);
+                    router.push(
+                      lastUnitId
+                        ? `/objekte/projekt/${created.id}`
+                        : "/objekte",
+                    );
+                  }}
+                >
+                  Fertig
+                </Button>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     );
@@ -271,10 +333,6 @@ export function ProjektWizard({
                 value={baujahr}
                 onChange={(e) => setBaujahr(e.target.value)}
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Bauträger</Label>
-              <Input value={bautraeger} onChange={(e) => setBautraeger(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>Instandhaltungsrücklage gesamt (€)</Label>

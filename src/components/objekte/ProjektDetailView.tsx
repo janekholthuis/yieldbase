@@ -157,11 +157,6 @@ export function ProjektDetailView({
             )}
           />
         </div>
-        {projekt.bautraeger && (
-          <p className="text-sm text-muted-foreground">
-            Bauträger: <span className="text-foreground">{projekt.bautraeger}</span>
-          </p>
-        )}
       </div>
 
       {/* Verkaufsstatus + Kaufpreisliste */}

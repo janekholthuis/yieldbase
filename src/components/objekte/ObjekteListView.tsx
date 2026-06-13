@@ -145,7 +145,7 @@ export function ObjekteListView({ items: allItems }: { items: ObjektListItem[] }
           <Input
             value={filters.q}
             onChange={(e) => setFilters({ ...filters, q: e.target.value })}
-            placeholder="Adresse, Wohnung, Stadt, Bauträger…"
+            placeholder="Adresse, Wohnung, Stadt…"
             className="pl-8"
           />
         </div>
@@ -334,7 +334,6 @@ function groupForGrid(items: ObjektListItem[]): GridEntry[] {
         projekt_id: it.projekt_id,
         projekt_name: it.projekt_name,
         projekt_typ: it.projekt_typ,
-        bautraeger: it.bautraeger,
         cover_image_url: it.cover_image_url,
         adresse: it.adresse,
         stadt: it.stadt,

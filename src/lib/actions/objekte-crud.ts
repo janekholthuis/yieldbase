@@ -358,6 +358,132 @@ export async function createEinheit(
   return { id: row.id };
 }
 
+// ---------------------------------------------------------------------------
+// Bulk-Einheiten (PROJ-16) — mehrere Einheiten in einem Schritt anlegen
+// (typische Quelle: aus Excel eingefügte Kaufpreisliste). Org-Isolation wird
+// einmal über das Parent-Projekt erzwungen; Insert erfolgt in Chunks. Der
+// Insert ist pro Chunk atomar — schlägt ein Chunk fehl, bricht die Aktion ab
+// (Fehlermeldung mit Kontext), bereits geschriebene Chunks bleiben bestehen.
+// ---------------------------------------------------------------------------
+
+const bulkEinheitRowSchema = z.object({
+  wohnungsnummer: z.string().trim().min(1, "wohnungsnummer is required"),
+  ...einheitOptionalFields,
+});
+
+const createEinheitenBulkSchema = z.object({
+  projekt_id: uuid,
+  einheiten: z
+    .array(bulkEinheitRowSchema)
+    .min(1, "Mindestens eine Einheit")
+    .max(500, "Höchstens 500 Einheiten pro Vorgang"),
+});
+
+type CreateEinheitenBulkInput = z.input<typeof createEinheitenBulkSchema>;
+
+const BULK_CHUNK_SIZE = 100;
+
+export async function createEinheitenBulk(
+  input: CreateEinheitenBulkInput,
+): Promise<{ count: number }> {
+  const session = await requireRole(...INTERNAL_ROLES);
+  const { projekt_id, einheiten } = createEinheitenBulkSchema.parse(input);
+
+  const admin = createAdminClient();
+
+  // Tenant isolation: caller may only add units to a projekt their org owns.
+  const { data: parentProjekt } = await admin
+    .from("projekte")
+    .select("organisation_id")
+    .eq("id", projekt_id)
+    .maybeSingle();
+  if (!parentProjekt) throw new Error("Projekt nicht gefunden");
+  await assertOrgAccess(session, parentProjekt.organisation_id);
+
+  const organisationId =
+    parentProjekt.organisation_id ??
+    (await activeOrgId(session.supabase, session.userId));
+
+  // Duplikat-Schutz: Wohnungsnummern müssen innerhalb des Batches eindeutig
+  // sein und dürfen nicht mit bereits im Projekt vorhandenen kollidieren.
+  const norm = (v: string) => v.trim().toLowerCase();
+  const batchSeen = new Set<string>();
+  const batchDupes = new Set<string>();
+  for (const e of einheiten) {
+    const k = norm(e.wohnungsnummer);
+    if (batchSeen.has(k)) batchDupes.add(e.wohnungsnummer.trim());
+    batchSeen.add(k);
+  }
+  const { data: existingRows } = await admin
+    .from("einheiten")
+    .select("wohnungsnummer")
+    .eq("projekt_id", projekt_id);
+  const existingSet = new Set((existingRows ?? []).map((r) => norm(r.wohnungsnummer)));
+  const collisions = [...batchSeen].filter((k) => existingSet.has(k));
+  if (batchDupes.size > 0 || collisions.length > 0) {
+    const parts: string[] = [];
+    if (batchDupes.size > 0)
+      parts.push(`doppelt in der Eingabe: ${[...batchDupes].join(", ")}`);
+    if (collisions.length > 0)
+      parts.push(`bereits im Projekt vorhanden: ${collisions.length}`);
+    throw new Error(`Wohnungsnummern müssen eindeutig sein (${parts.join("; ")}).`);
+  }
+
+  const rows: EinheitInsert[] = einheiten.map((data) => ({
+    projekt_id,
+    wohnungsnummer: data.wohnungsnummer,
+    status: data.status ?? "frei",
+    organisation_id: organisationId,
+    ...compact({
+      etage: data.etage,
+      wohnflaeche: data.wohnflaeche,
+      zimmer: data.zimmer,
+      kaufpreis: data.kaufpreis,
+      miete: data.miete,
+      vermietet: data.vermietet,
+      mietvertrag_ende: data.mietvertrag_ende,
+      vermietet_seit: data.vermietet_seit,
+      balkon: data.balkon,
+      keller: data.keller,
+      aufzug: data.aufzug,
+      hausgeld_umlagefaehig: data.hausgeld_umlagefaehig,
+      hausgeld_nicht_umlagefaehig: data.hausgeld_nicht_umlagefaehig,
+      instandhaltungsruecklage: data.instandhaltungsruecklage,
+      sondereigentumsverwaltung: data.sondereigentumsverwaltung,
+      grundstuecksanteil_qm: data.grundstuecksanteil_qm,
+      grundstueckswert_anteil: data.grundstueckswert_anteil,
+      afa_satz: data.afa_satz,
+      erhaltungsaufwand: data.erhaltungsaufwand,
+      nutzungsart: data.nutzungsart,
+      objektzustand: data.objektzustand,
+      stellplaetze_anzahl: data.stellplaetze_anzahl,
+      stellplatz_preis: data.stellplatz_preis,
+      miteigentumsanteil: data.miteigentumsanteil,
+      energieklasse: data.energieklasse,
+      heizungsart: data.heizungsart,
+      extras: data.extras,
+    }),
+  }));
+
+  let count = 0;
+  for (let i = 0; i < rows.length; i += BULK_CHUNK_SIZE) {
+    const chunk = rows.slice(i, i + BULK_CHUNK_SIZE);
+    const { error } = await admin.from("einheiten").insert(chunk);
+    if (error) {
+      throw new Error(
+        count > 0
+          ? `${count} Einheiten gespeichert, dann Fehler: ${error.message}`
+          : error.message,
+      );
+    }
+    count += chunk.length;
+  }
+
+  revalidatePath("/objekte");
+  revalidatePath(`/objekte/${projekt_id}`);
+  return { count };
+}
+
 export async function updateEinheit(
   input: UpdateEinheitInput,
 ): Promise<{ id: string }> {

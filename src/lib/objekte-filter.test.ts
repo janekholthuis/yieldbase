@@ -62,7 +62,7 @@ describe("applyObjekteFilters", () => {
     expect(applyObjekteFilters(items, DEFAULTS)).toHaveLength(2);
   });
 
-  it("free-text search matches across name, city, Bauträger, unit, PLZ", () => {
+  it("free-text search matches across name, city, unit, PLZ", () => {
     const items = [
       item({ einheit_id: "a", projekt_name: "Sonnenhof" }),
       item({ einheit_id: "b", projekt_name: "Mondblick", stadt: "München" }),

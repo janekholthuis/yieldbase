@@ -259,7 +259,6 @@ export function TeamView({ members, invites }: TeamViewProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Rolle</TableHead>
                 <TableHead className="text-center">Ebene</TableHead>
                 <TableHead className="text-right">Provisionssatz</TableHead>
                 {canManageRates && (
@@ -303,9 +302,6 @@ export function TeamView({ members, invites }: TeamViewProps) {
                           </div>
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{roleLabel(m.role)}</Badge>
                     </TableCell>
                     <TableCell className="text-center text-sm">
                       {m.level}
@@ -395,7 +391,6 @@ export function TeamView({ members, invites }: TeamViewProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
-                  <TableHead>Rolle</TableHead>
                   <TableHead className="text-right">Satz</TableHead>
                   <TableHead>Erstellt</TableHead>
                   <TableHead>Gültig bis</TableHead>
@@ -410,9 +405,6 @@ export function TeamView({ members, invites }: TeamViewProps) {
                         <Mail className="h-4 w-4 text-brand-muted" />
                         {i.email}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{roleLabel(i.role)}</Badge>
                     </TableCell>
                     <TableCell className="text-right text-sm">
                       {i.commissionRate != null

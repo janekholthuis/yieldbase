@@ -30,6 +30,7 @@ import { formatEUR } from "@/lib/objekt-format";
 import {
   updateBonitaet,
   activateKundenportal,
+  resendPortalLink,
 } from "@/lib/actions/kunden";
 import {
   listKundenZuweisungen,
@@ -76,6 +77,7 @@ export function KundeDetailView({
 }) {
   const router = useRouter();
   const [activating, setActivating] = useState(false);
+  const [resending, setResending] = useState(false);
   const [portalLink, setPortalLink] = useState<string | null>(null);
   const k = kunde;
 
@@ -102,6 +104,23 @@ export function KundeDetailView({
     }
   };
 
+  const resendLink = async () => {
+    setResending(true);
+    try {
+      const res = await resendPortalLink({ id: k.id });
+      if (res.action_link) {
+        setPortalLink(res.action_link);
+        toast.success("Neuer Login-Link erzeugt");
+      } else {
+        toast.error("Kein Link erhalten");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Fehler beim Erzeugen");
+    } finally {
+      setResending(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center gap-2">
@@ -119,7 +138,18 @@ export function KundeDetailView({
               {activating ? "Aktiviert …" : "Kundenportal aktivieren"}
             </Button>
           ) : (
-            <Badge variant="secondary">Portal aktiv</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">Portal aktiv</Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resendLink}
+                disabled={resending}
+              >
+                <RefreshCw className="mr-1 h-4 w-4" />
+                {resending ? "Erzeugt …" : "Login-Link erneut senden"}
+              </Button>
+            </div>
           )}
         </div>
       </div>

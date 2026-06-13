@@ -311,3 +311,35 @@ export async function activateKundenportal(input: { id: string }): Promise<{
     action_link: link?.properties?.action_link ?? null,
   };
 }
+
+// ───────────── resendPortalLink ─────────────
+// Erzeugt für einen bereits aktivierten Kunden einen frischen einmaligen
+// Login-Link (z. B. wenn der erste Link abgelaufen ist oder nicht ankam). Wie
+// bei der Aktivierung wird KEINE E-Mail versendet — der Link wird zurückgegeben,
+// damit der VP ihn dem Kunden zustellt. Service-Role; Autorisierung zuerst.
+export async function resendPortalLink(input: { id: string }): Promise<{
+  action_link: string | null;
+}> {
+  const { supabase, userId: actorId } = await requireUser();
+  const { id } = z.object({ id: z.string().uuid() }).parse(input);
+  await assertCanManageKunde(supabase, actorId, id);
+
+  const admin = createAdminClient();
+  const { data: k, error: kErr } = await admin
+    .from("kunden")
+    .select("email, user_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (kErr || !k) throw new Error("Kunde nicht gefunden");
+  if (!k.email) throw new Error("Kunde hat keine Email-Adresse, bitte zuerst hinterlegen");
+  if (!k.user_id)
+    throw new Error("Kundenportal ist noch nicht aktiviert — bitte zuerst aktivieren");
+
+  const { data: link, error: lErr } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email: k.email,
+  });
+  if (lErr) throw new Error(`Login-Link konnte nicht erzeugt werden: ${lErr.message}`);
+
+  return { action_link: link?.properties?.action_link ?? null };
+}

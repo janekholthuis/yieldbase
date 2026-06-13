@@ -287,7 +287,9 @@ export function EinheitDetailView({
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="space-y-4 lg:col-span-2">
               <DetailsGrid einheit={e} ppsm={ppsm} />
-              <GeschwisterCard geschwister={e.geschwister} />
+              {/* Eingebettet (Projektseite) zeigt die Einheiten-Liste bereits
+                  alle Geschwister — Karte nur im Standalone-Modus. */}
+              {!embedded && <GeschwisterCard geschwister={e.geschwister} />}
             </div>
 
             <div className="space-y-4">

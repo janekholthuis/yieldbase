@@ -24,6 +24,17 @@ export function hexToRgbChannels(hex: string): string | null {
   return rgb ? rgb.join(" ") : null;
 }
 
+/** Mischt eine RGB-Farbe in Richtung Ziel (0 = original, 1 = Ziel). */
+function blend(
+  rgb: [number, number, number],
+  target: [number, number, number],
+  amt: number,
+): string {
+  return rgb
+    .map((c, i) => Math.round(c + (target[i] - c) * amt))
+    .join(" ");
+}
+
 /** "#0A2E4F" -> "L C H" OKLCH channels (for `oklch(var(--x) / <alpha>)`). */
 export function hexToOklchChannels(hex: string): string | null {
   const rgb = parseHex(hex);
@@ -82,6 +93,21 @@ export function buildOrgThemeCss(org: Pick<ActiveOrg, "primaryColor" | "accentCo
     const rgb = hexToRgbChannels(org.accentColor);
     if (oklch) decls.push(`--accent:${oklch}`, `--chart-3:${oklch}`);
     if (rgb) decls.push(`--brand-accent:${rgb}`);
+
+    // Weiche Akzent-Töne (Chips/Tints/Hover) aus dem Akzent ableiten, damit
+    // keine fest verdrahtete Gold-Farbe durchscheint, wenn die Org z. B. Blau
+    // nutzt: soft/tint → Richtung Weiß aufgehellt, hover/text → abgedunkelt.
+    const base = parseHex(org.accentColor);
+    if (base) {
+      const WHITE: [number, number, number] = [255, 255, 255];
+      const BLACK: [number, number, number] = [0, 0, 0];
+      decls.push(
+        `--brand-accent-soft:${blend(base, WHITE, 0.86)}`,
+        `--brand-accent-tint:${blend(base, WHITE, 0.92)}`,
+        `--brand-accent-hover:${blend(base, BLACK, 0.22)}`,
+        `--brand-accent-text:${blend(base, BLACK, 0.4)}`,
+      );
+    }
   }
 
   return decls.length ? `:root{${decls.join(";")}}` : "";

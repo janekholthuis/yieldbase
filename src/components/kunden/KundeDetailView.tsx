@@ -31,7 +31,15 @@ import {
   updateBonitaet,
   activateKundenportal,
   resendPortalLink,
+  updateKundeStammdaten,
 } from "@/lib/actions/kunden";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   listKundenZuweisungen,
   getEmpfehlungen,
@@ -78,6 +86,7 @@ export function KundeDetailView({
   const router = useRouter();
   const [activating, setActivating] = useState(false);
   const [resending, setResending] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [portalLink, setPortalLink] = useState<string | null>(null);
   const k = kunde;
 
@@ -209,7 +218,12 @@ export function KundeDetailView({
             />
           </section>
           <section className="rounded-lg border bg-card p-4">
-            <h3 className="mb-3 font-medium">Kontakt</h3>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-medium">Kontakt</h3>
+              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                Bearbeiten
+              </Button>
+            </div>
             <dl className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
               <KV label="Email" v={k.email} />
               <KV label="Telefon" v={k.telefon} />
@@ -222,6 +236,15 @@ export function KundeDetailView({
               <KV label="Bundesland" v={k.bundesland} />
             </dl>
           </section>
+          <StammdatenDialog
+            open={editOpen}
+            onOpenChange={setEditOpen}
+            k={k}
+            onSaved={() => {
+              setEditOpen(false);
+              router.refresh();
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="selbstauskunft">
@@ -279,6 +302,184 @@ function KV({ label, v }: { label: string; v: string | null | undefined }) {
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd>{v || "—"}</dd>
     </div>
+  );
+}
+
+type StammForm = {
+  anrede: "herr" | "frau" | "divers";
+  vorname: string;
+  nachname: string;
+  email: string;
+  telefon: string;
+  geburtsdatum: string;
+  adresse: string;
+  plz: string;
+  stadt: string;
+  bundesland: string;
+};
+
+function StammdatenDialog({
+  open,
+  onOpenChange,
+  k,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  k: KundeDetail;
+  onSaved: () => void;
+}) {
+  const [f, setF] = useState<StammForm>({
+    anrede: (k.anrede as StammForm["anrede"]) ?? "herr",
+    vorname: k.vorname ?? "",
+    nachname: k.nachname ?? "",
+    email: k.email ?? "",
+    telefon: k.telefon ?? "",
+    geburtsdatum: k.geburtsdatum ?? "",
+    adresse: k.adresse ?? "",
+    plz: k.plz ?? "",
+    stadt: k.stadt ?? "",
+    bundesland: k.bundesland ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Bei (Wieder-)Öffnen die Felder aus dem aktuellen Kunden frisch befüllen.
+  useEffect(() => {
+    if (open) {
+      setF({
+        anrede: (k.anrede as StammForm["anrede"]) ?? "herr",
+        vorname: k.vorname ?? "",
+        nachname: k.nachname ?? "",
+        email: k.email ?? "",
+        telefon: k.telefon ?? "",
+        geburtsdatum: k.geburtsdatum ?? "",
+        adresse: k.adresse ?? "",
+        plz: k.plz ?? "",
+        stadt: k.stadt ?? "",
+        bundesland: k.bundesland ?? "",
+      });
+    }
+  }, [open, k]);
+
+  const upd = <K extends keyof StammForm>(key: K, v: StammForm[K]) =>
+    setF((prev) => ({ ...prev, [key]: v }));
+
+  const save = async () => {
+    if (!f.vorname.trim() || !f.nachname.trim()) {
+      toast.error("Vor- und Nachname sind Pflicht");
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateKundeStammdaten({
+        id: k.id,
+        anrede: f.anrede,
+        vorname: f.vorname.trim(),
+        nachname: f.nachname.trim(),
+        email: f.email.trim() || null,
+        telefon: f.telefon.trim() || null,
+        geburtsdatum: f.geburtsdatum || null,
+        adresse: f.adresse.trim() || null,
+        plz: f.plz.trim() || null,
+        stadt: f.stadt.trim() || null,
+        bundesland: f.bundesland.trim() || null,
+      });
+      toast.success("Stammdaten gespeichert");
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Speichern fehlgeschlagen");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Stammdaten bearbeiten</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <div>
+            <Label>Anrede</Label>
+            <Select
+              value={f.anrede}
+              onValueChange={(v) => upd("anrede", v as StammForm["anrede"])}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="herr">Herr</SelectItem>
+                <SelectItem value="frau">Frau</SelectItem>
+                <SelectItem value="divers">Divers</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Vorname *</Label>
+            <Input value={f.vorname} onChange={(e) => upd("vorname", e.target.value)} />
+          </div>
+          <div>
+            <Label>Nachname *</Label>
+            <Input value={f.nachname} onChange={(e) => upd("nachname", e.target.value)} />
+          </div>
+          <div>
+            <Label>Email</Label>
+            <Input
+              type="email"
+              value={f.email}
+              onChange={(e) => upd("email", e.target.value)}
+            />
+          </div>
+          <div>
+            <Label>Telefon</Label>
+            <Input value={f.telefon} onChange={(e) => upd("telefon", e.target.value)} />
+          </div>
+          <div>
+            <Label>Geburtsdatum</Label>
+            <Input
+              type="date"
+              value={f.geburtsdatum}
+              onChange={(e) => upd("geburtsdatum", e.target.value)}
+            />
+          </div>
+          <div className="col-span-2 md:col-span-3">
+            <Label>Adresse</Label>
+            <Input value={f.adresse} onChange={(e) => upd("adresse", e.target.value)} />
+          </div>
+          <div>
+            <Label>PLZ</Label>
+            <Input value={f.plz} onChange={(e) => upd("plz", e.target.value)} />
+          </div>
+          <div>
+            <Label>Stadt</Label>
+            <Input value={f.stadt} onChange={(e) => upd("stadt", e.target.value)} />
+          </div>
+          <div>
+            <Label>Bundesland</Label>
+            <Input
+              value={f.bundesland}
+              onChange={(e) => upd("bundesland", e.target.value)}
+            />
+          </div>
+        </div>
+        {k.user_id && (
+          <p className="text-xs text-muted-foreground">
+            Portal aktiv: Anzeige-Daten im Kundenportal werden mit aktualisiert.
+            Die Login-Email des Kunden bleibt unverändert.
+          </p>
+        )}
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
+            Abbrechen
+          </Button>
+          <Button onClick={save} disabled={saving}>
+            {saving ? "Speichert …" : "Speichern"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

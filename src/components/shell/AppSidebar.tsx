@@ -104,11 +104,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        {!collapsed && (
-          <p className="px-3 py-1 text-xs text-brand-subtle">Phase 1 · Alpha</p>
-        )}
-      </SidebarFooter>
+      <SidebarFooter />
     </Sidebar>
   );
 }

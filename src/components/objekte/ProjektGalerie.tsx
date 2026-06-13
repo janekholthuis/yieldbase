@@ -52,9 +52,10 @@ export function ProjektGalerie({
           />
         </button>
 
-        {/* Thumbnail grid */}
+        {/* Thumbnail grid — min-h-0 verhindert, dass die Bildzeilen über die
+            380px-Spur hinauswachsen und ins Hero/Kennzahlen überlappen. */}
         {thumbs.length > 0 && (
-          <div className="hidden grid-cols-2 grid-rows-2 gap-2 md:grid">
+          <div className="hidden h-full min-h-0 grid-cols-2 grid-rows-2 gap-2 md:grid">
             {thumbs.map((b, idx) => {
               const realIdx = idx + 1;
               const isLast = idx === thumbs.length - 1 && extra > 0;

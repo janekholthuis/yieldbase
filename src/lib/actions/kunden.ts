@@ -165,6 +165,79 @@ export async function createKunde(input: z.input<typeof createInput>) {
   return { id: ins.id, bonitaet: bon };
 }
 
+// ───────────── updateKundeStammdaten ─────────────
+// Stammdaten (Anrede/Name/Email/Kontakt) eines bestehenden Kunden ändern.
+// RLS-gescopt als eingeloggter VP; bei aktiviertem Portal werden die Profil-
+// Daten gespiegelt, damit der Kunde aktuelle Angaben sieht.
+const stammdatenInput = z.object({
+  id: z.string().uuid(),
+  anrede: Anrede,
+  vorname: z.string().trim().min(1).max(60),
+  nachname: z.string().trim().min(1).max(80),
+  email: z.string().trim().email().max(200).optional().nullable(),
+  telefon: z.string().trim().max(60).optional().nullable(),
+  geburtsdatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  adresse: z.string().trim().max(200).optional().nullable(),
+  plz: z.string().trim().max(10).optional().nullable(),
+  stadt: z.string().trim().max(100).optional().nullable(),
+  bundesland: z.string().trim().max(60).optional().nullable(),
+});
+
+export async function updateKundeStammdaten(
+  input: z.input<typeof stammdatenInput>,
+) {
+  const { supabase, userId } = await requireUser();
+  const data = stammdatenInput.parse(input);
+  await assertCanManageKunde(supabase, userId, data.id);
+
+  const patch = {
+    anrede: data.anrede,
+    vorname: data.vorname,
+    nachname: data.nachname,
+    email: data.email || null,
+    telefon: data.telefon || null,
+    geburtsdatum: data.geburtsdatum || null,
+    adresse: data.adresse || null,
+    plz: data.plz || null,
+    stadt: data.stadt || null,
+    bundesland: data.bundesland || null,
+  };
+
+  const { data: updated, error } = await supabase
+    .from("kunden")
+    .update(patch)
+    .eq("id", data.id)
+    .select("user_id")
+    .single();
+  if (error) throw new Error(`Aktualisieren fehlgeschlagen: ${error.message}`);
+
+  // Bei aktiviertem Portal das Profil spiegeln (Anzeige-Daten im Portal).
+  // Hinweis: die Auth-Login-Email wird bewusst NICHT geändert.
+  if (updated?.user_id) {
+    const admin = createAdminClient();
+    await admin
+      .from("profiles")
+      .update({
+        anrede: data.anrede,
+        vorname: data.vorname,
+        nachname: data.nachname,
+        name: `${data.vorname} ${data.nachname}`.trim(),
+        email: data.email || null,
+        phone: data.telefon || null,
+        geburtsdatum: data.geburtsdatum || null,
+        address: data.adresse || null,
+        plz: data.plz || null,
+        stadt: data.stadt || null,
+        bundesland: data.bundesland || null,
+      })
+      .eq("id", updated.user_id);
+  }
+
+  revalidatePath("/kunden");
+  revalidatePath(`/kunden/${data.id}`);
+  return { ok: true };
+}
+
 // ───────────── updateBonitaet ─────────────
 export async function updateBonitaet(input: z.input<typeof updateInput>) {
   const { supabase, userId } = await requireUser();

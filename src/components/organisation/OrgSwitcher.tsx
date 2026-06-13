@@ -22,6 +22,7 @@ import {
   switchOrganisation,
 } from "@/lib/actions/organisationen";
 import type { MyOrganisation } from "@/lib/data/organisationen";
+import { ORG_SWITCHING_ENABLED } from "@/lib/features";
 
 function OrgLogo({ org }: { org: Pick<MyOrganisation, "name" | "logoUrl"> }) {
   if (org.logoUrl) {
@@ -79,8 +80,9 @@ export function OrgSwitcher() {
 
   const active = orgs.find((o) => o.id === activeOrgId) ?? orgs[0];
 
-  // Single org: render a non-interactive label (no switching needed).
-  if (orgs.length === 1) {
+  // Switching disabled (feature flag) OR single org: render a non-interactive
+  // label. The switch dropdown below stays in the code for later re-activation.
+  if (!ORG_SWITCHING_ENABLED || orgs.length === 1) {
     return (
       <div className="hidden items-center gap-2 rounded-lg border border-brand-border bg-brand-surface px-3 py-1.5 sm:flex">
         <OrgLogo org={active} />

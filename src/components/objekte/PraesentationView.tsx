@@ -33,7 +33,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
-import { calculate, type CalcInputs } from "@/lib/kalkulation";
+import { calculate, SZENARIO_KONSERVATIV, type CalcInputs } from "@/lib/kalkulation";
 import {
   formatEUR,
   formatNumber,
@@ -795,8 +795,11 @@ function buildInitialInputs(
     tilgung: defaults.tilgung,
     haltedauerJahre: defaults.haltedauer,
     afaSatz: einheit.afa_satz ?? defaults.afa,
-    wertsteigerung: defaults.wertsteigerung,
-    mietsteigerung: 2,
+    // Kundenseitige Präsentation: konservatives Szenario als Default
+    // (rechtlich die sichere Wahl — keine geschönten Zukunftsannahmen).
+    wertsteigerung: SZENARIO_KONSERVATIV.wertsteigerung,
+    mietsteigerung: SZENARIO_KONSERVATIV.mietsteigerung,
+    inflation: SZENARIO_KONSERVATIV.inflation,
     steuersatz:
       kunde?.persoenlicher_steuersatz != null
         ? Number(kunde.persoenlicher_steuersatz)

@@ -18,7 +18,22 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { calculate, type CalcInputs, type CalcResult } from "@/lib/kalkulation";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  calculate,
+  defaultSzenarien,
+  KFW_PROGRAMME,
+  type AfaTyp,
+  type CalcInputs,
+  type CalcResult,
+  type SzenarioKey,
+} from "@/lib/kalkulation";
 import type { KalkulationsContext } from "@/lib/data/kalkulation-context";
 import type { KalkulationsEinheit } from "@/lib/data/objekte";
 import { formatEUR } from "@/lib/objekt-format";
@@ -54,21 +69,77 @@ export function KalkulationsTab({ einheit, kalkContext, readOnly = false }: Prop
       mietsteigerung: 2.0,
       steuersatz: ctx.meinSteuersatz ?? 35,
       erhaltungsaufwand: einheit.erhaltungsaufwand ?? 0,
+      // Kalkulation 2.0 — Defaults entsprechen dem bisherigen Verhalten
+      afaTyp: "linear",
+      sanierungsanteil: 0,
+      altbauAfaSatz: 2,
+      sonderAfaBemessung: 0,
+      moeblierungswert: 0,
+      moeblierungJahre: 10,
+      inflation: 2.0,
+      kfwBetrag: 0,
+      kfwZins: 0,
+      kfwTilgung: 0,
+      kfwTilgungszuschussProzent: 0,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [inputs, setInputs] = useState<CalcInputs>(initial);
-  const result = useMemo(() => calculate(inputs), [inputs]);
+  // Default-Szenario: konservativ (rechtlich die sichere Wahl).
+  const [szenarioKey, setSzenarioKey] = useState<SzenarioKey>("konservativ");
+  // Gewähltes KfW-Programm explizit merken (bleibt bei manueller Konditions-Anpassung erhalten).
+  const [kfwProgrammKey, setKfwProgrammKey] = useState<string>("none");
+
+  const szenarien = useMemo(
+    () =>
+      defaultSzenarien({
+        wertsteigerung: inputs.wertsteigerung,
+        mietsteigerung: inputs.mietsteigerung,
+        inflation: inputs.inflation ?? 2,
+      }),
+    [inputs.wertsteigerung, inputs.mietsteigerung, inputs.inflation],
+  );
+  const aktivesSzenario = szenarien.find((s) => s.key === szenarioKey) ?? szenarien[0];
+
+  // Effektive Inputs: bei nicht-individuellen Szenarien überschreiben die
+  // Preset-Annahmen die Zukunftsfelder.
+  const effective = useMemo<CalcInputs>(
+    () => ({ ...inputs, ...aktivesSzenario.annahmen }),
+    [inputs, aktivesSzenario],
+  );
+  const result = useMemo(() => calculate(effective), [effective]);
 
   const set = <K extends keyof CalcInputs>(k: K, v: CalcInputs[K]) =>
     setInputs((s) => ({ ...s, [k]: v }));
 
-  // TODO(migration): Persisting a Kalkulation requires a kundeId, which this
-  // object-detail context does not have. saveKalkulation from
-  // "@/lib/actions/objekte" should be wired once a Kunde is selected here
-  // (e.g. via a customer picker). The calculator stays fully interactive
-  // without persistence until then.
+  const annahmenEditierbar = aktivesSzenario.editierbar && !readOnly;
+  const afaTyp = inputs.afaTyp ?? "linear";
+
+  // KfW-Programm-Preset anwenden (Konditionen bleiben danach editierbar).
+  const applyKfw = (key: string) => {
+    setKfwProgrammKey(key);
+    if (key === "none") {
+      setInputs((s) => ({
+        ...s,
+        kfwBetrag: 0,
+        kfwZins: 0,
+        kfwTilgung: 0,
+        kfwTilgungszuschussProzent: 0,
+      }));
+      return;
+    }
+    const p = KFW_PROGRAMME.find((x) => x.key === key);
+    if (!p) return;
+    setInputs((s) => ({
+      ...s,
+      kfwBetrag: Math.min(p.maxBetrag, Math.max(0, s.kaufpreis - s.ekBetrag)),
+      kfwZins: p.zins,
+      kfwTilgung: p.tilgung,
+      kfwTilgungszuschussProzent: p.tilgungszuschussProzent,
+    }));
+  };
+  const aktivesKfw = KFW_PROGRAMME.find((p) => p.key === kfwProgrammKey);
 
   return (
     <div className="space-y-5">
@@ -80,7 +151,7 @@ export function KalkulationsTab({ einheit, kalkContext, readOnly = false }: Prop
           accent
         />
         <KpiCard
-          label={`EK-Rendite (${inputs.haltedauerJahre} J.)`}
+          label={`EK-Rendite (${effective.haltedauerJahre} J.)`}
           value={result.ekRenditeMultiplikator}
           format={(n) =>
             `${n.toFixed(2)}× · ${result.ekRenditeProJahr.toFixed(1)} % p.a.`
@@ -97,6 +168,35 @@ export function KalkulationsTab({ einheit, kalkContext, readOnly = false }: Prop
           format={(n) => formatEUR(Math.round(n))}
         />
       </div>
+
+      {/* Szenario-Umschalter */}
+      <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Prognose-Szenario
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {aktivesSzenario.beschreibung}
+          </p>
+        </div>
+        <div className="inline-flex rounded-lg bg-muted p-1">
+          {szenarien.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => setSzenarioKey(s.key)}
+              aria-pressed={szenarioKey === s.key}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                szenarioKey === s.key
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Inputs */}
@@ -137,7 +237,7 @@ export function KalkulationsTab({ einheit, kalkContext, readOnly = false }: Prop
           </div>
 
           <SliderRow
-            label="Zins"
+            label="Zins (Bank)"
             value={inputs.zins}
             min={1}
             max={8}
@@ -147,7 +247,7 @@ export function KalkulationsTab({ einheit, kalkContext, readOnly = false }: Prop
             disabled={readOnly}
           />
           <SliderRow
-            label="Tilgung"
+            label="Tilgung (Bank)"
             value={inputs.tilgung}
             min={1}
             max={6}
@@ -167,26 +267,6 @@ export function KalkulationsTab({ einheit, kalkContext, readOnly = false }: Prop
             disabled={readOnly}
           />
           <SliderRow
-            label="AfA"
-            value={inputs.afaSatz}
-            min={1}
-            max={5}
-            step={0.1}
-            onChange={(v) => set("afaSatz", v)}
-            format={(n) => `${n.toFixed(1)} %`}
-            disabled={readOnly}
-          />
-          <SliderRow
-            label="Wertsteigerung"
-            value={inputs.wertsteigerung}
-            min={0}
-            max={5}
-            step={0.1}
-            onChange={(v) => set("wertsteigerung", v)}
-            format={(n) => `${n.toFixed(1)} % p.a.`}
-            disabled={readOnly}
-          />
-          <SliderRow
             label="Steuersatz"
             value={inputs.steuersatz}
             min={0}
@@ -203,6 +283,238 @@ export function KalkulationsTab({ einheit, kalkContext, readOnly = false }: Prop
             suffix="€"
             disabled={readOnly}
           />
+
+          {/* Zukunftsannahmen — nur im Szenario „Individuell" editierbar */}
+          <div className="space-y-3 border-t pt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Zukunftsannahmen
+              </span>
+              {!annahmenEditierbar && (
+                <span className="text-[10px] text-muted-foreground">
+                  via Szenario „{aktivesSzenario.label}"
+                </span>
+              )}
+            </div>
+            <SliderRow
+              label="Wertsteigerung"
+              value={effective.wertsteigerung}
+              min={0}
+              max={5}
+              step={0.1}
+              onChange={(v) => set("wertsteigerung", v)}
+              format={(n) => `${n.toFixed(1)} % p.a.`}
+              disabled={!annahmenEditierbar}
+            />
+            <SliderRow
+              label="Mietsteigerung"
+              value={effective.mietsteigerung}
+              min={0}
+              max={5}
+              step={0.1}
+              onChange={(v) => set("mietsteigerung", v)}
+              format={(n) => `${n.toFixed(1)} % p.a.`}
+              disabled={!annahmenEditierbar}
+            />
+            <SliderRow
+              label="Inflation (Kosten)"
+              value={effective.inflation ?? 0}
+              min={0}
+              max={6}
+              step={0.1}
+              onChange={(v) => set("inflation", v)}
+              format={(n) => `${n.toFixed(1)} % p.a.`}
+              disabled={!annahmenEditierbar}
+            />
+          </div>
+
+          {/* AfA */}
+          <div className="space-y-3 border-t pt-3">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Abschreibung (AfA)
+            </span>
+            <div className="space-y-1">
+              <Label className="text-xs">AfA-Typ</Label>
+              <Select
+                value={afaTyp}
+                onValueChange={(v) => set("afaTyp", v as AfaTyp)}
+                disabled={readOnly}
+              >
+                <SelectTrigger className="h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="linear">Linear (Standard)</SelectItem>
+                  <SelectItem value="denkmal">Denkmal §7i</SelectItem>
+                  <SelectItem value="sonder_7b">Sonder-AfA §7b (Neubau)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {afaTyp === "linear" && (
+              <SliderRow
+                label="AfA-Satz"
+                value={inputs.afaSatz}
+                min={1}
+                max={5}
+                step={0.1}
+                onChange={(v) => set("afaSatz", v)}
+                format={(n) => `${n.toFixed(1)} %`}
+                disabled={readOnly}
+              />
+            )}
+
+            {afaTyp === "denkmal" && (
+              <>
+                <NumberRow
+                  label="Sanierungsanteil (§7i)"
+                  value={inputs.sanierungsanteil ?? 0}
+                  onChange={(v) => set("sanierungsanteil", v)}
+                  suffix="€"
+                  disabled={readOnly}
+                />
+                <SliderRow
+                  label="Altbau-AfA"
+                  value={inputs.altbauAfaSatz ?? 2}
+                  min={2}
+                  max={2.5}
+                  step={0.5}
+                  onChange={(v) => set("altbauAfaSatz", v)}
+                  format={(n) => `${n.toFixed(1)} %`}
+                  disabled={readOnly}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Sanierungsanteil: 9 % p.a. (Jahr 1–8), 7 % p.a. (Jahr 9–12).
+                </p>
+              </>
+            )}
+
+            {afaTyp === "sonder_7b" && (
+              <>
+                <SliderRow
+                  label="Lineare Basis-AfA"
+                  value={inputs.afaSatz}
+                  min={1}
+                  max={5}
+                  step={0.1}
+                  onChange={(v) => set("afaSatz", v)}
+                  format={(n) => `${n.toFixed(1)} %`}
+                  disabled={readOnly}
+                />
+                <NumberRow
+                  label="Sonder-AfA Bemessung"
+                  value={inputs.sonderAfaBemessung ?? 0}
+                  onChange={(v) => set("sonderAfaBemessung", v)}
+                  suffix="€"
+                  disabled={readOnly}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Zusätzlich 5 % p.a. in den Jahren 1–4 (Beta — ohne §7b-Voll­prüfung).
+                </p>
+              </>
+            )}
+
+            <NumberRow
+              label="Möblierungswert (optional)"
+              value={inputs.moeblierungswert ?? 0}
+              onChange={(v) => set("moeblierungswert", v)}
+              suffix="€"
+              disabled={readOnly}
+            />
+            {(inputs.moeblierungswert ?? 0) > 0 && (
+              <SliderRow
+                label="Möblierung Nutzungsdauer"
+                value={inputs.moeblierungJahre ?? 10}
+                min={5}
+                max={15}
+                step={1}
+                onChange={(v) => set("moeblierungJahre", v)}
+                format={(n) => `${n} J.`}
+                disabled={readOnly}
+              />
+            )}
+            <div className="flex justify-between rounded-md bg-muted px-2 py-1.5 text-xs">
+              <span className="text-muted-foreground">AfA Jahr 1</span>
+              <span className="font-semibold">{formatEUR(Math.round(result.afaJahr1))}</span>
+            </div>
+          </div>
+
+          {/* KfW-Förderung */}
+          <div className="space-y-3 border-t pt-3">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              KfW-Förderung
+            </span>
+            <div className="space-y-1">
+              <Label className="text-xs">Programm</Label>
+              <Select
+                value={kfwProgrammKey}
+                onValueChange={applyKfw}
+                disabled={readOnly}
+              >
+                <SelectTrigger className="h-8">
+                  <SelectValue placeholder="Keine KfW-Förderung" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Keine KfW-Förderung</SelectItem>
+                  {KFW_PROGRAMME.map((p) => (
+                    <SelectItem key={p.key} value={p.key}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(inputs.kfwBetrag ?? 0) > 0 && (
+              <>
+                <NumberRow
+                  label="KfW-Darlehen"
+                  value={inputs.kfwBetrag ?? 0}
+                  onChange={(v) => set("kfwBetrag", v)}
+                  suffix="€"
+                  disabled={readOnly}
+                />
+                <SliderRow
+                  label="KfW-Zins"
+                  value={inputs.kfwZins ?? 0}
+                  min={0}
+                  max={5}
+                  step={0.05}
+                  onChange={(v) => set("kfwZins", v)}
+                  format={(n) => `${n.toFixed(2)} %`}
+                  disabled={readOnly}
+                />
+                <SliderRow
+                  label="KfW-Tilgung"
+                  value={inputs.kfwTilgung ?? 0}
+                  min={1}
+                  max={6}
+                  step={0.1}
+                  onChange={(v) => set("kfwTilgung", v)}
+                  format={(n) => `${n.toFixed(1)} %`}
+                  disabled={readOnly}
+                />
+                <SliderRow
+                  label="Tilgungszuschuss"
+                  value={inputs.kfwTilgungszuschussProzent ?? 0}
+                  min={0}
+                  max={45}
+                  step={1}
+                  onChange={(v) => set("kfwTilgungszuschussProzent", v)}
+                  format={(n) => `${n.toFixed(0)} %`}
+                  disabled={readOnly}
+                />
+                {aktivesKfw && (
+                  <p className="text-[10px] text-muted-foreground">{aktivesKfw.hinweis}</p>
+                )}
+                <p className="text-[10px] text-muted-foreground">
+                  Bank-Tranche {formatEUR(Math.round(result.bankTranche))} · KfW{" "}
+                  {formatEUR(Math.round(result.kfwTranche))}. Konditionen sind Richtwerte —
+                  vor Beratung prüfen.
+                </p>
+              </>
+            )}
+          </div>
         </Card>
 
         {/* Charts + Detail */}

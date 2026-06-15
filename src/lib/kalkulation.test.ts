@@ -114,3 +114,142 @@ describe("calculate — guard rails", () => {
     );
   });
 });
+
+// --- Kalkulation 2.0 (PROJ-20) ---
+
+describe("calculate — AfA: linear (default, backward compatible)", () => {
+  it("year-1 AfA equals Gebäudewert × linear rate", () => {
+    const r = calculate(base);
+    // Gebäudewert 160k × 2% = 3200
+    expect(r.afaJahr1).toBeCloseTo(3200, 6);
+    expect(r.jahre[1].afaJahr).toBeCloseTo(3200, 6);
+  });
+
+  it("keeps the AfA constant across all years", () => {
+    const r = calculate(base);
+    expect(r.jahre[5].afaJahr).toBeCloseTo(r.jahre[1].afaJahr, 6);
+  });
+});
+
+describe("calculate — Denkmal-AfA §7i", () => {
+  // Gebäudewert 160k, davon 100k Sanierung → 60k Altbau (2%).
+  const denkmal: CalcInputs = {
+    ...base,
+    afaTyp: "denkmal",
+    sanierungsanteil: 100000,
+    altbauAfaSatz: 2,
+  };
+
+  it("years 1–8: Altbau linear + Sanierung degressiv 9 %", () => {
+    const r = calculate(denkmal);
+    // 60k × 2% + 100k × 9% = 1200 + 9000 = 10200
+    expect(r.jahre[1].afaJahr).toBeCloseTo(10200, 6);
+    expect(r.jahre[8].afaJahr).toBeCloseTo(10200, 6);
+  });
+
+  it("years 9–12 drop the Sanierungs-AfA to 7 %", () => {
+    const r = calculate({ ...denkmal, haltedauerJahre: 15 });
+    // 1200 + 100k × 7% = 1200 + 7000 = 8200
+    expect(r.jahre[9].afaJahr).toBeCloseTo(8200, 6);
+    expect(r.jahre[12].afaJahr).toBeCloseTo(8200, 6);
+  });
+
+  it("from year 13 only the Altbau-AfA remains", () => {
+    const r = calculate({ ...denkmal, haltedauerJahre: 15 });
+    expect(r.jahre[13].afaJahr).toBeCloseTo(1200, 6);
+  });
+
+  it("beats linear AfA on cumulative tax savings", () => {
+    const lin = calculate(base);
+    const dnk = calculate(denkmal);
+    expect(dnk.kumulierteSteuerersparnis).toBeGreaterThan(lin.kumulierteSteuerersparnis);
+  });
+});
+
+describe("calculate — Sonder-AfA §7b", () => {
+  it("adds 5 % of the base in years 1–4, linear afterwards", () => {
+    const r = calculate({ ...base, afaTyp: "sonder_7b", sonderAfaBemessung: 100000 });
+    // Jahr 1: 160k×2% + 100k×5% = 3200 + 5000 = 8200
+    expect(r.jahre[1].afaJahr).toBeCloseTo(8200, 6);
+    expect(r.jahre[4].afaJahr).toBeCloseTo(8200, 6);
+    // Jahr 5: nur noch linear 3200
+    expect(r.jahre[5].afaJahr).toBeCloseTo(3200, 6);
+  });
+});
+
+describe("calculate — Möblierungs-AfA", () => {
+  it("depreciates furniture linearly over its useful life, then stops", () => {
+    const r = calculate({ ...base, moeblierungswert: 20000, moeblierungJahre: 10 });
+    // linear 3200 + 20000/10 = 3200 + 2000 = 5200 in den ersten 10 Jahren
+    expect(r.jahre[1].afaJahr).toBeCloseTo(5200, 6);
+    expect(r.jahre[10].afaJahr).toBeCloseTo(5200, 6);
+  });
+
+  it("stops after the useful life", () => {
+    const r = calculate({
+      ...base,
+      haltedauerJahre: 15,
+      moeblierungswert: 20000,
+      moeblierungJahre: 10,
+    });
+    expect(r.jahre[11].afaJahr).toBeCloseTo(3200, 6);
+  });
+});
+
+describe("calculate — KfW financing tranche", () => {
+  it("splits the loan into a bank and a KfW tranche", () => {
+    const r = calculate({ ...base, kfwBetrag: 50000, kfwZins: 2, kfwTilgung: 2 });
+    expect(r.darlehen).toBe(160000);
+    expect(r.kfwTranche).toBe(50000);
+    expect(r.bankTranche).toBe(110000);
+  });
+
+  it("lowers month-1 interest versus an all-bank loan", () => {
+    const allBank = calculate(base);
+    const withKfw = calculate({ ...base, kfwBetrag: 50000, kfwZins: 2, kfwTilgung: 2 });
+    expect(withKfw.zinsMonat1).toBeLessThan(allBank.zinsMonat1);
+  });
+
+  it("caps the KfW tranche at the total loan", () => {
+    const r = calculate({ ...base, kfwBetrag: 999999, kfwZins: 2, kfwTilgung: 2 });
+    expect(r.kfwTranche).toBe(160000);
+    expect(r.bankTranche).toBe(0);
+  });
+
+  it("credits a Tilgungszuschuss against the remaining debt", () => {
+    const withoutZuschuss = calculate({ ...base, kfwBetrag: 50000, kfwZins: 2, kfwTilgung: 2 });
+    const withZuschuss = calculate({
+      ...base,
+      kfwBetrag: 50000,
+      kfwZins: 2,
+      kfwTilgung: 2,
+      kfwTilgungszuschussProzent: 20,
+    });
+    expect(withZuschuss.jahre[1].restschuld).toBeLessThan(
+      withoutZuschuss.jahre[1].restschuld,
+    );
+  });
+
+  it("is backward compatible when no KfW tranche is set", () => {
+    const r = calculate(base);
+    expect(r.kfwTranche).toBe(0);
+    expect(r.bankTranche).toBe(160000);
+    expect(r.annuitaetMonat).toBeCloseTo(800, 6);
+  });
+});
+
+describe("calculate — inflation on operating costs", () => {
+  it("escalates non-recoverable costs over time", () => {
+    const flat = calculate(base);
+    const infl = calculate({ ...base, inflation: 5 });
+    // Higher costs in later years → higher deductible losses → more tax saving.
+    expect(infl.jahre[5].steuerersparnisJahr).toBeGreaterThan(
+      flat.jahre[5].steuerersparnisJahr,
+    );
+    // Year 1 is unaffected (escalation exponent is 0).
+    expect(infl.jahre[1].steuerersparnisJahr).toBeCloseTo(
+      flat.jahre[1].steuerersparnisJahr,
+      6,
+    );
+  });
+});

@@ -37,8 +37,14 @@
 | PROJ-14 | „Neue Objekte"-Feed (Partner-Feed, Schlagzeilen-Posts mit Projekt-Link) | Planned (V2, Nav ausgegraut, nicht gebaut) | features/PROJ-14-neue-objekte-feed.md | 2026-06-12 |
 | PROJ-15 | Standort-Highlights-Modul (nächste POIs je Kategorie + Luftlinien-Distanz; Mapbox Search Box) | In Progress (MVP gebaut; Score & Isochronen out) | features/PROJ-15-standort-highlights.md | 2026-06-12 |
 | PROJ-16 | Objekte anlegen — Bauträger raus + Bulk-Einheiten (Excel-Paste) | Deployed (2026-06-13; manuelle/E2E-Verifikation offen) | features/PROJ-16-objekte-bulk-anlegen.md | 2026-06-13 |
+| PROJ-17 | Suchagenten (gespeicherte Suchprofile je Suchkunde, Auto-Match neuer/passender Einheiten, Benachrichtigung) | Roadmap | — | 2026-06-14 |
+| PROJ-18 | Objektvergleiche (Side-by-side Vergleich von Einheiten/Kennzahlen, individuelle Portfolios) | Roadmap | — | 2026-06-14 |
+| PROJ-19 | Externe Schnittstellen / APIs (CRM-Export & -Sync: HubSpot, Salesforce, TeamProQ; Webhooks) | Roadmap | — | 2026-06-14 |
+| PROJ-20 | Kalkulation 2.0 (erweiterte AfA inkl. Denkmal/Möblierung, anpassbare Prognose-Szenarien, KfW-Förderbausteine) | Approved (QA 2026-06-15: tsc+171 Tests+Build grün, BUG-K1 gefixt) | features/PROJ-20-kalkulation-2.md | 2026-06-14 |
 
 <!-- Add features above this line -->
+
+> **Investagon-Feature-Gap-Analyse + PROJ-17–20 (2026-06-14/15):** Vollständiger Abgleich der App gegen Investagons Marketing-Featureliste durchgeführt (Code-verifiziert). Kern-DNA vorhanden (Objekte, Exposé, Kalkulation+Charts, CRM/Bonität, Reservierung, White-Label = gleichauf/besser). Neu auf Roadmap: **PROJ-17 Suchagenten**, **PROJ-18 Objektvergleiche**, **PROJ-19 externe Schnittstellen** (HubSpot/Salesforce). Verworfen: Glossar, Notar-Koordinations-Workflow. Offen als Lücken: Wartelisten, echtes Marktdaten-Modul. **PROJ-20 Kalkulation 2.0 GEBAUT** (2026-06-15): erweiterte AfA (Denkmal §7i mit Substanz-Split, Sonder-AfA §7b, Möblierungs-AfA), 3 umschaltbare Prognose-Szenarien (konservativ/individuell/historisch) inkl. Inflation auf Kosten, KfW als zweite Darlehenstranche mit Tilgungszuschuss; Engine rückwärtskompatibel (neue Felder optional), Präsentation defaultet konservativ. `src/lib/kalkulation.ts` + `KalkulationsTab.tsx` + `PraesentationView.tsx`, 16 neue Tests. tsc + 171 Tests + Build grün. **QA-Pass 2026-06-15:** keine Critical/High; fachliche Korrektheit (§7i 12-J-Summe = 100 %, KfW-Split, Inflation) verifiziert; 1 **Low**-Bug (BUG-K1: KfW-Programm-Dropdown fällt nach manueller Konditions-Änderung optisch auf „Keine" zurück, obwohl KfW aktiv bleibt — keine falschen Zahlen). **Offen:** BUG-K1, visuelle Verifikation Staging/Prod, E2E (braucht Staging+Seed), Deploy, optionale DB-Persistenz der Inputs.
 
 > **Objekte-Revision Runde 2 (Refine 2026-06-12, PROJ-3/PROJ-12):** Projekt-Detailseite (`/objekte/projekt/[projektId]`) mit Kaufpreisliste + Einheiten-Anzahl + Verkaufsstatus-Breakdown geplant; Status-Taxonomie auf strikt 6 Werte (Frei · Auf Anfrage · Reserviert · Notarvorbereitung · Notartermin · Verkauft). Listen-Aggregation/Ranges existieren bereits. Plan: `docs/OBJEKTE-PROJEKT-DETAIL-PLAN.md`. Noch nicht gebaut.
 
@@ -65,4 +71,4 @@
 
 > **Nav-Bereinigung + PROJ-3-Trim (2026-06-13, deployed `8508da0`):** **Finanzierungen** (PROJ-6) und **Provisionen** (PROJ-9) jetzt **komplett ausgeblendet** statt ausgegraut („Bald") — neues `hidden`-Flag in `src/lib/navigation.ts` entfernt sie aus allen Nav-Flächen (Sidebar/CommandPalette/MobileTabbar); Routen + Code bleiben für V2. **Mein Team** zusätzlich für `admin` + `support` sichtbar. **PROJ-3:** im eingebetteten Einheiten-Detail (Master-Detail) sind die projekt-scoped Tabs Bankdaten/Karte/Finanzierer-Pool ausgeblendet (`!embedded`-Gate) — die Projekt-Pill-Tabs Lage/Bankdaten/Pool liefern dasselbe. tsc + build grün. **Bug-Hinweis:** gemeldeter 500 auf Kunde `c3e9e8fa…` — alle DB-Queries dieses Kunden sind in den Supabase-Logs `200` (Datenebene gesund), Ursache vermutlich transient. Logs zeigen aber reale wiederkehrende `statement timeout`-Fehler (separat zu adressieren).
 
-## Next Available ID: PROJ-17
+## Next Available ID: PROJ-21

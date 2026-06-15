@@ -1,6 +1,6 @@
 # PROJ-20 — Kalkulation 2.0
 
-**Status:** Approved (gebaut + QA 2026-06-15; tsc + 171 Tests + Build grün; BUG-K1 gefixt — Deploy ausstehend)
+**Status:** Deployed (2026-06-15; https://objekt-pilot.vercel.app)
 **Priorität:** P1
 **Erstellt:** 2026-06-14
 **Abhängigkeiten:** PROJ-3 (Objekte/Kalkulation — Engine `src/lib/kalkulation.ts`, `KalkulationsTab.tsx`), PROJ-8 (Präsentation/Exposé)
@@ -84,6 +84,12 @@ Die Engine `calculate()` rechnete bisher: Annuitätendarlehen, monatlicher Cashf
 - UI: `src/components/objekte/KalkulationsTab.tsx` — Szenario-Umschalter, AfA-Typ-Select + bedingte Felder, KfW-Block mit Programm-Presets.
 - Präsentation: `src/components/objekte/PraesentationView.tsx` — konservativer Default.
 - Tests: `src/lib/kalkulation.test.ts` — 16 neue Tests (Denkmal, §7b, Möblierung, KfW, Inflation, Rückwärtskompatibilität).
+
+## Deployment (2026-06-15)
+- **Production URL:** https://objekt-pilot.vercel.app (Vercel, auto-deploy von `main`)
+- **Commit:** `6347ef1` · **Tag:** `v1.20.0-PROJ-20`
+- **Smoke-Test:** `/login` → 200, `/` → 307 (Auth-Redirect). Lokaler Build exit 0.
+- **Offen / zu verifizieren auf Prod:** Vercel-Build-Status im Dashboard prüfen; visuelle Verifikation des Kalkulations-Tabs (Szenario-Pills, AfA-Typ-Felder, KfW-Block) durch einen eingeloggten VP.
 
 ## QA Test Results (2026-06-15)
 

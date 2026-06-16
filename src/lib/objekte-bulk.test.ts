@@ -11,6 +11,8 @@ import {
   emptyRow,
   duplicateWohnungsnummern,
   normWohnungsnummer,
+  bulkRowMissingForFreigabe,
+  BULK_FIELDS,
 } from "./objekte-bulk";
 
 // PROJ-16 — Bulk-Erfassung (Excel-Paste) Hilfsfunktionen.
@@ -160,5 +162,60 @@ describe("rowHasContent", () => {
   });
   it("is true when any cell is filled", () => {
     expect(rowHasContent({ ...emptyRow(), etage: "2" })).toBe(true);
+  });
+});
+
+// PROJ-21 — neue Bulk-Felder + Freigabe-Warnungen.
+describe("PROJ-21 Bulk-Erweiterungen", () => {
+  it("BULK_FIELDS enthält die neuen Felder", () => {
+    const keys = BULK_FIELDS.map((f) => f.key);
+    expect(keys).toContain("lage_im_haus");
+    expect(keys).toContain("kaufpreis_wohnung");
+    expect(keys).toContain("kaufpreis_moebel");
+    expect(keys).toContain("instandhaltungsruecklage_gesamt");
+  });
+
+  it("erkennt Header-Synonyme der neuen Felder", () => {
+    expect(guessFieldFromHeader("Lage im Haus")).toBe("lage_im_haus");
+    expect(guessFieldFromHeader("Anteil Möbel")).toBe("kaufpreis_moebel");
+    expect(guessFieldFromHeader("Rücklage gesamt")).toBe(
+      "instandhaltungsruecklage_gesamt",
+    );
+  });
+
+  it("matrixToRows übernimmt Text-Feld lage_im_haus unparsed", () => {
+    const rows = matrixToRows(
+      [["WE1", "EG rechts"]],
+      ["wohnungsnummer", "lage_im_haus"],
+    );
+    expect(rows[0].lage_im_haus).toBe("EG rechts");
+  });
+
+  it("bulkRowMissingForFreigabe meldet nur bulk-erfassbare Lücken (weiche Warnung)", () => {
+    const leer = bulkRowMissingForFreigabe({ ...emptyRow(), wohnungsnummer: "WE1" });
+    const keys = leer.map((m) => m.key);
+    // bulk-erfassbar und fehlend:
+    expect(keys).toContain("wohnflaeche");
+    expect(keys).toContain("kaufpreis");
+    expect(keys).toContain("miete");
+    expect(keys).toContain("lage_im_haus");
+    // NICHT per Bulk erfassbar → nicht in der Warnung:
+    expect(keys).not.toContain("heizungsart");
+    expect(keys).not.toContain("miteigentumsanteil");
+  });
+
+  it("bulkRowMissingForFreigabe ist leer, wenn alle bulk-Felder gefüllt sind", () => {
+    const row = {
+      ...emptyRow(),
+      wohnungsnummer: "WE1",
+      etage: "1",
+      lage_im_haus: "EG rechts",
+      zimmer: "2",
+      wohnflaeche: "60",
+      miete: "800",
+      kaufpreis: "250000",
+      instandhaltungsruecklage_gesamt: "5000",
+    };
+    expect(bulkRowMissingForFreigabe(row)).toEqual([]);
   });
 });

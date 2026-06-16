@@ -1,4 +1,16 @@
-import type { EinheitStatus } from "@/lib/data/objekte";
+import type { EinheitStatus, EinheitFreigabeStatus } from "@/lib/data/objekte";
+
+export const FREIGABE_LABELS: Record<EinheitFreigabeStatus, string> = {
+  entwurf: "Entwurf",
+  in_bearbeitung: "In Bearbeitung",
+  freigegeben: "Freigegeben",
+};
+
+export const FREIGABE_BADGE_CLASS: Record<EinheitFreigabeStatus, string> = {
+  entwurf: "bg-muted text-muted-foreground",
+  in_bearbeitung: "bg-warning text-warning-foreground",
+  freigegeben: "bg-success text-success-foreground",
+};
 
 export const STATUS_LABELS: Record<EinheitStatus, string> = {
   frei: "Frei",

@@ -46,6 +46,7 @@ import {
   rowHasContent,
   duplicateWohnungsnummern,
   normWohnungsnummer,
+  bulkRowMissingForFreigabe,
 } from "@/lib/objekte-bulk";
 
 const IGNORE = "__ignore__";
@@ -201,6 +202,23 @@ export function EinheitenBulkGrid({
   );
   const invalidCount = filledRows.length - validCount;
 
+  // Weiche Freigabe-Warnungen pro Zeile (blockieren NICHT — Import als Entwurf).
+  const warnings = useMemo(
+    () =>
+      rows.map((r) =>
+        rowHasContent(r) ? bulkRowMissingForFreigabe(r) : [],
+      ),
+    [rows],
+  );
+  const warnCount = useMemo(
+    () =>
+      filledRows.filter(
+        (r) => rowErr(r) === null && bulkRowMissingForFreigabe(r).length > 0,
+      ).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filledRows, dupes],
+  );
+
   // ---- Save -----------------------------------------------------------------
 
   async function handleSave() {
@@ -223,11 +241,16 @@ export function EinheitenBulkGrid({
         einheiten: valid.map((r) => ({
           wohnungsnummer: r.wohnungsnummer.trim(),
           etage: r.etage || undefined,
+          lage_im_haus: r.lage_im_haus.trim() || undefined,
           zimmer: r.zimmer || undefined,
           wohnflaeche: r.wohnflaeche || undefined,
           miete: r.miete || undefined,
           kaufpreis: r.kaufpreis || undefined,
+          kaufpreis_wohnung: r.kaufpreis_wohnung || undefined,
+          kaufpreis_moebel: r.kaufpreis_moebel || undefined,
           stellplatz_preis: r.stellplatz_preis || undefined,
+          instandhaltungsruecklage_gesamt:
+            r.instandhaltungsruecklage_gesamt || undefined,
         })),
       });
       toast.success(`${res.count} Einheiten angelegt.`);
@@ -408,6 +431,7 @@ export function EinheitenBulkGrid({
           <TableBody>
             {rows.map((row, idx) => {
               const err = errors[idx];
+              const warn = !err ? warnings[idx] : [];
               return (
                 <TableRow key={idx} className={err ? "bg-destructive/5" : undefined}>
                   <TableCell className="text-center align-middle">
@@ -418,6 +442,17 @@ export function EinheitenBulkGrid({
                             <AlertCircle className="mx-auto h-4 w-4 text-destructive" />
                           </TooltipTrigger>
                           <TooltipContent>{err}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : warn.length > 0 ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <AlertCircle className="mx-auto h-4 w-4 text-amber-500" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Fehlt für Freigabe: {warn.map((m) => m.label).join(", ")}
+                          </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     ) : (
@@ -464,6 +499,9 @@ export function EinheitenBulkGrid({
             {invalidCount > 0 && (
               <span className="text-destructive"> · {invalidCount} ungültig</span>
             )}
+            {warnCount > 0 && (
+              <span className="text-amber-600"> · {warnCount} unvollständig</span>
+            )}
           </span>
           <Button
             type="button"
@@ -474,6 +512,17 @@ export function EinheitenBulkGrid({
           </Button>
         </div>
       </div>
+
+      {validCount > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {validCount} Einheit(en) werden als <strong>Entwurf</strong> importiert
+          {warnCount > 0 && (
+            <>, davon {warnCount} mit fehlenden Freigabe-Feldern</>
+          )}
+          . Die Freigabe (online) erfolgt erst, wenn alle Pflichtdaten je Einheit
+          gepflegt sind.
+        </p>
+      )}
     </div>
   );
 }

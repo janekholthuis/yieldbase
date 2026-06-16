@@ -7,6 +7,15 @@
 //  - Validierung einer Zeile.
 // In EinheitenBulkGrid.tsx verwendet und in objekte-bulk.test.ts getestet.
 
+import {
+  fehlendeFelder,
+  type VollstaendigkeitInput,
+  type MissingField,
+} from "@/lib/einheit-vollstaendigkeit";
+
+// Reihenfolge bewusst stabil gehalten: die 7 ursprünglichen Felder zuerst (damit
+// das Auto-Mapping typischer Kaufpreislisten ohne Header unverändert bleibt),
+// PROJ-21-Felder hinten angehängt.
 export const BULK_FIELDS = [
   { key: "wohnungsnummer", label: "Wohnungsnr.", type: "text", required: true },
   { key: "etage", label: "Etage", type: "num", required: false },
@@ -15,6 +24,15 @@ export const BULK_FIELDS = [
   { key: "miete", label: "Kaltmiete (€)", type: "num", required: false },
   { key: "kaufpreis", label: "Kaufpreis (€)", type: "num", required: false },
   { key: "stellplatz_preis", label: "Stellplatz (€)", type: "num", required: false },
+  { key: "lage_im_haus", label: "Lage im Haus", type: "text", required: false },
+  { key: "kaufpreis_wohnung", label: "Anteil Wohnung (€)", type: "num", required: false },
+  { key: "kaufpreis_moebel", label: "Anteil Möbel (€)", type: "num", required: false },
+  {
+    key: "instandhaltungsruecklage_gesamt",
+    label: "Rücklage gesamt (€)",
+    type: "num",
+    required: false,
+  },
 ] as const;
 
 export type BulkFieldKey = (typeof BULK_FIELDS)[number]["key"];
@@ -28,11 +46,15 @@ export function emptyRow(): BulkRow {
   return {
     wohnungsnummer: "",
     etage: "",
+    lage_im_haus: "",
     zimmer: "",
     wohnflaeche: "",
     miete: "",
     kaufpreis: "",
+    kaufpreis_wohnung: "",
+    kaufpreis_moebel: "",
     stellplatz_preis: "",
+    instandhaltungsruecklage_gesamt: "",
   };
 }
 
@@ -95,17 +117,31 @@ export function looksLikeHeaderRow(cells: string[]): boolean {
 const HEADER_SYNONYMS: Record<BulkFieldKey, string[]> = {
   wohnungsnummer: ["wohnungsnr", "wohnung", "we ", "we-", "einheit", "nummer", "nr", "whg"],
   etage: ["etage", "geschoss", "stockwerk", "stock", "og", "ebene"],
+  lage_im_haus: ["lage im haus", "lage", "wohnungslage", "ausrichtung", "himmelsrichtung"],
   zimmer: ["zimmer", "zi.", "anzahl zimmer", "räume", "zi "],
   wohnflaeche: ["wohnfläche", "wohnflaeche", "fläche", "flaeche", "qm", "m²", "m2", "wfl"],
   miete: ["kaltmiete", "nettomiete", "nettokaltmiete", "miete", "kalt", "ist-miete", "mieteinnahme"],
   kaufpreis: ["kaufpreis", "preis", "vk-preis", "vk", "verkaufspreis", "kp"],
+  kaufpreis_wohnung: ["anteil wohnung", "kaufpreis wohnung", "wohnungsanteil", "kp wohnung"],
+  kaufpreis_moebel: ["anteil möbel", "möbel", "moebel", "möblierung", "kaufpreis möbel", "kp möbel"],
   stellplatz_preis: ["stellplatz", "stellpl", "garage", "tiefgarage", "tg", "parkplatz", "pkw"],
+  instandhaltungsruecklage_gesamt: [
+    "rücklage gesamt",
+    "ruecklage gesamt",
+    "instandhaltungsrücklage gesamt",
+    "ihr gesamt",
+    "rücklage (gesamt)",
+  ],
 };
 
 // Check the most specific fields first so e.g. "Stellplatzpreis" matches
 // stellplatz_preis and not kaufpreis (whose broad "preis" synonym also hits).
 const GUESS_ORDER: BulkFieldKey[] = [
   "stellplatz_preis",
+  "kaufpreis_wohnung",
+  "kaufpreis_moebel",
+  "instandhaltungsruecklage_gesamt",
+  "lage_im_haus",
   "wohnflaeche",
   "wohnungsnummer",
   "zimmer",
@@ -113,6 +149,11 @@ const GUESS_ORDER: BulkFieldKey[] = [
   "miete",
   "kaufpreis",
 ];
+
+/** Keys, deren Wert als Text (nicht als Zahl) übernommen wird. */
+const TEXT_FIELD_KEYS = new Set<BulkFieldKey>(
+  BULK_FIELDS.filter((f) => f.type === "text").map((f) => f.key),
+);
 
 /** Guess which field a header cell maps to; null if nothing matches. */
 export function guessFieldFromHeader(header: string): BulkFieldKey | null {
@@ -166,8 +207,8 @@ export function matrixToRows(matrix: string[][], mapping: ColumnMapping): BulkRo
     mapping.forEach((field, col) => {
       if (!field) return;
       const raw = cells[col] ?? "";
-      if (field === "wohnungsnummer") {
-        row.wohnungsnummer = raw.trim();
+      if (TEXT_FIELD_KEYS.has(field)) {
+        row[field] = raw.trim();
       } else {
         const n = parseDeNumber(raw);
         row[field] = n === undefined ? "" : String(n);
@@ -199,6 +240,31 @@ export function rowHasContent(row: BulkRow): boolean {
 /** Normalise a Wohnungsnummer for duplicate comparison (trim + lowercase). */
 export function normWohnungsnummer(v: string): string {
   return v.trim().toLowerCase();
+}
+
+/**
+ * Weiche Warnung (PROJ-21): welche Freigabe-Pflichtfelder fehlen in dieser
+ * Bulk-Zeile? Blockiert NICHT den Import (Einheiten werden als Entwurf
+ * importiert) — `rowError` bleibt der harte Validitäts-Check. Nutzt das SSOT
+ * `fehlendeFelder`, aber nur für die Felder, die per Bulk überhaupt erfassbar
+ * sind (Rest wird ohnehin nachgepflegt).
+ */
+export function bulkRowMissingForFreigabe(row: BulkRow): MissingField[] {
+  const input: VollstaendigkeitInput = {
+    wohnungsnummer: row.wohnungsnummer,
+    etage: parseDeNumber(row.etage) ?? null,
+    lage_im_haus: row.lage_im_haus,
+    zimmer: parseDeNumber(row.zimmer) ?? null,
+    wohnflaeche: parseDeNumber(row.wohnflaeche) ?? null,
+    miete: parseDeNumber(row.miete) ?? null,
+    kaufpreis: parseDeNumber(row.kaufpreis) ?? null,
+    instandhaltungsruecklage_gesamt:
+      parseDeNumber(row.instandhaltungsruecklage_gesamt) ?? null,
+  };
+  const bulkKeys = new Set<string>(BULK_FIELDS.map((f) => f.key));
+  // Nur Felder melden, die per Bulk erfassbar sind — den Rest pflegt man im
+  // Detail nach, das soll hier keine Warnflut auslösen.
+  return fehlendeFelder(input).filter((m) => bulkKeys.has(m.key));
 }
 
 /**

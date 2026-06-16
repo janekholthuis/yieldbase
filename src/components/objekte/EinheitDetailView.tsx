@@ -35,6 +35,8 @@ import { sanitizeFilename } from "@/lib/kunden-dokumente";
 import {
   STATUS_BADGE_CLASS,
   STATUS_LABELS,
+  FREIGABE_BADGE_CLASS,
+  FREIGABE_LABELS,
   formatEUR,
   formatNumber,
   formatAddress,
@@ -239,11 +241,20 @@ export function EinheitDetailView({
             {formatAddress(e.adresse, e.plz, e.stadt) || "—"}
           </p>
         </div>
-        <span
-          className={`rounded-md px-2.5 py-1 text-xs font-medium ${STATUS_BADGE_CLASS[e.status]}`}
-        >
-          {STATUS_LABELS[e.status]}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          {e.freigabe_status !== "freigegeben" && (
+            <span
+              className={`rounded-md px-2.5 py-1 text-xs font-medium ${FREIGABE_BADGE_CLASS[e.freigabe_status]}`}
+            >
+              {FREIGABE_LABELS[e.freigabe_status]}
+            </span>
+          )}
+          <span
+            className={`rounded-md px-2.5 py-1 text-xs font-medium ${STATUS_BADGE_CLASS[e.status]}`}
+          >
+            {STATUS_LABELS[e.status]}
+          </span>
+        </div>
       </div>
 
       {/* Prominente Preis-Zeile (ImmoScout-Stil) statt 6er-Stat-Stapel */}
@@ -642,6 +653,61 @@ function EckdatenBlock({ einheit: e }: { einheit: EinheitDetail }) {
             Beschreibung
           </h3>
           <p className="text-sm text-muted-foreground">{e.extras}</p>
+        </section>
+      )}
+
+      {e.tags.length > 0 && (
+        <section className="rounded-xl border bg-card p-4">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Tags
+          </h3>
+          <div className="flex flex-wrap gap-1.5">
+            {e.tags.map((t) => (
+              <span
+                key={t}
+                className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {has(e.standort_highlights) && (
+        <section className="rounded-xl border bg-card p-4">
+          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Standort-Highlights
+          </h3>
+          <p className="whitespace-pre-line text-sm text-muted-foreground">
+            {e.standort_highlights}
+          </p>
+        </section>
+      )}
+
+      {e.renovierungen.length > 0 && (
+        <section className="rounded-xl border bg-card p-4">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Renovierungen
+          </h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs text-muted-foreground">
+                <th className="py-1.5 font-medium">Gewerk</th>
+                <th className="py-1.5 text-right font-medium">Jahr</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...e.renovierungen]
+                .sort((a, b) => b.jahr - a.jahr)
+                .map((r, i) => (
+                  <tr key={`${r.gewerk}-${i}`} className="border-b last:border-0">
+                    <td className="py-1.5">{r.gewerk}</td>
+                    <td className="py-1.5 text-right tabular-nums">{r.jahr}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
         </section>
       )}
     </div>

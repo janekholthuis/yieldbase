@@ -29,6 +29,7 @@ import {
 } from "@/lib/objekt-kosten";
 import { formatEUR, STATUS_LABELS } from "@/lib/objekt-format";
 import type { EinheitDetail, EinheitStatus } from "@/lib/data/objekte";
+import type { Renovierung } from "@/lib/einheit-vollstaendigkeit";
 
 // ---------------------------------------------------------------------------
 // Helpers — parse number / keep ISO dates; only filled values get submitted.
@@ -155,6 +156,29 @@ export function EinheitForm({
   // --- Extras ---
   const [extras, setExtras] = useState(readStr(initial, "extras"));
 
+  // --- PROJ-21: Vollständigkeit ---
+  const [lageImHaus, setLageImHaus] = useState(readStr(initial, "lage_im_haus"));
+  const [kaufpreisWohnung, setKaufpreisWohnung] = useState(
+    readNum(initial, "kaufpreis_wohnung"),
+  );
+  const [kaufpreisMoebel, setKaufpreisMoebel] = useState(
+    readNum(initial, "kaufpreis_moebel"),
+  );
+  const [instandhaltungGesamt, setInstandhaltungGesamt] = useState(
+    readNum(initial, "instandhaltungsruecklage_gesamt"),
+  );
+  const [standortHighlights, setStandortHighlights] = useState(
+    readStr(initial, "standort_highlights"),
+  );
+  const [tagsInput, setTagsInput] = useState(
+    (Array.isArray(rawValue(initial, "tags")) ? (rawValue(initial, "tags") as string[]) : []).join(", "),
+  );
+  const [renovierungen, setRenovierungen] = useState<Renovierung[]>(
+    Array.isArray(rawValue(initial, "renovierungen"))
+      ? (rawValue(initial, "renovierungen") as Renovierung[])
+      : [],
+  );
+
   // Live-derived steuerliche Werte.
   const kp = num(kaufpreis);
   const gwAnteil = num(grundstueckswertAnteil);
@@ -207,6 +231,17 @@ export function EinheitForm({
         miteigentumsanteil: str(miteigentumsanteil),
         afa_satz: num(afaSatz),
         extras: str(extras),
+        // PROJ-21: Vollständigkeit
+        lage_im_haus: str(lageImHaus),
+        kaufpreis_wohnung: num(kaufpreisWohnung),
+        kaufpreis_moebel: num(kaufpreisMoebel),
+        instandhaltungsruecklage_gesamt: num(instandhaltungGesamt),
+        standort_highlights: str(standortHighlights),
+        tags: tagsInput
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        renovierungen: renovierungen.filter((r) => r.gewerk.trim() !== ""),
       };
 
       let id: string;
@@ -234,6 +269,7 @@ export function EinheitForm({
           <TabsTrigger value="technisch">Technisch</TabsTrigger>
           <TabsTrigger value="wirtschaftlich">Wirtschaftlich</TabsTrigger>
           <TabsTrigger value="steuerlich">Steuerlich</TabsTrigger>
+          <TabsTrigger value="renovierungen">Renovierungen</TabsTrigger>
           <TabsTrigger value="extras">Extras</TabsTrigger>
         </TabsList>
 
@@ -254,6 +290,13 @@ export function EinheitForm({
                 value={etage}
                 onChange={(e) => setEtage(e.target.value)}
                 inputMode="numeric"
+              />
+            </Field>
+            <Field label="Lage im Haus">
+              <Input
+                value={lageImHaus}
+                onChange={(e) => setLageImHaus(e.target.value)}
+                placeholder="z. B. EG rechts"
               />
             </Field>
             <Field label="Wohnfläche (m²)">
@@ -418,7 +461,15 @@ export function EinheitForm({
                 onChange={(e) => setInstandhaltung(e.target.value)}
               />
             </Field>
-            <Field label="Sondereigentumsverwaltung (€/Monat)">
+            <Field label="Instandhaltungsrücklage gesamt (€)">
+              <Input
+                type="number"
+                step="0.01"
+                value={instandhaltungGesamt}
+                onChange={(e) => setInstandhaltungGesamt(e.target.value)}
+              />
+            </Field>
+            <Field label="Sondereigentumsverwaltung / Kosten SEV (€/Monat)">
               <Input
                 type="number"
                 step="0.01"
@@ -426,6 +477,43 @@ export function EinheitForm({
                 onChange={(e) => setSondereigentum(e.target.value)}
               />
             </Field>
+          </div>
+
+          {/* Kaufpreis-Aufteilung (informativ; Kaufpreis bleibt der Gesamtwert) */}
+          <div className="rounded-lg border p-3 space-y-3">
+            <h4 className="text-sm font-semibold">Kaufpreis-Aufteilung</h4>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Anteil Wohnung (€)">
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={kaufpreisWohnung}
+                  onChange={(e) => setKaufpreisWohnung(e.target.value)}
+                />
+              </Field>
+              <Field label="Anteil Möbel (€)">
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={kaufpreisMoebel}
+                  onChange={(e) => setKaufpreisMoebel(e.target.value)}
+                />
+              </Field>
+              <Field label="Anteil Stellplatz (€)">
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={stellplatzPreis}
+                  onChange={(e) => setStellplatzPreis(e.target.value)}
+                />
+              </Field>
+            </div>
+            <KaufpreisSplitHint
+              wohnung={num(kaufpreisWohnung)}
+              moebel={num(kaufpreisMoebel)}
+              stellplatz={num(stellplatzPreis)}
+              gesamt={num(kaufpreis)}
+            />
           </div>
         </TabsContent>
 
@@ -510,14 +598,40 @@ export function EinheitForm({
           </div>
         </TabsContent>
 
+        {/* --- Renovierungen --- */}
+        <TabsContent value="renovierungen" className="space-y-4 pt-2">
+          <RenovierungenEditor
+            value={renovierungen}
+            onChange={setRenovierungen}
+          />
+        </TabsContent>
+
         {/* --- Extras --- */}
         <TabsContent value="extras" className="space-y-4 pt-2">
-          <Field label="Extras / Besonderheiten">
+          <Field label="Extras / Besonderheiten / Notizen">
             <Textarea
               value={extras}
               onChange={(e) => setExtras(e.target.value)}
               rows={5}
               placeholder="Freitext zu Ausstattung, Besonderheiten, Hinweise…"
+            />
+          </Field>
+          <Field label="Tags / Highlights">
+            <Input
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              placeholder="Komma-getrennt, z. B. Balkon, ÖPNV-nah, saniert"
+            />
+            <p className="text-xs text-muted-foreground">
+              Mehrere Tags mit Komma trennen. Wird ggf. per KI ergänzt.
+            </p>
+          </Field>
+          <Field label="Standort-Highlights">
+            <Textarea
+              value={standortHighlights}
+              onChange={(e) => setStandortHighlights(e.target.value)}
+              rows={4}
+              placeholder="Lageeinschätzung (wird ggf. per KI generiert)…"
             />
           </Field>
         </TabsContent>
@@ -567,6 +681,105 @@ function DerivedRow({ label, value }: { label: string; value: string }) {
     <div>
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="text-sm font-semibold tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
+function KaufpreisSplitHint({
+  wohnung,
+  moebel,
+  stellplatz,
+  gesamt,
+}: {
+  wohnung?: number;
+  moebel?: number;
+  stellplatz?: number;
+  gesamt?: number;
+}) {
+  const summe = (wohnung ?? 0) + (moebel ?? 0) + (stellplatz ?? 0);
+  if (summe === 0) return null;
+  const diff = gesamt != null ? gesamt - summe : null;
+  const matches = diff != null && Math.abs(diff) < 0.5;
+  return (
+    <p className="text-xs text-muted-foreground">
+      Summe Aufteilung: <span className="font-medium tabular-nums">{formatEUR(summe)}</span>
+      {gesamt != null && (
+        <>
+          {" · Kaufpreis gesamt: "}
+          <span className="font-medium tabular-nums">{formatEUR(gesamt)}</span>
+          {!matches && (
+            <span className="text-warning-foreground">
+              {" "}
+              (Differenz {formatEUR(diff!)})
+            </span>
+          )}
+        </>
+      )}
+    </p>
+  );
+}
+
+function RenovierungenEditor({
+  value,
+  onChange,
+}: {
+  value: Renovierung[];
+  onChange: (rows: Renovierung[]) => void;
+}) {
+  function update(i: number, patch: Partial<Renovierung>) {
+    onChange(value.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+  function add() {
+    onChange([...value, { gewerk: "", jahr: new Date().getFullYear() }]);
+  }
+  function remove(i: number) {
+    onChange(value.filter((_, idx) => idx !== i));
+  }
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Renovierungsaufstellung der einzelnen Gewerke (Jahresangabe genügt).
+      </p>
+      {value.length > 0 && (
+        <div className="space-y-2">
+          {value.map((r, i) => (
+            <div key={i} className="flex items-end gap-2">
+              <div className="flex-1 space-y-1.5">
+                <Label className={i === 0 ? undefined : "sr-only"}>Gewerk</Label>
+                <Input
+                  value={r.gewerk}
+                  onChange={(e) => update(i, { gewerk: e.target.value })}
+                  placeholder="z. B. Dach, Heizung, Fenster"
+                />
+              </div>
+              <div className="w-28 space-y-1.5">
+                <Label className={i === 0 ? undefined : "sr-only"}>Jahr</Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={String(r.jahr ?? "")}
+                  onChange={(e) =>
+                    update(i, { jahr: Number(e.target.value) || 0 })
+                  }
+                  placeholder="2019"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => remove(i)}
+                aria-label="Zeile entfernen"
+              >
+                ✕
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+      <Button type="button" variant="outline" size="sm" onClick={add}>
+        Zeile hinzufügen
+      </Button>
     </div>
   );
 }

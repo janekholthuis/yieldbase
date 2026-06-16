@@ -21,6 +21,7 @@ import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { activeOrgId, assertOrgAccess } from "@/lib/actions/_org";
 import type { Database } from "@/lib/supabase/types";
+import { fehlendeFelder } from "@/lib/einheit-vollstaendigkeit";
 
 // Internal roles allowed to manage projects/units.
 const INTERNAL_ROLES = [
@@ -84,6 +85,28 @@ const einheitStatusEnum = z.enum([
 ]);
 const nutzungsartEnum = z.enum(["wohnen", "gewerbe"]);
 const objektzustandEnum = z.enum(["bestand", "neubau"]);
+const freigabeStatusEnum = z.enum(["entwurf", "in_bearbeitung", "freigegeben"]);
+
+/** Renovierungsaufstellung der Gewerke: [{ gewerk, jahr }]. "" -> undefined. */
+const renovierungenSchema = z
+  .preprocess(
+    (v) => (v === "" || v === null ? undefined : v),
+    z.array(
+      z.object({
+        gewerk: z.string().trim().min(1),
+        jahr: z.coerce.number().int(),
+      }),
+    ),
+  )
+  .optional();
+
+/** Tags (string[]); leere/blanke Einträge werden verworfen. "" -> undefined. */
+const tagsSchema = z
+  .preprocess(
+    (v) => (v === "" || v === null ? undefined : v),
+    z.array(z.string().trim().min(1)),
+  )
+  .optional();
 
 const uuid = z.string().uuid();
 
@@ -266,6 +289,14 @@ const einheitOptionalFields = {
   energieklasse: optionalString,
   heizungsart: optionalString,
   extras: optionalString,
+  // PROJ-21 — Vollständigkeit
+  kaufpreis_wohnung: optionalNumber,
+  kaufpreis_moebel: optionalNumber,
+  instandhaltungsruecklage_gesamt: optionalNumber,
+  lage_im_haus: optionalString,
+  standort_highlights: optionalString,
+  renovierungen: renovierungenSchema,
+  tags: tagsSchema,
 } as const;
 
 const createEinheitSchema = z.object({
@@ -342,6 +373,13 @@ export async function createEinheit(
       energieklasse: data.energieklasse,
       heizungsart: data.heizungsart,
       extras: data.extras,
+      kaufpreis_wohnung: data.kaufpreis_wohnung,
+      kaufpreis_moebel: data.kaufpreis_moebel,
+      instandhaltungsruecklage_gesamt: data.instandhaltungsruecklage_gesamt,
+      lage_im_haus: data.lage_im_haus,
+      standort_highlights: data.standort_highlights,
+      renovierungen: data.renovierungen,
+      tags: data.tags,
     }),
   };
 
@@ -462,6 +500,13 @@ export async function createEinheitenBulk(
       energieklasse: data.energieklasse,
       heizungsart: data.heizungsart,
       extras: data.extras,
+      kaufpreis_wohnung: data.kaufpreis_wohnung,
+      kaufpreis_moebel: data.kaufpreis_moebel,
+      instandhaltungsruecklage_gesamt: data.instandhaltungsruecklage_gesamt,
+      lage_im_haus: data.lage_im_haus,
+      standort_highlights: data.standort_highlights,
+      renovierungen: data.renovierungen,
+      tags: data.tags,
     }),
   }));
 
@@ -531,6 +576,13 @@ export async function updateEinheit(
     energieklasse: rest.energieklasse,
     heizungsart: rest.heizungsart,
     extras: rest.extras,
+    kaufpreis_wohnung: rest.kaufpreis_wohnung,
+    kaufpreis_moebel: rest.kaufpreis_moebel,
+    instandhaltungsruecklage_gesamt: rest.instandhaltungsruecklage_gesamt,
+    lage_im_haus: rest.lage_im_haus,
+    standort_highlights: rest.standort_highlights,
+    renovierungen: rest.renovierungen,
+    tags: rest.tags,
   });
 
   const { data: row, error } = await admin
@@ -545,6 +597,101 @@ export async function updateEinheit(
   revalidatePath("/objekte");
   if (row?.projekt_id) revalidatePath(`/objekte/${row.projekt_id}`);
   return { id };
+}
+
+// ---------------------------------------------------------------------------
+// Freigabe (PROJ-21) — Publikations-/Qualitäts-Gate.
+//
+// Hartes Gate: eine Einheit darf nur auf 'freigegeben' geschaltet werden, wenn
+// ALLE Pflichtfelder vorhanden sind. Die Prüfung läuft serverseitig gegen die
+// FRISCH geladenen DB-Werte (niemals Client-Input vertrauen). 'entwurf' und
+// 'in_bearbeitung' sind jederzeit erlaubt.
+// ---------------------------------------------------------------------------
+
+const setFreigabeStatusSchema = z.object({
+  id: uuid,
+  status: freigabeStatusEnum,
+});
+type SetFreigabeStatusInput = z.input<typeof setFreigabeStatusSchema>;
+
+// Gate-Felder, die für die Vollständigkeitsprüfung geladen werden müssen.
+const FREIGABE_GATE_SELECT = `organisation_id, projekt_id, wohnungsnummer, wohnflaeche,
+  zimmer, etage, lage_im_haus, kaufpreis, grundstueckswert_anteil, miete, nutzungsart,
+  objektzustand, heizungsart, energieklasse, miteigentumsanteil, hausgeld_umlagefaehig,
+  hausgeld_nicht_umlagefaehig, instandhaltungsruecklage, instandhaltungsruecklage_gesamt,
+  sondereigentumsverwaltung, afa_satz, vermietet, vermietet_seit, renovierungen, tags,
+  standort_highlights, projekte:projekt_id ( adresse, baujahr )`;
+
+export async function setFreigabeStatus(
+  input: SetFreigabeStatusInput,
+): Promise<{ id: string; freigabe_status: string }> {
+  const session = await requireRole(...INTERNAL_ROLES);
+  const { id, status } = setFreigabeStatusSchema.parse(input);
+
+  const admin = createAdminClient();
+
+  // Zeile inkl. aller Gate-Felder laden; Tenant-Isolation erzwingen.
+  const { data: existing } = await admin
+    .from("einheiten")
+    .select(FREIGABE_GATE_SELECT)
+    .eq("id", id)
+    .maybeSingle();
+  if (!existing) throw new Error("Einheit nicht gefunden");
+  const row = existing as Record<string, unknown> & {
+    projekte?: { adresse?: string | null; baujahr?: number | null } | null;
+  };
+  await assertOrgAccess(session, (row.organisation_id as string | null) ?? null);
+
+  if (status === "freigegeben") {
+    const fehlt = fehlendeFelder({
+      wohnungsnummer: row.wohnungsnummer as string | null,
+      wohnflaeche: row.wohnflaeche as number | null,
+      zimmer: row.zimmer as number | null,
+      etage: row.etage as number | null,
+      lage_im_haus: row.lage_im_haus as string | null,
+      kaufpreis: row.kaufpreis as number | null,
+      grundstueckswert_anteil: row.grundstueckswert_anteil as number | null,
+      miete: row.miete as number | null,
+      nutzungsart: row.nutzungsart as string | null,
+      objektzustand: row.objektzustand as string | null,
+      heizungsart: row.heizungsart as string | null,
+      energieklasse: row.energieklasse as string | null,
+      miteigentumsanteil: row.miteigentumsanteil as string | null,
+      hausgeld_umlagefaehig: row.hausgeld_umlagefaehig as number | null,
+      hausgeld_nicht_umlagefaehig: row.hausgeld_nicht_umlagefaehig as number | null,
+      instandhaltungsruecklage: row.instandhaltungsruecklage as number | null,
+      instandhaltungsruecklage_gesamt: row.instandhaltungsruecklage_gesamt as number | null,
+      sondereigentumsverwaltung: row.sondereigentumsverwaltung as number | null,
+      afa_satz: row.afa_satz as number | null,
+      vermietet: row.vermietet as boolean | null,
+      vermietet_seit: row.vermietet_seit as string | null,
+      renovierungen: Array.isArray(row.renovierungen)
+        ? (row.renovierungen as { gewerk: string; jahr: number }[])
+        : [],
+      adresse: row.projekte?.adresse ?? null,
+      baujahr: row.projekte?.baujahr ?? null,
+    });
+    if (fehlt.length > 0) {
+      throw new Error(
+        `Freigabe nicht möglich — fehlende Pflichtfelder: ${fehlt
+          .map((f) => f.label)
+          .join(", ")}`,
+      );
+    }
+  }
+
+  const { error } = await admin
+    .from("einheiten")
+    .update({
+      freigabe_status: status,
+      freigegeben_at: status === "freigegeben" ? new Date().toISOString() : null,
+    })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/objekte");
+  if (row.projekt_id) revalidatePath(`/objekte/${row.projekt_id as string}`);
+  return { id, freigabe_status: status };
 }
 
 export async function deleteEinheit(input: {

@@ -41,6 +41,7 @@ function item(over: Partial<ObjektListItem>): ObjektListItem {
     kaufpreis: 250000,
     miete: 800,
     status: "frei",
+    freigabe_status: "freigegeben",
     vermietet: true,
     balkon: true,
     keller: false,

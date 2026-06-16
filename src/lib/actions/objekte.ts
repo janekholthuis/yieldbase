@@ -118,7 +118,7 @@ export async function getEmpfehlungen(input: { kundeId: string }): Promise<{
     .from("einheiten")
     .select(
       `id, projekt_id, wohnungsnummer, etage, wohnflaeche, zimmer,
-       kaufpreis, miete, status, vermietet, balkon, keller, aufzug, created_at,
+       kaufpreis, miete, status, freigabe_status, vermietet, balkon, keller, aufzug, created_at,
        projekte:projekt_id (
          id, name, projekt_typ, bautraeger, cover_image_url, adresse, baujahr,
          stadt, plz, bundesland, mietrendite_brutto
@@ -153,6 +153,7 @@ export async function getEmpfehlungen(input: { kundeId: string }): Promise<{
         kaufpreis: r.kaufpreis,
         miete: r.miete,
         status: r.status,
+        freigabe_status: r.freigabe_status ?? "entwurf",
         vermietet: r.vermietet,
         balkon: r.balkon,
         keller: r.keller,

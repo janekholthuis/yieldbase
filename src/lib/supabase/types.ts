@@ -106,6 +106,8 @@ export type Database = {
           erhaltungsaufwand: number | null
           etage: number | null
           extras: string | null
+          freigabe_status: Database["public"]["Enums"]["einheit_freigabe_status"]
+          freigegeben_at: string | null
           grundstuecksanteil_qm: number | null
           grundstueckswert_anteil: number | null
           hausgeld_nicht_umlagefaehig: number | null
@@ -113,10 +115,14 @@ export type Database = {
           heizungsart: string | null
           id: string
           instandhaltungsruecklage: number | null
+          instandhaltungsruecklage_gesamt: number | null
           investagon_id: string | null
           kalkulation: Json
           kaufpreis: number | null
+          kaufpreis_moebel: number | null
+          kaufpreis_wohnung: number | null
           keller: boolean
+          lage_im_haus: string | null
           miete: number | null
           mietvertrag_ende: string | null
           miteigentumsanteil: string | null
@@ -125,10 +131,13 @@ export type Database = {
           organisation_id: string | null
           projekt_id: string
           raw: Json | null
+          renovierungen: Json
           sondereigentumsverwaltung: number | null
+          standort_highlights: string | null
           status: Database["public"]["Enums"]["einheit_status"]
           stellplaetze_anzahl: number
           stellplatz_preis: number | null
+          tags: string[]
           updated_at: string
           vermietet: boolean
           vermietet_seit: string | null
@@ -146,6 +155,8 @@ export type Database = {
           erhaltungsaufwand?: number | null
           etage?: number | null
           extras?: string | null
+          freigabe_status?: Database["public"]["Enums"]["einheit_freigabe_status"]
+          freigegeben_at?: string | null
           grundstuecksanteil_qm?: number | null
           grundstueckswert_anteil?: number | null
           hausgeld_nicht_umlagefaehig?: number | null
@@ -153,10 +164,14 @@ export type Database = {
           heizungsart?: string | null
           id?: string
           instandhaltungsruecklage?: number | null
+          instandhaltungsruecklage_gesamt?: number | null
           investagon_id?: string | null
           kalkulation?: Json
           kaufpreis?: number | null
+          kaufpreis_moebel?: number | null
+          kaufpreis_wohnung?: number | null
           keller?: boolean
+          lage_im_haus?: string | null
           miete?: number | null
           mietvertrag_ende?: string | null
           miteigentumsanteil?: string | null
@@ -165,10 +180,13 @@ export type Database = {
           organisation_id?: string | null
           projekt_id: string
           raw?: Json | null
+          renovierungen?: Json
           sondereigentumsverwaltung?: number | null
+          standort_highlights?: string | null
           status?: Database["public"]["Enums"]["einheit_status"]
           stellplaetze_anzahl?: number
           stellplatz_preis?: number | null
+          tags?: string[]
           updated_at?: string
           vermietet?: boolean
           vermietet_seit?: string | null
@@ -186,6 +204,8 @@ export type Database = {
           erhaltungsaufwand?: number | null
           etage?: number | null
           extras?: string | null
+          freigabe_status?: Database["public"]["Enums"]["einheit_freigabe_status"]
+          freigegeben_at?: string | null
           grundstuecksanteil_qm?: number | null
           grundstueckswert_anteil?: number | null
           hausgeld_nicht_umlagefaehig?: number | null
@@ -193,10 +213,14 @@ export type Database = {
           heizungsart?: string | null
           id?: string
           instandhaltungsruecklage?: number | null
+          instandhaltungsruecklage_gesamt?: number | null
           investagon_id?: string | null
           kalkulation?: Json
           kaufpreis?: number | null
+          kaufpreis_moebel?: number | null
+          kaufpreis_wohnung?: number | null
           keller?: boolean
+          lage_im_haus?: string | null
           miete?: number | null
           mietvertrag_ende?: string | null
           miteigentumsanteil?: string | null
@@ -205,10 +229,13 @@ export type Database = {
           organisation_id?: string | null
           projekt_id?: string
           raw?: Json | null
+          renovierungen?: Json
           sondereigentumsverwaltung?: number | null
+          standort_highlights?: string | null
           status?: Database["public"]["Enums"]["einheit_status"]
           stellplaetze_anzahl?: number
           stellplatz_preis?: number | null
+          tags?: string[]
           updated_at?: string
           vermietet?: boolean
           vermietet_seit?: string | null
@@ -2171,6 +2198,7 @@ export type Database = {
         | "protokoll_eigentuemerversammlung"
         | "sonstiges"
         | "wirtschaftsplan"
+      einheit_freigabe_status: "entwurf" | "in_bearbeitung" | "freigegeben"
       einheit_status:
         | "frei"
         | "auf_anfrage"
@@ -2400,6 +2428,7 @@ export const Constants = {
         "sonstiges",
         "wirtschaftsplan",
       ],
+      einheit_freigabe_status: ["entwurf", "in_bearbeitung", "freigegeben"],
       einheit_status: [
         "frei",
         "auf_anfrage",

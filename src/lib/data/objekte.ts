@@ -4,6 +4,7 @@
 // listObjekte / getEinheitDetail / getProjektDetail.
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import type { Renovierung } from "@/lib/einheit-vollstaendigkeit";
 
 export type EinheitStatus =
   | "frei"
@@ -12,6 +13,9 @@ export type EinheitStatus =
   | "notarvorbereitung"
   | "notartermin"
   | "verkauft";
+
+/** Publication/quality gate, orthogonal to the sales `status` (PROJ-21). */
+export type EinheitFreigabeStatus = "entwurf" | "in_bearbeitung" | "freigegeben";
 
 export interface ObjektListItem {
   einheit_id: string;
@@ -33,6 +37,7 @@ export interface ObjektListItem {
   kaufpreis: number | null;
   miete: number | null;
   status: EinheitStatus;
+  freigabe_status: EinheitFreigabeStatus;
   vermietet: boolean;
   balkon: boolean;
   keller: boolean;
@@ -108,6 +113,15 @@ export interface EinheitDetail extends ObjektListItem {
   energieklasse: string | null;
   heizungsart: string | null;
   extras: string | null;
+  // PROJ-21 — Vollständigkeit / Freigabe
+  kaufpreis_wohnung: number | null;
+  kaufpreis_moebel: number | null;
+  instandhaltungsruecklage_gesamt: number | null;
+  lage_im_haus: string | null;
+  renovierungen: Renovierung[];
+  tags: string[];
+  standort_highlights: string | null;
+  freigegeben_at: string | null;
   /** True when the parent projekt has bank details (for completeness). */
   bank_complete: boolean;
   bilder: ObjektBild[];
@@ -135,7 +149,7 @@ export interface KalkulationsEinheit {
 }
 
 const EINHEIT_SELECT = `id, projekt_id, wohnungsnummer, etage, wohnflaeche, zimmer,
-  kaufpreis, miete, status, vermietet, balkon, keller, aufzug, afa_satz, created_at,
+  kaufpreis, miete, status, freigabe_status, vermietet, balkon, keller, aufzug, afa_satz, created_at,
   projekte:projekt_id (
     id, name, projekt_typ, bautraeger, cover_image_url, adresse, baujahr,
     stadt, plz, bundesland, mietrendite_brutto
@@ -163,6 +177,7 @@ function mapEinheitRow(row: any): ObjektListItem {
     kaufpreis: row.kaufpreis,
     miete: row.miete,
     status: row.status,
+    freigabe_status: row.freigabe_status ?? "entwurf",
     vermietet: row.vermietet,
     balkon: row.balkon,
     keller: row.keller,
@@ -179,7 +194,7 @@ function mapEinheitRow(row: any): ObjektListItem {
 // sync). We instead fetch projekte once and join in memory — both queries stay
 // simple, indexed and robust. RLS still scopes each table independently.
 const EINHEIT_LIST_COLS = `id, projekt_id, wohnungsnummer, etage, wohnflaeche, zimmer,
-  kaufpreis, miete, status, vermietet, balkon, keller, aufzug, afa_satz, created_at`;
+  kaufpreis, miete, status, freigabe_status, vermietet, balkon, keller, aufzug, afa_satz, created_at`;
 
 const PROJEKT_LIST_COLS = `id, name, projekt_typ, bautraeger, cover_image_url, adresse,
   baujahr, stadt, plz, bundesland, mietrendite_brutto`;
@@ -233,12 +248,13 @@ export async function getEinheitDetail(einheitId: string): Promise<{
     .from("einheiten")
     .select(
       `id, projekt_id, wohnungsnummer, etage, wohnflaeche, zimmer,
-       kaufpreis, miete, status, vermietet, balkon, keller, aufzug, created_at,
+       kaufpreis, miete, status, freigabe_status, freigegeben_at, vermietet, balkon, keller, aufzug, created_at,
        mietvertrag_ende, kalkulation,
        hausgeld_umlagefaehig, hausgeld_nicht_umlagefaehig,
-       instandhaltungsruecklage, sondereigentumsverwaltung,
+       instandhaltungsruecklage, instandhaltungsruecklage_gesamt, sondereigentumsverwaltung,
        grundstueckswert_anteil, grundstuecksanteil_qm, afa_satz, erhaltungsaufwand,
        nutzungsart, objektzustand, stellplaetze_anzahl, stellplatz_preis,
+       kaufpreis_wohnung, kaufpreis_moebel, lage_im_haus, renovierungen, tags, standort_highlights,
        miteigentumsanteil, vermietet_seit, energieklasse, heizungsart, extras,
        projekte:projekt_id (
          id, name, projekt_typ, bautraeger, cover_image_url, adresse, baujahr,
@@ -307,6 +323,14 @@ export async function getEinheitDetail(einheitId: string): Promise<{
     energieklasse: (e as any).energieklasse ?? null,
     heizungsart: (e as any).heizungsart ?? null,
     extras: (e as any).extras ?? null,
+    kaufpreis_wohnung: (e as any).kaufpreis_wohnung ?? null,
+    kaufpreis_moebel: (e as any).kaufpreis_moebel ?? null,
+    instandhaltungsruecklage_gesamt: (e as any).instandhaltungsruecklage_gesamt ?? null,
+    lage_im_haus: (e as any).lage_im_haus ?? null,
+    renovierungen: Array.isArray((e as any).renovierungen) ? (e as any).renovierungen : [],
+    tags: Array.isArray((e as any).tags) ? (e as any).tags : [],
+    standort_highlights: (e as any).standort_highlights ?? null,
+    freigegeben_at: (e as any).freigegeben_at ?? null,
     bank_complete: Boolean((e as any).projekte?.bank_iban),
     bilder: (bildersR.data ?? []) as ObjektBild[],
     dokumente: (dokR.data ?? []) as ObjektDokument[],

@@ -21,6 +21,8 @@ import { useAuth } from "@/lib/auth-context";
 import {
   STATUS_BADGE_CLASS,
   STATUS_LABELS,
+  FREIGABE_BADGE_CLASS,
+  FREIGABE_LABELS,
   formatEUR,
   formatNumber,
 } from "@/lib/objekt-format";
@@ -171,6 +173,13 @@ function EinheitenMasterDetail({
                         >
                           {STATUS_LABELS[u.status]}
                         </span>
+                        {u.freigabe_status !== "freigegeben" && (
+                          <span
+                            className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${FREIGABE_BADGE_CLASS[u.freigabe_status]}`}
+                          >
+                            {FREIGABE_LABELS[u.freigabe_status]}
+                          </span>
+                        )}
                       </div>
                       <div className="mt-0.5 truncate text-xs text-muted-foreground tabular-nums">
                         {[

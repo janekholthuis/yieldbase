@@ -274,25 +274,28 @@ function SlideRouter(props: {
   defaults: KalkulationsContext["defaults"];
 }) {
   const { index, einheit, kunde, vp, defaults } = props;
+  // Reihenfolge: nach dem Cover führt die Präsentation direkt mit der
+  // Kalkulation + Vermögensaufbau (Investment-Story), erst danach die
+  // Objekt-/Lage-/Eckdaten-Details. (Kapitalanlage verkauft die Rechnung.)
   switch (index) {
     case 0:
       return <SlideCover einheit={einheit} kunde={kunde} vp={vp} />;
     case 1:
-      return <SlideUebersicht einheit={einheit} />;
-    case 2:
-      return <SlideLage einheit={einheit} />;
-    case 3:
-      return <SlideBilder einheit={einheit} />;
-    case 4:
-      return <SlideEckdaten einheit={einheit} />;
-    case 5:
       return (
         <SlideKalkulation einheit={einheit} kunde={kunde} defaults={defaults} />
       );
-    case 6:
+    case 2:
       return (
         <SlideVermoegen einheit={einheit} kunde={kunde} defaults={defaults} />
       );
+    case 3:
+      return <SlideUebersicht einheit={einheit} />;
+    case 4:
+      return <SlideLage einheit={einheit} />;
+    case 5:
+      return <SlideBilder einheit={einheit} />;
+    case 6:
+      return <SlideEckdaten einheit={einheit} />;
     case 7:
       return <SlideAbschluss einheit={einheit} />;
     default:

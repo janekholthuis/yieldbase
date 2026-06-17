@@ -139,11 +139,17 @@ function EinheitenMasterDetail({
     );
   }
 
+  // Einzel-Einheit (häufig bei etw_einzeln): kein Master-Detail-Splitscreen —
+  // die Liste mit nur einem Eintrag wäre reine Wiederholung des Detail-Panes.
+  if (units.length === 1 && selectedId) {
+    return <UnitDetailPane einheitId={selectedId} kalkContext={kalkContext} />;
+  }
+
   return (
     <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-      {/* Liste + Verkaufsstatus */}
+      {/* Liste + Verkaufsstatus (Breakdown nur sinnvoll ab >1 Einheit) */}
       <div className="space-y-4">
-        <VerkaufsstatusTabelle einheiten={units} />
+        {units.length > 1 && <VerkaufsstatusTabelle einheiten={units} />}
         <div className="overflow-hidden rounded-xl border bg-card">
           <div className="border-b px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <Layers className="mr-1.5 inline h-3.5 w-3.5" />

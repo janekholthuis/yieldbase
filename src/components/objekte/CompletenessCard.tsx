@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Circle, AlertCircle } from "lucide-react";
+import { Check, Circle, ChevronDown } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -110,24 +110,30 @@ export function CompletenessCard({ einheit }: Props) {
         </span>
       </div>
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>Pflichtfelder</span>
-        <span className="font-medium">{pct}%</span>
-      </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className={cn("h-full transition-all", freigebbar ? "bg-emerald-600" : "bg-primary")}
-          style={{ width: `${pct}%` }}
-        />
+      {/* Progress: Label + % inline, slim bar */}
+      <div>
+        <div className="mb-1 flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Pflichtfelder</span>
+          <span className={cn("font-medium", freigebbar && "text-emerald-600")}>
+            {freigebbar ? "vollständig" : `${pct}%`}
+          </span>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className={cn("h-full transition-all", freigebbar ? "bg-emerald-600" : "bg-primary")}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
       </div>
 
+      {/* Missing fields — collapsed by default so the card stays calm */}
       {missing.length > 0 && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-2.5 text-sm dark:border-amber-900/40 dark:bg-amber-950/30">
-          <div className="mb-1 flex items-center gap-1.5 font-medium text-amber-800 dark:text-amber-300">
-            <AlertCircle className="h-4 w-4" />
-            Fehlende Daten ({missing.length})
-          </div>
-          <ul className="grid grid-cols-1 gap-x-4 gap-y-0.5 text-amber-800/90 dark:text-amber-200/80 sm:grid-cols-2">
+        <details className="group rounded-md border border-amber-200 bg-amber-50 text-sm dark:border-amber-900/40 dark:bg-amber-950/30">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-1.5 px-2.5 py-2 font-medium text-amber-800 dark:text-amber-300">
+            <span>{missing.length} Pflichtfeld{missing.length === 1 ? "" : "er"} fehlt{missing.length === 1 ? "" : "en"}</span>
+            <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+          </summary>
+          <ul className="grid grid-cols-1 gap-x-4 gap-y-0.5 border-t border-amber-200/70 px-2.5 py-2 text-amber-800/90 dark:border-amber-900/40 dark:text-amber-200/80 sm:grid-cols-2">
             {missing.map((m) => (
               <li key={m.key} className="flex items-center gap-1.5">
                 <Circle className="h-2.5 w-2.5 shrink-0" />
@@ -135,7 +141,7 @@ export function CompletenessCard({ einheit }: Props) {
               </li>
             ))}
           </ul>
-        </div>
+        </details>
       )}
 
       {/* Freigabe-Gate */}
@@ -185,20 +191,22 @@ export function CompletenessCard({ einheit }: Props) {
         )}
       </div>
 
-      {/* Informative Zusatz-Signale */}
-      <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-t pt-3 text-sm sm:grid-cols-4">
+      {/* Informative Zusatz-Signale — kompakte Chip-Reihe */}
+      <ul className="flex flex-wrap gap-1.5 border-t pt-3 text-xs">
         {extras.map((item) => (
           <li
             key={item.key}
             className={cn(
-              "flex items-center gap-2",
-              item.ok ? "text-foreground" : "text-muted-foreground",
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5",
+              item.ok
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+                : "border-border bg-muted/40 text-muted-foreground",
             )}
           >
             {item.ok ? (
-              <Check className="h-4 w-4 text-emerald-600" />
+              <Check className="h-3 w-3" />
             ) : (
-              <Circle className="h-4 w-4" />
+              <Circle className="h-3 w-3" />
             )}
             <span>{item.label}</span>
           </li>

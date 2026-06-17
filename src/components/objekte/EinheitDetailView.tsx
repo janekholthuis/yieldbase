@@ -234,17 +234,27 @@ export function EinheitDetailView({
         </>
       )}
 
-      {/* Title block */}
+      {/* Title block. Eingebettet trägt die Projektseite oben bereits
+          Name + Adresse + Galerie → hier nur die einheit-spezifischen Eckdaten,
+          damit das Projekt nicht doppelt erscheint. */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
             Wohnung {e.wohnungsnummer}
-            {e.projekt_name && (
+            {!embedded && e.projekt_name && (
               <span className="text-muted-foreground"> · {e.projekt_name}</span>
             )}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {formatAddress(e.adresse, e.plz, e.stadt) || "—"}
+            {embedded
+              ? [
+                  e.etage != null ? `Etage ${e.etage}` : null,
+                  e.wohnflaeche != null ? `${formatNumber(e.wohnflaeche)} m²` : null,
+                  e.zimmer != null ? `${formatNumber(e.zimmer)} Zi.` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "—"
+              : formatAddress(e.adresse, e.plz, e.stadt) || "—"}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -314,6 +324,7 @@ export function EinheitDetailView({
           <EinheitInvestmentView
             einheit={e}
             kalkContext={kalkContext}
+            showGallery={false}
             onReserve={
               reserveCandidateId
                 ? () => setReserveKundeId(reserveCandidateId)

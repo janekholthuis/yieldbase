@@ -37,12 +37,16 @@ export function EinheitInvestmentView({
   kalkContext,
   onReserve,
   readOnly = false,
+  showGallery = true,
 }: {
   einheit: EinheitDetail;
   kalkContext: KalkulationsContext;
   /** Optional "Anfragen"/Reserve handler — falls back to a no-op disabled button. */
   onReserve?: () => void;
   readOnly?: boolean;
+  /** Hide the unit hero gallery when the project page already shows one above
+   * (avoids the project appearing twice). */
+  showGallery?: boolean;
 }) {
   const e = einheit;
   const k = useEinheitKalkulation(e, kalkContext, readOnly);
@@ -50,9 +54,9 @@ export function EinheitInvestmentView({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-      {/* LEFT — hero + analysis panel */}
+      {/* LEFT — (optional hero) + analysis panel */}
       <div className="min-w-0 space-y-4">
-        <HeroGallery einheit={e} />
+        {showGallery && <HeroGallery einheit={e} />}
 
         <Card className="p-4">
           <div

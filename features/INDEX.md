@@ -45,7 +45,7 @@
 | PROJ-20 | Kalkulation 2.0 (erweiterte AfA inkl. Denkmal/Möblierung, anpassbare Prognose-Szenarien, KfW-Förderbausteine) | Deployed (2026-06-15; `v1.20.0-PROJ-20`; visuelle Prod-Verifikation offen) | features/PROJ-20-kalkulation-2.md | 2026-06-14 |
 | PROJ-21 | Einheiten-Vollständigkeit + Freigabe-Gate (voller Felddatensatz, Entwurf→Freigegeben nur bei allen Pflichtfeldern, „Fehlende Daten"-Ansicht, Bulk-Warnungen) | Deployed (2026-06-17, Commit `3f57e79`; inkl. UI-Entrümpelung der Freigabe-Karte; E2E/visuelle Prod-Verifikation offen) | features/PROJ-21-einheiten-vollstaendigkeit-freigabe.md | 2026-06-16 |
 | PROJ-22 | KI-Lageeinschätzung + KI-Tags (füllt standort_highlights/tags, Exposé-/Präsentations-Lage) + Beratungs-Aufwertung | Planned (Plan steht, Spalten via PROJ-21 vorhanden; LLM-Integration noch nicht gebaut) | — | 2026-06-16 |
-| PROJ-23 | Branding-Auto-Extraktion aus Website-URL (Onboarding + Einstellungen: URL → Logo/Primär-/Akzentfarbe automatisch, Vorschau + Übernahme) | Architected (2026-06-17; Engine = server-side Heuristik, kein LLM; reuse PROJ-13-Speicherweg) | features/PROJ-23-branding-auto-extraktion.md | 2026-06-17 |
+| PROJ-23 | Branding-Auto-Extraktion aus Website-URL (Onboarding + Einstellungen: URL → Logo/Primär-/Akzentfarbe automatisch, Vorschau + Übernahme) | In Progress (gebaut 2026-06-17; Lib+22 Tests, SSRF-Action, Dialog, in Einstellungen+Create-Org verdrahtet; tsc/build/206 Tests/lint grün; Deploy & E2E offen) | features/PROJ-23-branding-auto-extraktion.md | 2026-06-17 |
 
 <!-- Add features above this line -->
 

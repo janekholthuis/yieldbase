@@ -79,7 +79,8 @@ export function NotificationBell() {
         const url = new URL(n.link, window.location.origin);
         router.push(url.pathname + url.search);
       } catch {
-        // Fallback hard navigation
+        // Fallback hard navigation (router.push needs a relative path)
+        // eslint-disable-next-line react-hooks/immutability
         window.location.href = n.link;
       }
     }

@@ -22,6 +22,7 @@ import {
   DatabaseZap,
   CheckCircle2,
   AlertCircle,
+  Globe,
 } from "lucide-react";
 import {
   Card,
@@ -52,6 +53,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FileUpload } from "@/components/dokumente/FileUpload";
+import { BrandingExtractDialog } from "@/components/organisation/BrandingExtractDialog";
 import { useAuth } from "@/lib/auth-context";
 import type { ActiveOrg, OrganisationMember } from "@/lib/data/organisationen";
 import {
@@ -158,6 +160,7 @@ function BrandingCard({ org }: { org: ActiveOrg }) {
   const [primary, setPrimary] = useState(org.primaryColor ?? DEFAULT_PRIMARY);
   const [accent, setAccent] = useState(org.accentColor ?? DEFAULT_ACCENT);
   const [saving, setSaving] = useState(false);
+  const [extractOpen, setExtractOpen] = useState(false);
 
   const primaryValid = HEX_RE.test(primary);
   const accentValid = HEX_RE.test(accent);
@@ -199,6 +202,28 @@ function BrandingCard({ org }: { org: ActiveOrg }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* PROJ-23 — Branding automatisch aus einer Website übernehmen */}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed bg-muted/30 p-3">
+          <div className="text-sm">
+            <div className="font-medium">Branding automatisch übernehmen</div>
+            <p className="text-xs text-muted-foreground">
+              Website-Adresse eingeben — Logo &amp; Farben werden erkannt.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setExtractOpen(true)}>
+            <Globe className="mr-2 h-4 w-4" /> Aus Website übernehmen
+          </Button>
+        </div>
+        <BrandingExtractDialog
+          open={extractOpen}
+          onOpenChange={setExtractOpen}
+          onApply={(s) => {
+            if (s.logoUrl) setLogoUrl(s.logoUrl);
+            if (s.primaryColor) setPrimary(s.primaryColor);
+            if (s.accentColor) setAccent(s.accentColor);
+          }}
+        />
+
         <div className="space-y-2">
           <Label htmlFor="org-name">Name</Label>
           <Input
@@ -815,6 +840,7 @@ function CreateOrgCard() {
   const [primary, setPrimary] = useState(DEFAULT_PRIMARY);
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
   const [creating, setCreating] = useState(false);
+  const [extractOpen, setExtractOpen] = useState(false);
 
   const primaryValid = HEX_RE.test(primary);
   const accentValid = HEX_RE.test(accent);
@@ -874,6 +900,23 @@ function CreateOrgCard() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setExtractOpen(true)}
+              >
+                <Globe className="mr-2 h-4 w-4" /> Branding aus Website übernehmen
+              </Button>
+              <BrandingExtractDialog
+                open={extractOpen}
+                onOpenChange={setExtractOpen}
+                onApply={(s) => {
+                  if (s.primaryColor) setPrimary(s.primaryColor);
+                  if (s.accentColor) setAccent(s.accentColor);
+                }}
+              />
               <div className="space-y-2">
                 <Label htmlFor="new-org-name">Name</Label>
                 <Input

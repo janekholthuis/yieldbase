@@ -292,7 +292,7 @@ export function KalkulationsTab({ einheit, kalkContext, readOnly = false }: Prop
               </span>
               {!annahmenEditierbar && (
                 <span className="text-[10px] text-muted-foreground">
-                  via Szenario „{aktivesSzenario.label}"
+                  via Szenario „{aktivesSzenario.label}“
                 </span>
               )}
             </div>

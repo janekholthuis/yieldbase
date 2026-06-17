@@ -1,8 +1,23 @@
 # PROJ-23: Branding-Auto-Extraktion aus Website-URL
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-06-17
 **Last Updated:** 2026-06-17
+
+> **Build 2026-06-17 (MVP):** Heuristik-Engine `src/lib/branding-extract.ts`
+> (pure, 22 Tests) — URL-Normalisierung, Logo-Priorisierung (`<img>`-Logo ›
+> og:image › apple-touch-icon › Favicon), Farb-Erkennung (theme-color +
+> dominante CSS-Markenfarben, Weiß/Schwarz/Grau gefiltert). Server-Action
+> `extractBrandingFromUrl` (`src/lib/actions/branding-extract.ts`) mit Rollen-Gate
+> (admin/support/vertriebsleiter), **SSRF-Schutz** (DNS-Auflösung + Block
+> privater/loopback/Metadaten-IPs), Timeout + 2 MB-Cap, optionalem ersten
+> Stylesheet. UI `BrandingExtractDialog` (Vorschau mit „nicht erkannt"-Markern)
+> in **Einstellungen → Branding** und im **Create-Org-Dialog** (Onboarding)
+> verdrahtet; Übernahme befüllt die bestehenden Branding-Felder → finale Vorschau
+> + Speichern via `updateOrganisationBranding` (PROJ-13). tsc + Build + 206 Tests
+> + Lint grün. **Offen:** Logo-Re-Hosting in den Branding-Bucket (aktuell wird die
+> externe Logo-URL gespeichert — Hotlink), Deploy & E2E-Verifikation, optionale
+> SSRF-Härtung gegen Redirect-Hops.
 
 ## Summary
 Beim Onboarding einer Organisation (und jederzeit später im Branding-Bereich der

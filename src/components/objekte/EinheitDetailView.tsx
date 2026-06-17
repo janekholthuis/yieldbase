@@ -289,6 +289,7 @@ export function EinheitDetailView({
           <TabsTrigger value="kalkulation">Kalkulation</TabsTrigger>
           <TabsTrigger value="bilder">Bilder</TabsTrigger>
           <TabsTrigger value="dokumente">Dokumente</TabsTrigger>
+          <TabsTrigger value="verwaltung">Freigabe &amp; Kunden</TabsTrigger>
           {/* Bankdaten/Karte/Pool sind projekt-scoped — eingebettet in die
               Projektseite zeigt diese bereits die Pill-Tabs Lage/Bankdaten/Pool,
               daher hier nur im Standalone-Modus. */}
@@ -303,20 +304,19 @@ export function EinheitDetailView({
           )}
         </TabsList>
 
-        {/* Übersicht */}
+        {/* Übersicht — eine Spalte, nur Objektfakten (kein 2-Spalten-Layout) */}
         <TabsContent value="uebersicht" className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-3">
-            <div className="space-y-4 lg:col-span-2">
-              <EckdatenBlock einheit={e} />
-              {/* Eingebettet (Projektseite) zeigt die Einheiten-Liste bereits
-                  alle Geschwister — Karte nur im Standalone-Modus. */}
-              {!embedded && <GeschwisterCard geschwister={e.geschwister} />}
-            </div>
+          <EckdatenBlock einheit={e} />
+          {/* Eingebettet (Projektseite) zeigt die Einheiten-Liste bereits
+              alle Geschwister — Karte nur im Standalone-Modus. */}
+          {!embedded && <GeschwisterCard geschwister={e.geschwister} />}
+        </TabsContent>
 
-            <div className="space-y-4">
-              <CompletenessCard einheit={e} />
-              <ZuweisungenCard zuweisungen={e.zuweisungen} einheitId={e.einheit_id} />
-            </div>
+        {/* Freigabe & Kunden — Management in eigenem Tab statt rechter Spalte */}
+        <TabsContent value="verwaltung" className="space-y-4">
+          <div className="mx-auto max-w-2xl space-y-4">
+            <CompletenessCard einheit={e} />
+            <ZuweisungenCard zuweisungen={e.zuweisungen} einheitId={e.einheit_id} />
           </div>
         </TabsContent>
 

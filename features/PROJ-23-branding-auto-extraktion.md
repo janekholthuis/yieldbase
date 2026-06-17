@@ -126,14 +126,16 @@ jemand Hex-Codes heraussuchen oder ein Logo manuell hochladen muss.
   Timeout, danach Teilergebnis.
 
 ## Open Questions
-- [ ] Erkennungs-Engine: eigene Heuristik (HTML/CSS/Favicon parsen) **oder**
-  externer Dienst/LLM-Vision zur Farb-/Logo-Erkennung? → Entscheidung in
-  `/architecture` (beeinflusst Qualität, Kosten, Datenschutz).
-- [ ] Wie viele Akzentfarben anbieten — genau 2 (Primär+Akzent) oder eine kleine
-  Palette zur Auswahl in der Vorschau?
-- [ ] Soll bei Logo-Übernahme ein heller/dunkler Hintergrund automatisch erkannt
-  werden (Transparenz/Kontrast), oder reicht das Rohlogo?
-- [ ] Speicherort/Format des Logos final klären (SVG erlauben? Max-Größe?).
+- [x] ~~Erkennungs-Engine~~ → **entschieden (2026-06-17): eigene server-side
+  Heuristik, kein LLM** (siehe Tech Design / Technical Decisions).
+- [x] ~~Speicherort des Logos~~ → **bestehender PROJ-13-Branding-Bucket** über
+  `updateOrgBranding`. Detail offen: erlaubte Formate/Max-Größe (Build-Detail).
+- [ ] Genaues Akzentfarben-Verhalten: nur Primär+Akzent vorbefüllen (Vorschau
+  editierbar) — reicht das, oder eine kleine vorgeschlagene Palette zur Auswahl?
+  (Architektur-Default: genau 2, editierbar.)
+- [ ] Logo-Hintergrund (hell/dunkel/Transparenz) automatisch erkennen für besseren
+  Kontrast — oder Rohlogo übernehmen? (Build-Detail, kann später folgen.)
+- [ ] Erlaubte Logo-Formate (SVG zulassen?) + Max-Dateigröße beim Download.
 
 ## Decision Log
 
@@ -150,13 +152,85 @@ jemand Hex-Codes heraussuchen oder ein Logo manuell hochladen muss.
 <!-- Added by /architecture -->
 | Decision | Rationale | Date |
 |----------|-----------|------|
-| _To be added by /architecture_ | | |
+| Erkennung als eigene server-side Heuristik (kein LLM) | Kein API-Key/Kosten/Datenabfluss, kein Headless-Browser auf Vercel; „Vorschau+editieren" fängt Ungenauigkeit ab | 2026-06-17 |
+| Erkennung serverseitig (Server Action), nicht im Browser | CORS umgehen + SSRF-/Timeout-/Größen-Kontrolle | 2026-06-17 |
+| Keine Schema-Änderung — vorhandene Felder `logo_url`/`primary_color`/`accent_color` befüllen | PROJ-13 liefert bereits Felder, Theming (`branding.ts`) und Speicherweg | 2026-06-17 |
+| Speichern über bestehenden `updateOrgBranding` + Branding-Bucket | Ein einziger, getesteter Write-Pfad für Branding | 2026-06-17 |
+| Logo-Priorität: `<img>`-Logo › og:image › apple-touch-icon › Manifest › Favicon | Liefert i. d. R. das schärfste echte Marken-Logo statt eines 16px-Favicons | 2026-06-17 |
+| `node-html-parser` + `node-vibrant` als Engine-Bausteine | Leichtgewichtig, server-tauglich, etabliert; keine schweren Dienste | 2026-06-17 |
+| Erkennungsergebnis flüchtig (erst auf Bestätigung gespeichert) | Verhindert stilles Überschreiben des bestehenden Brandings | 2026-06-17 |
 
 ---
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Architektur-Kurzfassung:** Ein wiederverwendbarer „Branding-aus-Website"-Dialog
+ruft eine **serverseitige** Erkennung auf (Heuristik, kein LLM), zeigt das
+Ergebnis als editierbare Vorschau und speichert erst auf Bestätigung über den
+**bestehenden** PROJ-13-Branding-Speicherweg. Keine Schema-Änderung.
+
+### A) Komponenten-Struktur
+```
+BrandingExtractDialog  (neu, gemeinsam genutzt)
+├── URL-Eingabe + „Erkennen"-Button
+├── Lade-/Fortschritts-Zustand (Spinner, „Website wird ausgelesen …")
+├── Vorschau
+│   ├── Logo-Vorschau (erkanntes Logo, „nicht erkannt"-Hinweis, entfernen/ersetzen)
+│   ├── Primärfarbe  (Farb-Swatch + Color-Picker, editierbar)
+│   ├── Akzentfarbe  (Farb-Swatch + Color-Picker, editierbar)
+│   └── Fehler-/Teilergebnis-Hinweis
+└── Aktionen: „Übernehmen" (speichert) · „Abbrechen"
+
+Einbindung:
+├── Onboarding / „Organisation anlegen" → URL-Feld + Button öffnet Dialog
+└── Einstellungen → Branding-Bereich → „Aus Website übernehmen"-Button öffnet Dialog
+```
+Die Vorschau nutzt vorhandene UI-Primitive (Dialog, Input, Button) und denselben
+Color-Picker/Logo-Upload wie die bestehende manuelle Branding-Pflege (PROJ-13).
+
+### B) Datenfluss / Backend
+Zwei Server-Actions, beide rollen-gegated (admin/support/Org-Owner, gleicher Guard
+wie die übrige Org-Verwaltung):
+
+1. **Erkennen** (`extractBrandingFromUrl`) — ändert NICHTS, liefert nur Vorschlag:
+   - URL normalisieren (https ergänzen), Host validieren, **SSRF-Schutz**
+     (interne/loopback/Metadaten-/RFC-1918-Adressen ablehnen).
+   - HTML serverseitig laden (Timeout, Größenlimit, begrenzte Redirects).
+   - Logo-Kandidaten sammeln & priorisieren: explizites Logo-`<img>` (alt/Name
+     enthält „logo") › `og:image` › `apple-touch-icon` › Manifest-Icon › Favicon.
+   - Farben ableiten: `<meta name="theme-color">` falls vorhanden; sonst
+     dominante/akzentuierte Farben aus Logo bzw. `og:image` (Vibrant-Palette).
+     Primär = theme-color/dominant, Akzent = kräftigste Sekundärfarbe.
+   - Rückgabe: `{ logoCandidateUrl, primaryHex, accentHex, detected: {logo,primary,accent} }`.
+2. **Übernehmen** (Wiederverwendung des PROJ-13-Speicherwegs): gewähltes Logo in
+   den bestehenden Branding-Bucket laden → `logo_url`; bestätigte Hex-Farben über
+   die vorhandene `updateOrgBranding`-Action in `primary_color`/`accent_color`.
+
+### C) Datenmodell
+- **Keine** neue Tabelle/Spalte. Es werden ausschließlich die existierenden Felder
+  `organisationen.logo_url` / `primary_color` / `accent_color` befüllt.
+- Das Erkennungsergebnis ist **flüchtig** (lebt nur im Dialog bis zur Bestätigung).
+- Optional (nice-to-have): Quell-URL in `organisationen.settings` (jsonb) ablegen,
+  damit man später „erneut aus Website" anbieten kann — nicht MVP-kritisch.
+- Farben werden als `#RRGGBB` normalisiert (kompatibel zu `parseHex` in
+  `src/lib/branding.ts`, das daraus das Live-Theme baut).
+
+### D) Tech-Entscheidungen (warum so)
+- **Serverseitige Erkennung** statt im Browser: umgeht CORS, erlaubt SSRF-Kontrolle
+  und Größen-/Timeout-Limits.
+- **Heuristik statt LLM**: kein neuer API-Key, keine Pro-Onboarding-Kosten, keine
+  Seitendaten an Dritte, kein Headless-Browser auf Vercel. Die „Vorschau +
+  editieren"-UX fängt Erkennungsfehler ab, daher reicht „gut genug".
+- **Wiederverwendung des PROJ-13-Speicherwegs** (Bucket + `updateOrgBranding`)
+  statt eigener Logo-Ablage — ein einziger Pfad für Branding-Writes.
+- **Nie blockierend**: Bei Fehler/Teilergebnis bleibt die manuelle Eingabe offen.
+
+### E) Abhängigkeiten (zu installieren)
+- `node-html-parser` (oder `cheerio`) — HTML nach Logo-/Meta-Tags durchsuchen.
+- `node-vibrant` — dominante/akzentuierte Farben aus Logo/`og:image` ziehen
+  (bringt Bilddekodierung mit; ggf. `sharp` als Peer für den Node-Server-Pfad).
+- Kein neues Auth-/LLM-Paket.
 
 ## QA Test Results
 _To be added by /qa_

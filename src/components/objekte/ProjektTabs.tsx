@@ -8,7 +8,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, ChevronDown } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { MapPin, ChevronDown, Layers } from "lucide-react";
 
 import { VerkaufsstatusTabelle } from "@/components/objekte/VerkaufsstatusTabelle";
 import { KarteTab } from "@/components/objekte/KarteTab";
@@ -19,12 +26,8 @@ import { EinheitDetailView } from "@/components/objekte/EinheitDetailView";
 import { getEinheitDetailAction } from "@/lib/actions/objekte";
 import { useAuth } from "@/lib/auth-context";
 import {
-  STATUS_BADGE_CLASS,
   STATUS_LABELS,
-  FREIGABE_BADGE_CLASS,
-  FREIGABE_LABELS,
   formatEUR,
-  formatNumber,
 } from "@/lib/objekt-format";
 import type {
   ProjektDetail,
@@ -153,76 +156,67 @@ function EinheitenMasterDetail({
       .join(" · ");
   })();
 
-  // Einspaltig: kompakter Status + horizontaler Einheiten-Wähler oben, Detail
-  // darunter in voller Breite (kein Splitscreen / keine zweite Spalte mehr).
+  const selected = units.find((u) => u.einheit_id === selectedId) ?? null;
+
+  // ImmoScout-Stil, einspaltig: Anzahl Einheiten groß + Wechsel-Dropdown oben
+  // rechts; darunter die gewählte Wohnung in voller Breite.
   return (
     <div className="space-y-4">
-      {/* Verkaufsstatus — Kurzfassung, Breakdown ausklappbar */}
+      {/* Kopfzeile: Anzahl groß (links) · Einheit-Wechsel-Dropdown (rechts) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-accent/10 text-brand-accent">
+            <Layers className="h-5 w-5" />
+          </span>
+          <div>
+            <div className="text-xl font-semibold leading-tight tracking-tight">
+              {units.length} Einheiten
+            </div>
+            <div className="text-sm text-muted-foreground">{statusSummary}</div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="hidden text-sm text-muted-foreground sm:inline">
+            Einheit wechseln
+          </span>
+          <Select
+            value={selectedId ?? undefined}
+            onValueChange={(v) => setSelectedId(v)}
+          >
+            <SelectTrigger className="w-[260px] sm:w-[300px]">
+              <SelectValue placeholder="Wohnung wählen" />
+            </SelectTrigger>
+            <SelectContent>
+              {units.map((u) => (
+                <SelectItem key={u.einheit_id} value={u.einheit_id}>
+                  Wohnung {u.wohnungsnummer} · {STATUS_LABELS[u.status]}
+                  {u.kaufpreis != null ? ` · ${formatEUR(u.kaufpreis)}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Verkaufsstatus-Breakdown — verfügbar, aber eingeklappt */}
       <details className="group rounded-xl border bg-card">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-2.5 text-sm">
-          <span className="font-medium">Verkaufsstatus</span>
-          <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="hidden sm:inline">{statusSummary}</span>
-            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-          </span>
+          <span className="font-medium">Verkaufsstatus-Übersicht</span>
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
         </summary>
         <div className="border-t p-3">
           <VerkaufsstatusTabelle einheiten={units} />
         </div>
       </details>
 
-      {/* Einheiten-Wähler: horizontal scrollbar */}
-      <div className="rounded-xl border bg-card p-2">
-        <div className="mb-1.5 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {units.length} Einheiten — Wohnung wählen
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {units.map((u) => {
-            const active = u.einheit_id === selectedId;
-            return (
-              <button
-                key={u.einheit_id}
-                type="button"
-                onClick={() => setSelectedId(u.einheit_id)}
-                className={`flex shrink-0 flex-col gap-1 rounded-lg border px-3 py-2 text-left transition-colors ${
-                  active
-                    ? "border-brand-accent bg-brand-accent/10"
-                    : "hover:bg-muted/60"
-                }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-semibold">{u.wohnungsnummer}</span>
-                  <span
-                    className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE_CLASS[u.status]}`}
-                  >
-                    {STATUS_LABELS[u.status]}
-                  </span>
-                  {u.freigabe_status !== "freigegeben" && (
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${FREIGABE_BADGE_CLASS[u.freigabe_status]}`}
-                    >
-                      {FREIGABE_LABELS[u.freigabe_status]}
-                    </span>
-                  )}
-                </div>
-                <span className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
-                  {[
-                    formatNumber(u.zimmer, " Zi"),
-                    formatNumber(u.wohnflaeche, " m²"),
-                    formatEUR(u.kaufpreis),
-                  ]
-                    .filter((s) => s && s !== "—")
-                    .join(" · ")}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Detail der gewählten Wohnung — volle Breite */}
-      {selectedId ? (
-        <UnitDetailPane einheitId={selectedId} kalkContext={kalkContext} />
+      {/* Gewählte Wohnung — volle Breite (ImmoScout-Listing-Stil) */}
+      {selected ? (
+        <UnitDetailPane
+          key={selected.einheit_id}
+          einheitId={selected.einheit_id}
+          kalkContext={kalkContext}
+        />
       ) : (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
           Wähle oben eine Wohnung.

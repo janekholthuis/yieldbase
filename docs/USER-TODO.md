@@ -1,6 +1,6 @@
 # 🔑 Objektpilot — Offene Aufgaben
 
-> Live: **https://objekt-pilot.vercel.app** (Vercel, deployt von `main`)
+> Live: **https://portal.erfolg-mit-immobilien.com** (Custom-Domain auf Vercel, deployt von `main`; alte URL `objekt-pilot.vercel.app` bleibt als Vercel-Default bestehen)
 
 ## 🎯 V1-Scope (Stand 2026-06-12)
 **V1 aktiv:** Objekte (inkl. Kalkulation, Bilder, Dokumente, Karte), Kunden,
@@ -22,7 +22,12 @@ Reaktivierung später: Wiring liegt als Kommentar in den jeweiligen Page-Dateien
 ## 🟡 Optional / später
 - [ ] **Leaked-Password-Schutz aktivieren** (Supabase → Auth → Passwords; HaveIBeenPwned-Check) — Advisor-Hinweis
 - [ ] **Öffentlichen Storage-Bucket prüfen** (Advisor: „public bucket allows listing") — Listing ggf. einschränken
-- [ ] Eigene Domain verbinden (statt `objekt-pilot.vercel.app`)
+- [ ] **Domain `portal.erfolg-mit-immobilien.com` finalisieren** (Code ist domain-agnostisch — nur Config, login-kritisch):
+  1. **Vercel** → Projekt → Settings → Domains: `portal.erfolg-mit-immobilien.com` hinzufügen + DNS-CNAME beim Provider setzen.
+  2. **Vercel** → Settings → Environment Variables: `NEXT_PUBLIC_SITE_URL=https://portal.erfolg-mit-immobilien.com` (Production) → danach **Redeploy**.
+  3. **Supabase** → Auth → URL Configuration: **Site URL** = `https://portal.erfolg-mit-immobilien.com`; unter **Redirect URLs** zusätzlich `https://portal.erfolg-mit-immobilien.com/**` aufnehmen (sonst brechen Invite-/Magic-/Reset-Links). ⚠️ login-kritisch.
+  4. **Supabase** → Edge Functions Secrets: `PUBLIC_SITE_URL=https://portal.erfolg-mit-immobilien.com` (für `send-reservation-email`/`send-invite-email`, falls ohne Request-Origin aufgerufen).
+  5. **Mapbox**-Token (falls URL-Restriction aktiv): neue Domain zur erlaubten Referrer-Liste hinzufügen.
 - [ ] Auth-Email-Templates anpassen (Vorlagen: `OLD APP/docs/email-templates/`)
 - [ ] RLS-Policies gegen das cookie-basierte `@supabase/ssr`-Auth gegenprüfen
 - [ ] Struktur-Gaps entscheiden ([STRUCTURE-AUDIT.md](STRUCTURE-AUDIT.md)): Projektentwickler-Tabelle? Datenraum-Tabelle?

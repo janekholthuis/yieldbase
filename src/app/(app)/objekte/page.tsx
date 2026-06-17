@@ -1,4 +1,4 @@
-import { listObjekte } from "@/lib/data/objekte";
+import { listProjekteUebersicht } from "@/lib/data/objekte";
 import { ObjekteListView } from "@/components/objekte/ObjekteListView";
 
 export const metadata = {
@@ -6,7 +6,7 @@ export const metadata = {
 };
 
 export default async function ObjektePage() {
-  const { items, error } = await listObjekte();
+  const { items, error } = await listProjekteUebersicht();
 
   if (error) {
     return (
@@ -18,5 +18,5 @@ export default async function ObjektePage() {
     );
   }
 
-  return <ObjekteListView items={items} />;
+  return <ObjekteListView projekte={items} />;
 }

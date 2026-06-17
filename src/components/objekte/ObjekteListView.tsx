@@ -1,18 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import { ObjektCard } from "@/components/objekte/ObjektCard";
-import { ProjektCard, type ProjektCardData } from "@/components/objekte/ProjektCard";
-import {
-  ObjekteFilterSidebar,
-  ActiveFilterChips,
-  DEFAULT_FILTERS,
-  type ObjekteFilters,
-} from "@/components/objekte/ObjekteFilterSidebar";
-import { applyObjekteFilters } from "@/lib/objekte-filter";
+import { ProjektCard } from "@/components/objekte/ProjektCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -23,27 +15,17 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { LayoutGrid, Plus, Rows3, SlidersHorizontal, Search } from "lucide-react";
-import {
-  STATUS_BADGE_CLASS,
-  STATUS_LABELS,
-  formatEUR,
-  formatNumber,
-  pricePerSqm,
-} from "@/lib/objekt-format";
-import type { ObjektListItem } from "@/lib/data/objekte";
+import { Plus, SlidersHorizontal, Search } from "lucide-react";
+import { STATUS_LABELS } from "@/lib/objekt-format";
+import type {
+  ProjektUebersichtItem,
+  EinheitStatus,
+} from "@/lib/data/objekte";
 import { ProjektWizard } from "@/components/objekte/ProjektWizard";
 import { useAuth } from "@/lib/auth-context";
 
@@ -56,16 +38,38 @@ const INTERNAL_ROLES = [
   "vp_l3",
 ];
 
-type SortKey = "neueste" | "preis_asc" | "preis_desc" | "rendite_desc" | "status";
+type SortKey = "neueste" | "preis_asc" | "preis_desc" | "rendite_desc";
 
-// TODO(migration): Mapbox map view ("map") is intentionally omitted — only
-// grid and table views are ported. Re-add when ObjekteMapView is migrated.
-type View = "grid" | "table";
+const STATUS_OPTIONS: EinheitStatus[] = [
+  "frei",
+  "auf_anfrage",
+  "reserviert",
+  "notarvorbereitung",
+  "notartermin",
+  "verkauft",
+];
 
-export function ObjekteListView({ items: allItems }: { items: ObjektListItem[] }) {
-  const [view, setView] = useState<View>("grid");
+interface ProjektFilters {
+  q: string;
+  preisMin: string;
+  preisMax: string;
+  statuses: EinheitStatus[];
+}
+
+const EMPTY_FILTERS: ProjektFilters = {
+  q: "",
+  preisMin: "",
+  preisMax: "",
+  statuses: [],
+};
+
+export function ObjekteListView({
+  projekte,
+}: {
+  projekte: ProjektUebersichtItem[];
+}) {
   const [sort, setSort] = useState<SortKey>("neueste");
-  const [filters, setFilters] = useState<ObjekteFilters>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<ProjektFilters>(EMPTY_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
 
@@ -73,26 +77,32 @@ export function ObjekteListView({ items: allItems }: { items: ObjektListItem[] }
   const canCreate = roles.some((r) => INTERNAL_ROLES.includes(r));
 
   const filtered = useMemo(
-    () => applyObjekteFilters(allItems, filters),
-    [allItems, filters],
+    () => applyProjektFilters(projekte, filters),
+    [projekte, filters],
   );
 
   const items = useMemo(() => {
     const list = [...filtered];
     switch (sort) {
       case "preis_asc":
-        list.sort((a, b) => (a.kaufpreis ?? 0) - (b.kaufpreis ?? 0));
+        list.sort(
+          (a, b) =>
+            (a.aggregat.kaufpreis_min ?? Infinity) -
+            (b.aggregat.kaufpreis_min ?? Infinity),
+        );
         break;
       case "preis_desc":
-        list.sort((a, b) => (b.kaufpreis ?? 0) - (a.kaufpreis ?? 0));
+        list.sort(
+          (a, b) =>
+            (b.aggregat.kaufpreis_max ?? -Infinity) -
+            (a.aggregat.kaufpreis_max ?? -Infinity),
+        );
         break;
       case "rendite_desc":
         list.sort(
-          (a, b) => (b.mietrendite_brutto ?? 0) - (a.mietrendite_brutto ?? 0),
+          (a, b) =>
+            (b.mietrendite_brutto ?? 0) - (a.mietrendite_brutto ?? 0),
         );
-        break;
-      case "status":
-        list.sort((a, b) => a.status.localeCompare(b.status));
         break;
       default:
         list.sort(
@@ -103,15 +113,10 @@ export function ObjekteListView({ items: allItems }: { items: ObjektListItem[] }
     return list;
   }, [filtered, sort]);
 
-  const projektNames = useMemo(() => {
-    const m: Record<string, string> = {};
-    allItems.forEach((i) => {
-      if (i.projekt_id) m[i.projekt_id] = i.projekt_name ?? i.projekt_id;
-    });
-    return m;
-  }, [allItems]);
-
-  const activeFilterCount = countActiveFilters(filters);
+  const activeFilterCount =
+    (filters.preisMin ? 1 : 0) +
+    (filters.preisMax ? 1 : 0) +
+    filters.statuses.length;
 
   return (
     <div className="container mx-auto space-y-4 p-4 md:p-6">
@@ -121,9 +126,7 @@ export function ObjekteListView({ items: allItems }: { items: ObjektListItem[] }
             Objekte
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {view === "grid"
-              ? `${countProjects(items)} Projekte · ${items.length} Einheiten`
-              : `${items.length} Einheiten`}
+            {items.length} {items.length === 1 ? "Projekt" : "Projekte"}
           </p>
         </div>
         {canCreate && (
@@ -145,7 +148,7 @@ export function ObjekteListView({ items: allItems }: { items: ObjektListItem[] }
           <Input
             value={filters.q}
             onChange={(e) => setFilters({ ...filters, q: e.target.value })}
-            placeholder="Adresse, Wohnung, Stadt…"
+            placeholder="Projekt, Adresse, Stadt, PLZ…"
             className="pl-8"
           />
         </div>
@@ -162,15 +165,84 @@ export function ObjekteListView({ items: allItems }: { items: ObjektListItem[] }
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[340px] overflow-y-auto sm:w-[380px]">
+          <SheetContent
+            side="right"
+            className="flex w-[340px] flex-col overflow-y-auto sm:w-[380px]"
+          >
             <SheetHeader className="mb-4">
               <SheetTitle>Filter</SheetTitle>
             </SheetHeader>
-            <ObjekteFilterSidebar
-              filters={filters}
-              onChange={setFilters}
-              items={allItems}
-            />
+
+            <div className="flex-1 space-y-6">
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Kaufpreis (€)</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="min"
+                    value={filters.preisMin}
+                    onChange={(e) =>
+                      setFilters({ ...filters, preisMin: e.target.value })
+                    }
+                  />
+                  <span className="text-muted-foreground">–</span>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="max"
+                    value={filters.preisMax}
+                    onChange={(e) =>
+                      setFilters({ ...filters, preisMax: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Verkaufsstatus</Label>
+                <div className="flex flex-col gap-2">
+                  {STATUS_OPTIONS.map((s) => {
+                    const checked = filters.statuses.includes(s);
+                    return (
+                      <label
+                        key={s}
+                        className="flex cursor-pointer items-center gap-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-input accent-primary"
+                          checked={checked}
+                          onChange={(e) =>
+                            setFilters((f) => ({
+                              ...f,
+                              statuses: e.target.checked
+                                ? [...f.statuses, s]
+                                : f.statuses.filter((x) => x !== s),
+                            }))
+                          }
+                        />
+                        {STATUS_LABELS[s]}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <SheetFooter className="mt-6">
+              <Button
+                variant="outline"
+                onClick={() =>
+                  setFilters((f) => ({
+                    ...EMPTY_FILTERS,
+                    q: f.q,
+                  }))
+                }
+              >
+                Zurücksetzen
+              </Button>
+            </SheetFooter>
           </SheetContent>
         </Sheet>
 
@@ -183,181 +255,84 @@ export function ObjekteListView({ items: allItems }: { items: ObjektListItem[] }
             <SelectItem value="preis_asc">Preis aufsteigend</SelectItem>
             <SelectItem value="preis_desc">Preis absteigend</SelectItem>
             <SelectItem value="rendite_desc">Mietrendite ↓</SelectItem>
-            <SelectItem value="status">Status</SelectItem>
           </SelectContent>
         </Select>
-
-        <div className="ml-auto flex rounded-md border bg-background">
-          <Button
-            variant={view === "grid" ? "default" : "ghost"}
-            size="icon"
-            className="rounded-r-none"
-            onClick={() => setView("grid")}
-            aria-label="Grid-Ansicht"
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={view === "table" ? "default" : "ghost"}
-            size="icon"
-            className="rounded-l-none"
-            onClick={() => setView("table")}
-            aria-label="Tabellen-Ansicht"
-          >
-            <Rows3 className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
-
-      <ActiveFilterChips
-        filters={filters}
-        onChange={setFilters}
-        itemsCount={items.length}
-        totalCount={allItems.length}
-        projektNames={projektNames}
-      />
 
       {items.length === 0 ? (
         <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground">
-          Keine Objekte passen zu den Filtern.
-        </div>
-      ) : view === "grid" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {groupForGrid(items).map((entry) =>
-            entry.kind === "projekt" ? (
-              <ProjektCard key={entry.data.projekt_id} data={entry.data} />
-            ) : (
-              <ObjektCard key={entry.item.einheit_id} item={entry.item} />
-            ),
-          )}
+          {projekte.length === 0
+            ? "Noch keine Projekte vorhanden."
+            : "Keine Projekte passen zu den Filtern."}
         </div>
       ) : (
-        <div className="rounded-lg border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Bezeichnung</TableHead>
-                <TableHead>Stadt</TableHead>
-                <TableHead className="text-right">Wohnfläche</TableHead>
-                <TableHead className="text-right">Zimmer</TableHead>
-                <TableHead className="text-right">Kaufpreis</TableHead>
-                <TableHead className="text-right">€/m²</TableHead>
-                <TableHead className="text-right">Mietrendite</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((it) => {
-                const ppsm = pricePerSqm(it.kaufpreis, it.wohnflaeche);
-                return (
-                  <TableRow key={it.einheit_id} className="cursor-pointer">
-                    <TableCell>
-                      <Link
-                        href={`/objekte/${it.einheit_id}`}
-                        className="font-medium hover:underline"
-                      >
-                        Wohnung {it.wohnungsnummer}
-                        {it.projekt_name && (
-                          <span className="text-muted-foreground"> · {it.projekt_name}</span>
-                        )}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      {[it.stadt, it.plz].filter(Boolean).join(" · ") || "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(it.wohnflaeche, " m²")}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(it.zimmer)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatEUR(it.kaufpreis)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {ppsm != null ? formatEUR(Math.round(ppsm)) : "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(it.mietrendite_brutto, " %")}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_BADGE_CLASS[it.status]}`}
-                      >
-                        {STATUS_LABELS[it.status]}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {items.map((p) => (
+            <ProjektCard
+              key={p.projekt_id}
+              data={{
+                projekt_id: p.projekt_id,
+                projekt_name: p.name,
+                projekt_typ: p.projekt_typ,
+                cover_image_url: p.cover_image_url,
+                adresse: p.adresse,
+                stadt: p.stadt,
+                plz: p.plz,
+                bundesland: p.bundesland,
+                baujahr: p.baujahr,
+                aggregat: p.aggregat,
+              }}
+            />
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-function countActiveFilters(f: ObjekteFilters): number {
-  const d = DEFAULT_FILTERS;
-  let n = 0;
-  if (f.q) n++;
-  n += f.statuses.length;
-  if (f.stadt) n++;
-  if (f.plz) n++;
-  if (f.preisMin !== d.preisMin || f.preisMax !== d.preisMax) n++;
-  if (f.flaecheMin !== d.flaecheMin || f.flaecheMax !== d.flaecheMax) n++;
-  n += f.zimmer.length;
-  if (f.renditeMin > 0) n++;
-  if (f.vermietet !== "alle") n++;
-  n += f.projekte.length;
-  return n;
-}
+/**
+ * Projekt-Ebene-Filter (ersetzt das frühere applyObjekteFilters auf Einheiten):
+ * - q: matcht name/adresse/stadt/plz (case-insensitive)
+ * - Preis: Projekt matcht, wenn [kaufpreis_min, kaufpreis_max] den gewählten
+ *   Bereich überlappt
+ * - Status: Projekt matcht, wenn status_counts den Status > 0 hat
+ */
+function applyProjektFilters(
+  items: ProjektUebersichtItem[],
+  f: ProjektFilters,
+): ProjektUebersichtItem[] {
+  const q = f.q.trim().toLowerCase();
+  const min = f.preisMin ? Number(f.preisMin) : null;
+  const max = f.preisMax ? Number(f.preisMax) : null;
 
-type GridEntry =
-  | { kind: "projekt"; data: ProjektCardData }
-  | { kind: "einheit"; item: ObjektListItem };
-
-function groupForGrid(items: ObjektListItem[]): GridEntry[] {
-  const projekte = new Map<string, ProjektCardData>();
-  const singles: GridEntry[] = [];
-  const order: string[] = [];
-
-  for (const it of items) {
-    if (it.projekt_typ === "etw_einzeln") {
-      singles.push({ kind: "einheit", item: it });
-      continue;
+  return items.filter((p) => {
+    if (q) {
+      const hay = [p.name, p.adresse, p.stadt, p.plz]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!hay.includes(q)) return false;
     }
-    if (!projekte.has(it.projekt_id)) {
-      order.push(it.projekt_id);
-      projekte.set(it.projekt_id, {
-        projekt_id: it.projekt_id,
-        projekt_name: it.projekt_name,
-        projekt_typ: it.projekt_typ,
-        cover_image_url: it.cover_image_url,
-        adresse: it.adresse,
-        stadt: it.stadt,
-        plz: it.plz,
-        bundesland: it.bundesland,
-        baujahr: it.baujahr,
-        einheiten: [],
-      });
+
+    if (min != null || max != null) {
+      const lo = p.aggregat.kaufpreis_min;
+      const hi = p.aggregat.kaufpreis_max;
+      // Ohne Preisdaten kann keine Überlappung bestimmt werden → ausschließen.
+      if (lo == null && hi == null) return false;
+      const pLo = lo ?? hi!;
+      const pHi = hi ?? lo!;
+      if (min != null && pHi < min) return false;
+      if (max != null && pLo > max) return false;
     }
-    projekte.get(it.projekt_id)!.einheiten.push(it);
-  }
 
-  return [
-    ...order.map<GridEntry>((id) => ({ kind: "projekt", data: projekte.get(id)! })),
-    ...singles,
-  ];
-}
+    if (f.statuses.length > 0) {
+      const counts = p.aggregat.status_counts;
+      const hit =
+        counts != null &&
+        f.statuses.some((s) => (counts[s] ?? 0) > 0);
+      if (!hit) return false;
+    }
 
-function countProjects(items: ObjektListItem[]): number {
-  const ids = new Set<string>();
-  let singles = 0;
-  for (const it of items) {
-    if (it.projekt_typ === "etw_einzeln") singles++;
-    else ids.add(it.projekt_id);
-  }
-  return ids.size + singles;
+    return true;
+  });
 }

@@ -100,6 +100,42 @@ export interface ProjektDetail {
   einheiten: ObjektListItem[];
 }
 
+/** Denormalised per-project unit aggregate (maintained by the
+ * `einheit_aggregat_trg` trigger → `projekte.einheiten_aggregat`). Lets the
+ * Objekte list render project tiles without scanning all units (PROJ-3 perf). */
+export interface ProjektAggregat {
+  count: number;
+  kaufpreis_min: number | null;
+  kaufpreis_max: number | null;
+  wohnflaeche_min: number | null;
+  wohnflaeche_max: number | null;
+  zimmer_min: number | null;
+  zimmer_max: number | null;
+  afa_min: number | null;
+  afa_max: number | null;
+  ppsm_min: number | null;
+  ppsm_max: number | null;
+  miete_sqm_min: number | null;
+  miete_sqm_max: number | null;
+  status_counts: Record<string, number> | null;
+}
+
+export interface ProjektUebersichtItem {
+  projekt_id: string;
+  name: string | null;
+  projekt_typ: "mfh" | "etw_einzeln";
+  bautraeger: string | null;
+  cover_image_url: string | null;
+  adresse: string | null;
+  stadt: string | null;
+  plz: string | null;
+  bundesland: string | null;
+  baujahr: number | null;
+  mietrendite_brutto: number | null;
+  created_at: string;
+  aggregat: ProjektAggregat;
+}
+
 export interface EinheitDetail extends ObjektListItem {
   mietvertrag_ende: string | null;
    
@@ -256,6 +292,91 @@ export async function listObjekte(): Promise<{
     .map((row: any) => ({ ...row, projekte: projektById.get(row.projekt_id) }))
     .filter((row: any) => row.projekte)
     .map(mapEinheitRow);
+
+  return { items, error: null };
+}
+
+const PROJEKT_UEBERSICHT_COLS = `id, name, projekt_typ, bautraeger, cover_image_url,
+  adresse, baujahr, stadt, plz, bundesland, mietrendite_brutto, created_at, einheiten_aggregat`;
+
+function num(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+function mapAggregat(raw: any): ProjektAggregat {
+  const a = raw ?? {};
+  return {
+    count: num(a.count) ?? 0,
+    kaufpreis_min: num(a.kaufpreis_min),
+    kaufpreis_max: num(a.kaufpreis_max),
+    wohnflaeche_min: num(a.wohnflaeche_min),
+    wohnflaeche_max: num(a.wohnflaeche_max),
+    zimmer_min: num(a.zimmer_min),
+    zimmer_max: num(a.zimmer_max),
+    afa_min: num(a.afa_min),
+    afa_max: num(a.afa_max),
+    ppsm_min: num(a.ppsm_min),
+    ppsm_max: num(a.ppsm_max),
+    miete_sqm_min: num(a.miete_sqm_min),
+    miete_sqm_max: num(a.miete_sqm_max),
+    status_counts:
+      a.status_counts && typeof a.status_counts === "object"
+        ? (a.status_counts as Record<string, number>)
+        : null,
+  };
+}
+
+/**
+ * Project-level overview for the Objekte list. Reads only ~projekte rows (no
+ * full einheiten scan) using the trigger-maintained `einheiten_aggregat` — the
+ * durable fix for the list-load timeout (PROJ-3). Units load lazily on the
+ * project detail page (`getProjektDetail` / `getEinheitDetail`).
+ */
+export async function listProjekteUebersicht(): Promise<{
+  items: ProjektUebersichtItem[];
+  error: string | null;
+}> {
+  const supabase = await createClient();
+
+  let res;
+  try {
+    res = await supabase
+      .from("projekte")
+      .select(PROJEKT_UEBERSICHT_COLS)
+      .order("created_at", { ascending: false })
+      .abortSignal(queryTimeout());
+  } catch (err) {
+    console.error("listProjekteUebersicht aborted/failed:", err);
+    return {
+      items: [],
+      error:
+        "Die Objektliste konnte nicht rechtzeitig geladen werden (hohe Last). Bitte neu laden.",
+    };
+  }
+
+  if (res.error) {
+    console.error("listProjekteUebersicht error:", res.error);
+    return { items: [], error: res.error.message };
+  }
+
+  const items: ProjektUebersichtItem[] = (res.data ?? [])
+    .map((p: any) => ({
+      projekt_id: p.id,
+      name: p.name ?? null,
+      projekt_typ: (p.projekt_typ ?? "mfh") as "mfh" | "etw_einzeln",
+      bautraeger: p.bautraeger ?? null,
+      cover_image_url: p.cover_image_url ?? null,
+      adresse: p.adresse ?? null,
+      stadt: p.stadt ?? null,
+      plz: p.plz ?? null,
+      bundesland: p.bundesland ?? null,
+      baujahr: p.baujahr ?? null,
+      mietrendite_brutto: p.mietrendite_brutto ?? null,
+      created_at: p.created_at,
+      aggregat: mapAggregat(p.einheiten_aggregat),
+    }))
+    // Projekte ohne Einheiten in der Liste ausblenden.
+    .filter((p: ProjektUebersichtItem) => p.aggregat.count > 0);
 
   return { items, error: null };
 }

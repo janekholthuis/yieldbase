@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import type { ObjektListItem } from "@/lib/data/objekte";
-import { formatEUR, formatNumber, pricePerSqm } from "@/lib/objekt-format";
+import type { ProjektAggregat, EinheitStatus } from "@/lib/data/objekte";
+import {
+  STATUS_BADGE_CLASS,
+  STATUS_LABELS,
+  formatEUR,
+  formatNumber,
+} from "@/lib/objekt-format";
 import { Building2, MapPin } from "lucide-react";
 
 export interface ProjektCardData {
@@ -14,22 +19,20 @@ export interface ProjektCardData {
   plz: string | null;
   bundesland: string | null;
   baujahr: number | null;
-  einheiten: ObjektListItem[];
+  aggregat: ProjektAggregat;
   highlights?: string[];
   isNew?: boolean;
 }
 
-function range(values: number[]): [number, number] | null {
-  if (!values.length) return null;
-  return [Math.min(...values), Math.max(...values)];
-}
-
 function fmtRange(
-  r: [number, number] | null,
+  lo: number | null,
+  hi: number | null,
   fmt: (n: number) => string,
 ): string {
-  if (!r) return "—";
-  return r[0] === r[1] ? fmt(r[0]) : `${fmt(r[0])} bis ${fmt(r[1])}`;
+  if (lo == null && hi == null) return "—";
+  const a = lo ?? hi!;
+  const b = hi ?? lo!;
+  return a === b ? fmt(a) : `${fmt(a)} bis ${fmt(b)}`;
 }
 
 const TYP_LABEL: Record<"mfh" | "etw_einzeln", string> = {
@@ -37,35 +40,30 @@ const TYP_LABEL: Record<"mfh" | "etw_einzeln", string> = {
   etw_einzeln: "Eigentumswohnung",
 };
 
-export function ProjektCard({ data }: { data: ProjektCardData }) {
-  const units = data.einheiten;
-  const prices = units.map((u) => u.kaufpreis).filter((v): v is number => v != null);
-  const renditen = units
-    .map((u) => u.mietrendite_brutto)
-    .filter((v): v is number => v != null);
-  const flaechen = units
-    .map((u) => u.wohnflaeche)
-    .filter((v): v is number => v != null);
-  const zimmer = units.map((u) => u.zimmer).filter((v): v is number => v != null);
-  const afaWerte = units
-    .map((u) => u.afa_satz)
-    .filter((v): v is number => v != null);
-  const ppsmList = units
-    .map((u) => pricePerSqm(u.kaufpreis, u.wohnflaeche))
-    .filter((v): v is number => v != null);
-  const mietePerSqmList = units
-    .map((u) => pricePerSqm(u.miete, u.wohnflaeche))
-    .filter((v): v is number => v != null);
+// Status-Reihenfolge für die dezente Verteilungs-Anzeige (verkaufte zuletzt).
+const STATUS_ORDER: EinheitStatus[] = [
+  "frei",
+  "auf_anfrage",
+  "reserviert",
+  "notarvorbereitung",
+  "notartermin",
+  "verkauft",
+];
 
-  const zimmerRange = range(zimmer);
+export function ProjektCard({ data }: { data: ProjektCardData }) {
+  const agg = data.aggregat;
   const baujahr = data.baujahr;
-  const afaR = range(afaWerte);
 
   const adresse =
     data.adresse ??
     [data.stadt, data.plz].filter(Boolean).join(" · ") ??
     "—";
   const stadtZeile = [data.plz, data.stadt].filter(Boolean).join(" ");
+
+  const statusEntries = STATUS_ORDER.map((s) => ({
+    status: s,
+    count: agg.status_counts?.[s] ?? 0,
+  })).filter((e) => e.count > 0);
 
   const href = `/objekte/projekt/${data.projekt_id}`;
 
@@ -92,26 +90,46 @@ export function ProjektCard({ data }: { data: ProjektCardData }) {
               Neu
             </span>
           )}
+          <span className="absolute right-3 top-3 rounded-md bg-background/90 px-2.5 py-1 text-xs font-semibold text-foreground shadow">
+            {agg.count} {agg.count === 1 ? "Einheit" : "Einheiten"}
+          </span>
         </div>
 
         {/* Preis + Eckdaten */}
         <div className="px-5 pt-5">
           <div className="text-2xl font-bold leading-tight">
-            {fmtRange(range(prices), (n) => formatEUR(n))}
+            {fmtRange(agg.kaufpreis_min, agg.kaufpreis_max, (n) => formatEUR(n))}
           </div>
           <div className="mt-1 text-sm text-muted-foreground">
-            {zimmerRange
-              ? `${fmtRange(zimmerRange, (n) => formatNumber(n))} Zimmer`
+            {agg.zimmer_min != null || agg.zimmer_max != null
+              ? `${fmtRange(agg.zimmer_min, agg.zimmer_max, (n) => formatNumber(n))} Zimmer`
               : null}
-            {zimmerRange && baujahr ? <span className="mx-1.5">|</span> : null}
-            {baujahr ? `Baujahr ${baujahr}` : null}
-            {(zimmerRange || baujahr) && afaR ? (
+            {(agg.zimmer_min != null || agg.zimmer_max != null) && baujahr ? (
               <span className="mx-1.5">|</span>
             ) : null}
-            {afaR
-              ? `AfA ${fmtRange(afaR, (n) => formatNumber(n))} %`
+            {baujahr ? `Baujahr ${baujahr}` : null}
+            {(agg.zimmer_min != null || agg.zimmer_max != null || baujahr) &&
+            (agg.afa_min != null || agg.afa_max != null) ? (
+              <span className="mx-1.5">|</span>
+            ) : null}
+            {agg.afa_min != null || agg.afa_max != null
+              ? `AfA ${fmtRange(agg.afa_min, agg.afa_max, (n) => formatNumber(n))} %`
               : null}
           </div>
+
+          {/* Status-Verteilung */}
+          {statusEntries.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {statusEntries.map((e) => (
+                <span
+                  key={e.status}
+                  className={`rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_BADGE_CLASS[e.status]}`}
+                >
+                  {e.count} {STATUS_LABELS[e.status].toLowerCase()}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Highlights */}
           {data.highlights && data.highlights.length > 0 && (
@@ -132,27 +150,24 @@ export function ProjektCard({ data }: { data: ProjektCardData }) {
         <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 px-5">
           <Metric
             label="Größe"
-            value={fmtRange(range(flaechen), (n) => formatNumber(n))}
+            value={fmtRange(agg.wohnflaeche_min, agg.wohnflaeche_max, (n) =>
+              formatNumber(n),
+            )}
             unit="m²"
           />
           <Metric
             label="Kaufpreis"
-            value={fmtRange(range(ppsmList), (n) =>
+            value={fmtRange(agg.ppsm_min, agg.ppsm_max, (n) =>
               formatEUR(Math.round(n)),
             )}
             unit="/ m²"
           />
           <Metric
             label="Kaltmiete"
-            value={fmtRange(range(mietePerSqmList), (n) =>
+            value={fmtRange(agg.miete_sqm_min, agg.miete_sqm_max, (n) =>
               formatEUR(Math.round(n)),
             )}
             unit="/ m²"
-          />
-          <Metric
-            label="Bruttorendite"
-            value={fmtRange(range(renditen), (n) => formatNumber(n))}
-            unit="%"
           />
           <Metric label="Anlageklasse" value={TYP_LABEL[data.projekt_typ]} />
         </dl>

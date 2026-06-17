@@ -75,6 +75,7 @@ import { StandortHighlights } from "@/components/objekte/StandortHighlights";
 import { KundenPickerModal } from "@/components/objekte/KundenPickerModal";
 import { ReservierungModal } from "@/components/reservierung/ReservierungModal";
 import { KalkulationsTab } from "@/components/objekte/KalkulationsTab";
+import { EinheitInvestmentView } from "@/components/objekte/EinheitInvestmentView";
 import { FinanziererPoolTab } from "@/components/objekte/FinanziererPoolTab";
 import { ExposeModal } from "@/components/expose/ExposeModal";
 import { useAuth } from "@/lib/auth-context";
@@ -113,10 +114,15 @@ export function EinheitDetailView({
   const [exposeOpen, setExposeOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [reserveKundeId, setReserveKundeId] = useState<string | null>(null);
 
   // Erste zugewiesene Kunde-ID für eine personalisierte Präsentation (optional).
   const praesentationKundeId =
     e.zuweisungen.find((z) => z.kunde_id)?.kunde_id ?? undefined;
+  // „Anfragen"/Reservieren in der Investment-Sidebar: nur aktiv, wenn bereits
+  // ein Kunde zugewiesen ist (Reservierung braucht einen Kunden). Sonst weist
+  // der Nutzer erst im Tab „Freigabe & Kunden" zu.
+  const reserveCandidateId = canEdit ? praesentationKundeId : undefined;
   const praesentationHref = `/objekte/${e.einheit_id}/praesentation${
     praesentationKundeId ? `/${praesentationKundeId}` : ""
   }`;
@@ -257,33 +263,106 @@ export function EinheitDetailView({
         </div>
       </div>
 
-      {/* Prominente Preis-Zeile (ImmoScout-Stil) statt 6er-Stat-Stapel */}
-      <div className="rounded-xl border bg-card p-4">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="text-3xl font-bold tracking-tight">
-            {formatEUR(e.kaufpreis)}
-          </span>
-          {ppsm != null && (
-            <span className="text-sm text-muted-foreground">
-              {formatEUR(Math.round(ppsm))}/m²
-            </span>
-          )}
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          <Fact value={formatNumber(e.zimmer)} unit="Zi." />
-          <Dot />
-          <Fact value={formatNumber(e.wohnflaeche)} unit="m²" />
-          <Dot />
-          <Fact value={formatNumber(e.mietrendite_brutto)} unit="% Rendite" strong />
-          <Dot />
-          <span>
-            <span className="font-medium text-foreground">{formatEUR(e.miete)}</span>{" "}
-            Miete/mtl.
-          </span>
-        </div>
-      </div>
+      {/* Reservierung aus der „Anfragen"-CTA (Investagon-Layout) */}
+      {reserveKundeId && (
+        <ReservierungModal
+          open={!!reserveKundeId}
+          onOpenChange={(o) => !o && setReserveKundeId(null)}
+          einheitId={e.einheit_id}
+          kundeId={reserveKundeId}
+          onDone={() => {
+            setReserveKundeId(null);
+            router.refresh();
+          }}
+        />
+      )}
 
-      <Tabs defaultValue="uebersicht">
+      {/* Prominente Preis-Zeile nur im Standalone-Modus — eingebettet trägt die
+          Investment-Sidebar den Angebotspreis (keine Dopplung). */}
+      {!embedded && (
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-3xl font-bold tracking-tight">
+              {formatEUR(e.kaufpreis)}
+            </span>
+            {ppsm != null && (
+              <span className="text-sm text-muted-foreground">
+                {formatEUR(Math.round(ppsm))}/m²
+              </span>
+            )}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            <Fact value={formatNumber(e.zimmer)} unit="Zi." />
+            <Dot />
+            <Fact value={formatNumber(e.wohnflaeche)} unit="m²" />
+            <Dot />
+            <Fact value={formatNumber(e.mietrendite_brutto)} unit="% Rendite" strong />
+            <Dot />
+            <span>
+              <span className="font-medium text-foreground">{formatEUR(e.miete)}</span>{" "}
+              Miete/mtl.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* EINGEBETTET (Master-Detail Projektseite): Investagon-Layout als primäre
+          Ansicht — Hero + Diagramme/Kalkulation/Annahmen + Investment-Sidebar,
+          die Kalkulation sofort sichtbar. Sekundär-Tabs darunter. */}
+      {embedded ? (
+        <div className="space-y-4">
+          <EinheitInvestmentView
+            einheit={e}
+            kalkContext={kalkContext}
+            onReserve={
+              reserveCandidateId
+                ? () => setReserveKundeId(reserveCandidateId)
+                : undefined
+            }
+          />
+
+          <Tabs defaultValue="details">
+            <TabsList className="flex-wrap">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="bilder">Bilder</TabsTrigger>
+              <TabsTrigger value="dokumente">Dokumente</TabsTrigger>
+              <TabsTrigger value="verwaltung">Freigabe &amp; Kunden</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="details" className="space-y-4">
+              <EckdatenBlock einheit={e} />
+            </TabsContent>
+
+            <TabsContent value="bilder" className="space-y-4">
+              <BilderGallery
+                bilder={e.bilder}
+                dokumente={e.dokumente}
+                einheitId={e.einheit_id}
+                projektId={e.projekt_id}
+              />
+            </TabsContent>
+
+            <TabsContent value="dokumente" className="space-y-4">
+              <DokumenteList
+                dokumente={e.dokumente}
+                einheitId={e.einheit_id}
+                projektId={e.projekt_id}
+              />
+            </TabsContent>
+
+            <TabsContent value="verwaltung" className="space-y-4">
+              <div className="mx-auto max-w-2xl space-y-4">
+                <CompletenessCard einheit={e} />
+                <ZuweisungenCard
+                  zuweisungen={e.zuweisungen}
+                  einheitId={e.einheit_id}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      ) : (
+      <Tabs defaultValue="kalkulation">
         <TabsList className="flex-wrap">
           <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
           <TabsTrigger value="kalkulation">Kalkulation</TabsTrigger>
@@ -368,6 +447,7 @@ export function EinheitDetailView({
           </>
         )}
       </Tabs>
+      )}
     </div>
   );
 }

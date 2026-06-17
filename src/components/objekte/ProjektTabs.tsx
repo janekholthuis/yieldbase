@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, Layers, ChevronRight } from "lucide-react";
+import { MapPin, ChevronDown } from "lucide-react";
 
 import { VerkaufsstatusTabelle } from "@/components/objekte/VerkaufsstatusTabelle";
 import { KarteTab } from "@/components/objekte/KarteTab";
@@ -139,85 +139,95 @@ function EinheitenMasterDetail({
     );
   }
 
-  // Einzel-Einheit (häufig bei etw_einzeln): kein Master-Detail-Splitscreen —
-  // die Liste mit nur einem Eintrag wäre reine Wiederholung des Detail-Panes.
+  // Einzel-Einheit (häufig bei etw_einzeln): direkt das Detail.
   if (units.length === 1 && selectedId) {
     return <UnitDetailPane einheitId={selectedId} kalkContext={kalkContext} />;
   }
 
+  // Verkaufsstatus-Kurzfassung (z. B. „14 frei · 4 reserviert · 6 verkauft").
+  const statusSummary = (() => {
+    const counts = new Map<string, number>();
+    for (const u of units) counts.set(u.status, (counts.get(u.status) ?? 0) + 1);
+    return [...counts.entries()]
+      .map(([s, n]) => `${n} ${STATUS_LABELS[s as keyof typeof STATUS_LABELS] ?? s}`)
+      .join(" · ");
+  })();
+
+  // Einspaltig: kompakter Status + horizontaler Einheiten-Wähler oben, Detail
+  // darunter in voller Breite (kein Splitscreen / keine zweite Spalte mehr).
   return (
-    <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-      {/* Liste + Verkaufsstatus (Breakdown nur sinnvoll ab >1 Einheit) */}
-      <div className="space-y-4">
-        {units.length > 1 && <VerkaufsstatusTabelle einheiten={units} />}
-        <div className="overflow-hidden rounded-xl border bg-card">
-          <div className="border-b px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            <Layers className="mr-1.5 inline h-3.5 w-3.5" />
-            {units.length} {units.length === 1 ? "Einheit" : "Einheiten"}
-          </div>
-          <ul className="max-h-[640px] divide-y overflow-y-auto">
-            {units.map((u) => {
-              const active = u.einheit_id === selectedId;
-              return (
-                <li key={u.einheit_id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedId(u.einheit_id)}
-                    className={`flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors ${
-                      active
-                        ? "bg-brand-accent/10"
-                        : "hover:bg-muted/60"
-                    }`}
+    <div className="space-y-4">
+      {/* Verkaufsstatus — Kurzfassung, Breakdown ausklappbar */}
+      <details className="group rounded-xl border bg-card">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-2.5 text-sm">
+          <span className="font-medium">Verkaufsstatus</span>
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="hidden sm:inline">{statusSummary}</span>
+            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+          </span>
+        </summary>
+        <div className="border-t p-3">
+          <VerkaufsstatusTabelle einheiten={units} />
+        </div>
+      </details>
+
+      {/* Einheiten-Wähler: horizontal scrollbar */}
+      <div className="rounded-xl border bg-card p-2">
+        <div className="mb-1.5 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {units.length} Einheiten — Wohnung wählen
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {units.map((u) => {
+            const active = u.einheit_id === selectedId;
+            return (
+              <button
+                key={u.einheit_id}
+                type="button"
+                onClick={() => setSelectedId(u.einheit_id)}
+                className={`flex shrink-0 flex-col gap-1 rounded-lg border px-3 py-2 text-left transition-colors ${
+                  active
+                    ? "border-brand-accent bg-brand-accent/10"
+                    : "hover:bg-muted/60"
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-semibold">{u.wohnungsnummer}</span>
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE_CLASS[u.status]}`}
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-medium">
-                          {u.wohnungsnummer}
-                        </span>
-                        <span
-                          className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE_CLASS[u.status]}`}
-                        >
-                          {STATUS_LABELS[u.status]}
-                        </span>
-                        {u.freigabe_status !== "freigegeben" && (
-                          <span
-                            className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${FREIGABE_BADGE_CLASS[u.freigabe_status]}`}
-                          >
-                            {FREIGABE_LABELS[u.freigabe_status]}
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-0.5 truncate text-xs text-muted-foreground tabular-nums">
-                        {[
-                          formatNumber(u.zimmer, " Zi"),
-                          formatNumber(u.wohnflaeche, " m²"),
-                          formatEUR(u.kaufpreis),
-                        ]
-                          .filter((s) => s && s !== "—")
-                          .join(" · ")}
-                      </div>
-                    </div>
-                    <ChevronRight
-                      className={`h-4 w-4 shrink-0 ${active ? "text-brand-accent" : "text-muted-foreground/40"}`}
-                    />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+                    {STATUS_LABELS[u.status]}
+                  </span>
+                  {u.freigabe_status !== "freigegeben" && (
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${FREIGABE_BADGE_CLASS[u.freigabe_status]}`}
+                    >
+                      {FREIGABE_LABELS[u.freigabe_status]}
+                    </span>
+                  )}
+                </div>
+                <span className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                  {[
+                    formatNumber(u.zimmer, " Zi"),
+                    formatNumber(u.wohnflaeche, " m²"),
+                    formatEUR(u.kaufpreis),
+                  ]
+                    .filter((s) => s && s !== "—")
+                    .join(" · ")}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Detail der gewählten Wohnung */}
-      <div className="min-w-0">
-        {selectedId ? (
-          <UnitDetailPane einheitId={selectedId} kalkContext={kalkContext} />
-        ) : (
-          <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-            Wähle links eine Wohnung.
-          </div>
-        )}
-      </div>
+      {/* Detail der gewählten Wohnung — volle Breite */}
+      {selectedId ? (
+        <UnitDetailPane einheitId={selectedId} kalkContext={kalkContext} />
+      ) : (
+        <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+          Wähle oben eine Wohnung.
+        </div>
+      )}
     </div>
   );
 }

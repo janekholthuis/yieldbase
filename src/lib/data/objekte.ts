@@ -6,6 +6,16 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Renovierung } from "@/lib/einheit-vollstaendigkeit";
 
+// Harte Obergrenze pro Lese-Query gegen Instanz-Sättigung: PostgREST/DB-seitig
+// greift der authenticated-statement_timeout auf dem API-Pfad nicht zuverlässig
+// (PostgREST loggt sich als `authenticator` ein). Ein client-seitiges AbortSignal
+// bricht eine hängende Query ab → die DB cancelt sie → CPU wird frei, statt dass
+// sich Minuten-Queries aufstauen. Self-stabilizing.
+const QUERY_TIMEOUT_MS = 9000;
+function queryTimeout(): AbortSignal {
+  return AbortSignal.timeout(QUERY_TIMEOUT_MS);
+}
+
 export type EinheitStatus =
   | "frei"
   | "auf_anfrage"
@@ -206,13 +216,24 @@ export async function listObjekte(): Promise<{
 }> {
   const supabase = await createClient();
 
-  const [eRes, pRes] = await Promise.all([
-    supabase
-      .from("einheiten")
-      .select(EINHEIT_LIST_COLS)
-      .order("created_at", { ascending: false }),
-    supabase.from("projekte").select(PROJEKT_LIST_COLS),
-  ]);
+  let eRes, pRes;
+  try {
+    [eRes, pRes] = await Promise.all([
+      supabase
+        .from("einheiten")
+        .select(EINHEIT_LIST_COLS)
+        .order("created_at", { ascending: false })
+        .abortSignal(queryTimeout()),
+      supabase.from("projekte").select(PROJEKT_LIST_COLS).abortSignal(queryTimeout()),
+    ]);
+  } catch (err) {
+    console.error("listObjekte aborted/failed:", err);
+    return {
+      items: [],
+      error:
+        "Die Objektliste konnte nicht rechtzeitig geladen werden (hohe Last). Bitte neu laden.",
+    };
+  }
 
   if (eRes.error) {
     console.error("listObjekte einheiten error:", eRes.error);
@@ -359,26 +380,38 @@ export async function getProjektDetail(projektId: string): Promise<{
        projekt_typ, cover_image_url, mietrendite_brutto`,
     )
     .eq("id", projektId)
+    .abortSignal(queryTimeout())
     .maybeSingle();
 
   if (pErr || !p) return { projekt: null, error: pErr?.message ?? "Nicht gefunden" };
 
-  const [bildR, dokR, einhR] = await Promise.all([
-    supabase
-      .from("objekt_bilder")
-      .select("id, url, alt, sort_order")
-      .eq("projekt_id", projektId)
-      .order("sort_order", { ascending: true }),
-    supabase
-      .from("objekt_dokumente")
-      .select("id, url, dateiname, kategorie")
-      .eq("projekt_id", projektId),
-    supabase
-      .from("einheiten")
-      .select(EINHEIT_SELECT)
-      .eq("projekt_id", projektId)
-      .order("wohnungsnummer", { ascending: true }),
-  ]);
+  let bildR, dokR, einhR;
+  try {
+    [bildR, dokR, einhR] = await Promise.all([
+      supabase
+        .from("objekt_bilder")
+        .select("id, url, alt, sort_order")
+        .eq("projekt_id", projektId)
+        .order("sort_order", { ascending: true })
+        .abortSignal(queryTimeout()),
+      supabase
+        .from("objekt_dokumente")
+        .select("id, url, dateiname, kategorie")
+        .eq("projekt_id", projektId)
+        .abortSignal(queryTimeout()),
+      supabase
+        .from("einheiten")
+        // Kein projekte-Embed nötig — wir haben das Projekt `p` bereits; der
+        // Embed-Join über zwei Tabellen unter RLS ist teuer und vermeidbar.
+        .select(EINHEIT_LIST_COLS)
+        .eq("projekt_id", projektId)
+        .order("wohnungsnummer", { ascending: true })
+        .abortSignal(queryTimeout()),
+    ]);
+  } catch (err) {
+    console.error("getProjektDetail aborted/failed:", err);
+    return { projekt: null, error: "Projekt konnte nicht geladen werden (hohe Last). Bitte neu laden." };
+  }
 
   const detail: ProjektDetail = {
     id: (p as any).id,
@@ -394,7 +427,8 @@ export async function getProjektDetail(projektId: string): Promise<{
     mietrendite_brutto: (p as any).mietrendite_brutto,
     bilder: (bildR.data ?? []) as ObjektBild[],
     dokumente: (dokR.data ?? []) as ObjektDokument[],
-    einheiten: (einhR.data ?? []).filter((r: any) => r.projekte).map(mapEinheitRow),
+    // Projekt `p` als projekte-Kontext anhängen (statt teurem Embed-Join).
+    einheiten: (einhR.data ?? []).map((r: any) => mapEinheitRow({ ...r, projekte: p })),
   };
 
   return { projekt: detail, error: null };

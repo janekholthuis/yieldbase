@@ -52,14 +52,12 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/finanzierungen",
     icon: Banknote,
     roles: [...ALL_INTERNAL, "finanzierer"],
-    hidden: true, // V1: komplett ausgeblendet (Route + Code bleiben)
   },
   {
     title: "Provisionen",
     to: "/provisionen",
     icon: Wallet,
     roles: ["admin", "vertriebsleiter", "vp_l1", "vp_l2", "vp_l3"],
-    hidden: true, // V1: komplett ausgeblendet (Route + Code bleiben)
   },
   {
     title: "Mein Team",

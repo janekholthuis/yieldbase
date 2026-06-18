@@ -10,7 +10,7 @@
 // Bankdaten, Pool, volles Einheiten-Detail) bleibt unter dem Divider via
 // ProjektTabs erhalten.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -90,10 +90,14 @@ export function ProjektDetailView({
   projekt,
   kalkContext,
   initialEinheitId,
+  initialDetail,
 }: {
   projekt: ProjektDetail;
   kalkContext: KalkulationsContext;
   initialEinheitId?: string;
+  /** Server-pre-loaded detail for the initially selected unit (avoids a client
+   *  roundtrip + skeleton hang on first paint). */
+  initialDetail?: EinheitDetail | null;
 }) {
   const units = projekt.einheiten;
   const adresse = formatAddress(
@@ -142,16 +146,28 @@ export function ProjektDetailView({
 
   const selectedListItem = units.find((u) => u.einheit_id === selectedId) ?? null;
 
-  // Lazy-load the full detail for the selected unit (same pattern as ProjektTabs).
-  const [detail, setDetail] = useState<EinheitDetail | null>(null);
+  // Detail for the selected unit. Seeded from the server-pre-loaded initialDetail
+  // so the first paint needs no client fetch; a ref tracks which unit is already
+  // loaded so switching units fetches lazily (same pattern as ProjektTabs).
+  const initialDetailMatches =
+    initialDetail != null && initialDetail.einheit_id === selectedId;
+  const [detail, setDetail] = useState<EinheitDetail | null>(
+    initialDetailMatches ? initialDetail : null,
+  );
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const loadedIdRef = useRef<string | null>(
+    initialDetailMatches ? (initialDetail!.einheit_id as string) : null,
+  );
 
   useEffect(() => {
     if (!selectedId) {
       setDetail(null);
+      loadedIdRef.current = null;
       return;
     }
+    // Already have this unit (server-seeded or previously fetched) → no refetch.
+    if (loadedIdRef.current === selectedId) return;
     let cancelled = false;
     setDetailLoading(true);
     setDetailError(null);
@@ -163,6 +179,7 @@ export function ProjektDetailView({
           setDetail(null);
         } else {
           setDetail(res.einheit);
+          loadedIdRef.current = selectedId;
         }
       })
       .catch((err) => {
@@ -259,24 +276,6 @@ export function ProjektDetailView({
                 </Metric>
               </div>
 
-              {/* Chip / button row */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                <button
-                  type="button"
-                  className="rounded-[10px] border border-brand-primary px-4 py-2 text-[13px] font-semibold text-brand-primary transition-colors hover:bg-brand-primary/5"
-                >
-                  {minPrice != null
-                    ? `Ab ${formatEUR(Math.round((minPrice * 0.04) / 12))} mtl. finanzieren`
-                    : "Finanzierung anfragen"}
-                </button>
-                <span className="rounded-[8px] bg-brand-primaryTint px-3 py-2 text-[12.5px] font-semibold text-brand-primary">
-                  Provisionsfrei
-                </span>
-                <span className="rounded-[8px] bg-brand-surfaceMuted px-3 py-2 text-[12.5px] font-medium text-brand-muted">
-                  {projekt.baujahr ? `Baujahr ${projekt.baujahr}` : "Bestand · vermietet"}
-                </span>
-              </div>
-
               {/* Einheiten-Auswahl */}
               {units.length > 0 && (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-brand-border bg-card p-4">
@@ -327,16 +326,7 @@ export function ProjektDetailView({
                 </div>
               )}
 
-              {/* Verkaufsstatus bar */}
-              {units.length > 1 && (
-                <VerkaufsstatusBar
-                  total={units.length}
-                  frei={freiCount}
-                  reserviert={reserviertCount}
-                />
-              )}
-
-              {/* Wealth chart — reuse useEinheitKalkulation for the selected unit */}
+              {/* Kalkulation / Vermögens-Chart — direkt unter den Kennzahlen */}
               <div id="projekt-kalkulation">
                 {detail ? (
                   <WealthChartCard detail={detail} kalkContext={kalkContext} />
@@ -352,18 +342,46 @@ export function ProjektDetailView({
                 ) : null}
               </div>
 
+              {/* Chip / button row */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  className="rounded-[10px] border border-brand-primary px-4 py-2 text-[13px] font-semibold text-brand-primary transition-colors hover:bg-brand-primary/5"
+                >
+                  {minPrice != null
+                    ? `Ab ${formatEUR(Math.round((minPrice * 0.04) / 12))} mtl. finanzieren`
+                    : "Finanzierung anfragen"}
+                </button>
+                <span className="rounded-[8px] bg-brand-primaryTint px-3 py-2 text-[12.5px] font-semibold text-brand-primary">
+                  Provisionsfrei
+                </span>
+                <span className="rounded-[8px] bg-brand-surfaceMuted px-3 py-2 text-[12.5px] font-medium text-brand-muted">
+                  {projekt.baujahr ? `Baujahr ${projekt.baujahr}` : "Bestand · vermietet"}
+                </span>
+              </div>
+
+              {/* Verkaufsstatus bar */}
+              {units.length > 1 && (
+                <VerkaufsstatusBar
+                  total={units.length}
+                  frei={freiCount}
+                  reserviert={reserviertCount}
+                />
+              )}
+
               {/* Objektdaten table */}
               {detail && <ObjektdatenTable detail={detail} />}
             </div>
 
-            {/* RIGHT — sticky action / investment / advisor card */}
+            {/* RIGHT — sticky: action/investment card, advisor card below */}
             <aside className="w-full lg:w-[340px] lg:shrink-0">
-              <div className="lg:sticky lg:top-5">
+              <div className="space-y-4 lg:sticky lg:top-5">
                 <ActionCard
                   detail={detail}
                   loading={detailLoading}
                   kalkContext={kalkContext}
                 />
+                <AdvisorCard />
               </div>
             </aside>
           </div>
@@ -722,26 +740,30 @@ function InnerActionCard({
           />
         </dl>
       </div>
+    </div>
+  );
+}
 
-      {/* Advisor */}
-      <div className="flex items-center gap-3 border-t border-brand-borderSoft pt-4">
-        <span className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full bg-brand-primaryTint text-brand-primary">
-          <Building2 className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-subtle">
-            Ihr Berater
-          </div>
-          <div className="truncate text-[14px] font-semibold text-brand-ink">
-            Ihr Vertriebspartner
-          </div>
-          <a
-            href="#projekt-lage"
-            className="mt-0.5 flex items-center gap-1 text-[13px] font-semibold text-brand-primary hover:underline"
-          >
-            <Phone className="h-3.5 w-3.5" /> Kontakt aufnehmen
-          </a>
+// ───────────────────────── Advisor card (separate, below the action card) ─────────────────────────
+function AdvisorCard() {
+  return (
+    <div className="flex items-center gap-3 rounded-[14px] border border-brand-border bg-card p-4">
+      <span className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full bg-brand-primaryTint text-brand-primary">
+        <Building2 className="h-5 w-5" />
+      </span>
+      <div className="min-w-0">
+        <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-subtle">
+          Ihr Berater
         </div>
+        <div className="truncate text-[14px] font-semibold text-brand-ink">
+          Ihr Vertriebspartner
+        </div>
+        <a
+          href="#projekt-lage"
+          className="mt-0.5 flex items-center gap-1 text-[13px] font-semibold text-brand-primary hover:underline"
+        >
+          <Phone className="h-3.5 w-3.5" /> Kontakt aufnehmen
+        </a>
       </div>
     </div>
   );

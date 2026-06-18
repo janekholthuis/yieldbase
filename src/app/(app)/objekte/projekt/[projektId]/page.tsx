@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { getProjektDetail } from "@/lib/data/objekte";
+import { getProjektDetail, getEinheitDetail } from "@/lib/data/objekte";
 import { getKalkulationsContext } from "@/lib/data/kalkulation-context";
 import { Button } from "@/components/ui/button";
 import { ProjektDetailView } from "@/components/objekte/ProjektDetailView";
@@ -39,11 +39,24 @@ export default async function ProjektDetailPage({
     );
   }
 
+  // Pre-load the initially selected unit's full detail server-side so the hero's
+  // price/investment card + wealth chart render immediately — no client-side
+  // fetch (and no skeleton hang under DB contention) for the default view.
+  const initialUnitId =
+    initialEinheitId &&
+    projekt.einheiten.some((u) => u.einheit_id === initialEinheitId)
+      ? initialEinheitId
+      : (projekt.einheiten[0]?.einheit_id ?? null);
+  const initialDetail = initialUnitId
+    ? (await getEinheitDetail(initialUnitId)).einheit
+    : null;
+
   return (
     <ProjektDetailView
       projekt={projekt}
       kalkContext={kalkContext}
       initialEinheitId={initialEinheitId}
+      initialDetail={initialDetail}
     />
   );
 }

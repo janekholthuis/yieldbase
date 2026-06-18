@@ -1,8 +1,10 @@
 # PROJ-24: Personalisierte Lead-Sandbox („Branded Demo-Link")
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-06-18
 **Last Updated:** 2026-06-18
+
+> **Gebaut & deployed 2026-06-18:** DB `demo_links` + `demo_link_leads` (RLS admin/support; Lead-Zugriffe via Service-Role gescopt auf den Slug), Actions `extractDemoBranding`/`createDemoLink`/`listDemoLinks`/`setDemoLinkActive`/`submitDemoLead`, Admin-UI `/demo-links` (Branding-Vorschau editierbar, Kill-Switch, Öffnungs-Tracking), öffentliche Sandbox `/fuer/[slug]` (gebrandetes Theme via `buildOrgThemeCss`, Willkommens-Screen, Musterobjekte, client-seitiger `calculate()`-Rechner, Kontakt-CTA, noindex). Smoke-Test Prod 200. **Offen:** visuelle Verifikation als eingeloggter Admin (Link erstellen → öffnen); optional Logo-Hotlink-Härtung; Rate-Limit auf Kontaktformular.
 
 ## Dependencies
 - Requires: PROJ-23 (Branding-Auto-Extraktion) — Logo/Farben aus der Lead-Website ziehen

@@ -209,9 +209,12 @@ export function KpiStrip({ k }: { k: EinheitKalkulation }) {
 export function DiagrammePanel({
   k,
   headline = true,
+  big = false,
 }: {
   k: EinheitKalkulation;
   headline?: boolean;
+  /** Größere Chart-Höhen (z. B. wenn die Diagramme volle Breite bekommen). */
+  big?: boolean;
 }) {
   const { result } = k;
   return (
@@ -225,8 +228,8 @@ export function DiagrammePanel({
             Wert minus Restschuld ist dein Vermögen
           </span>
         </div>
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%" minHeight={288}>
+        <div className={big ? "h-[440px] w-full" : "h-72 w-full"}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={big ? 440 : 288}>
             <AreaChart data={result.jahre}>
               <defs>
                 <linearGradient id="vermoegenG" x1="0" y1="0" x2="0" y2="1">
@@ -306,8 +309,8 @@ export function DiagrammePanel({
 
       <Card className="p-4">
         <h3 className="mb-2 font-semibold text-brand-ink">Cashflow-Entwicklung</h3>
-        <div className="h-56 w-full">
-          <ResponsiveContainer width="100%" height="100%" minHeight={224}>
+        <div className={big ? "h-80 w-full" : "h-56 w-full"}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={big ? 320 : 224}>
             <LineChart data={result.jahre.filter((j) => j.jahr > 0)}>
               <CartesianGrid
                 stroke="#E5E7EB"
@@ -750,6 +753,72 @@ export function AnnahmenPanel({ k }: { k: EinheitKalkulation }) {
           )}
         </div>
       </Card>
+    </div>
+  );
+}
+
+// ──────────────── Kompakte Investitions-Slider (rechte Sidebar) ────────────────
+// Die wichtigsten Stellhebel als schmale, einspaltige Slider — teilen sich den
+// Calc-State (k), sodass Charts/KPIs/Investition live mitlaufen.
+export function InvestitionsSliders({ k }: { k: EinheitKalkulation }) {
+  const { inputs, set, szenarien, szenarioKey, setSzenarioKey } = k;
+  return (
+    <div className="space-y-3.5">
+      {/* Szenario-Schnellschalter */}
+      <div className="inline-flex w-full rounded-[8px] bg-brand-surfaceMuted p-1">
+        {szenarien.map((s) => (
+          <button
+            key={s.key}
+            type="button"
+            onClick={() => setSzenarioKey(s.key)}
+            aria-pressed={szenarioKey === s.key}
+            className={`flex-1 rounded-[6px] px-2 py-1.5 text-[12px] font-medium transition-colors ${
+              szenarioKey === s.key
+                ? "bg-card text-brand-ink shadow-sm"
+                : "text-brand-muted hover:text-brand-ink"
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      <SliderRow
+        label="Eigenkapital"
+        value={inputs.ekBetrag}
+        min={0}
+        max={Math.max(inputs.kaufpreis, inputs.ekBetrag)}
+        step={1000}
+        onChange={(v) => set("ekBetrag", v)}
+        format={(n) => formatEUR(Math.round(n))}
+      />
+      <SliderRow
+        label="Zins (Bank)"
+        value={inputs.zins}
+        min={1}
+        max={8}
+        step={0.05}
+        onChange={(v) => set("zins", v)}
+        format={(n) => `${n.toFixed(2)} %`}
+      />
+      <SliderRow
+        label="Tilgung (Bank)"
+        value={inputs.tilgung}
+        min={1}
+        max={6}
+        step={0.1}
+        onChange={(v) => set("tilgung", v)}
+        format={(n) => `${n.toFixed(1)} %`}
+      />
+      <SliderRow
+        label="Haltedauer"
+        value={inputs.haltedauerJahre}
+        min={3}
+        max={30}
+        step={1}
+        onChange={(v) => set("haltedauerJahre", v)}
+        format={(n) => `${n} J.`}
+      />
     </div>
   );
 }

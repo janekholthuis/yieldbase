@@ -1,13 +1,12 @@
 "use client";
 
 // PROJ-3 — Projektansicht v2, Variante B1 „Klar" (App-Theme-Variante).
-// Konsolidiert: Galerie-Hero mit Karte rechts (statt Fotostapel) → Zwei-Spalten-
-// Body (links Titel + Kennzahlen + Einheiten-Auswahl + Chips + Tab-Leiste
-// [Kaufpreisliste · Kalkulationen · Wohnungsdetails · Finanziererpool]; rechts
-// sticky Action-/Investitions-Karte + Berater). Die Einheiten-Auswahl (Dropdown
-// ODER Klick in der Kaufpreisliste) treibt Preis, Investition UND Kalkulation —
-// alle calc-tragenden Flächen sind per `key={einheit_id}` an die Einheit gebunden,
-// damit ein Wechsel frisch durchrechnet.
+// Konsolidiert: Galerie-Hero mit Karte rechts → Zwei-Spalten-Body. Die
+// Einheiten-Auswahl (Dropdown ODER Klick in der Kaufpreisliste) treibt Preis,
+// Investition UND Kalkulation. EIN gemeinsamer Calc-State (`useEinheitKalkulation`
+// in `CalcBody`, gekeyed per Einheit) versorgt sowohl die rechte Investitions-
+// Karte (mit den Annahmen-Slidern) ALS AUCH die Diagramme im Kalkulations-Tab —
+// ein Slider rechts rechnet die Charts links live neu.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -26,6 +25,7 @@ import {
   Building2,
   Phone,
   Images,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,10 +37,18 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { KalkulationsTab } from "@/components/objekte/KalkulationsTab";
 import { EinheitDetailView } from "@/components/objekte/EinheitDetailView";
 import { FinanziererPoolTab } from "@/components/objekte/FinanziererPoolTab";
-import { useEinheitKalkulation } from "@/components/objekte/EinheitKalkulationPanel";
+import {
+  useEinheitKalkulation,
+  type EinheitKalkulation,
+  KpiStrip,
+  DiagrammePanel,
+  CashflowDetailCard,
+  RenditenCard,
+  AnnahmenPanel,
+  InvestitionsSliders,
+} from "@/components/objekte/EinheitKalkulationPanel";
 import { getEinheitDetailAction } from "@/lib/actions/objekte";
 import { useAuth } from "@/lib/auth-context";
 import { MAPBOX_TOKEN, hasMapbox, geocodeAddressParts } from "@/lib/mapbox";
@@ -113,26 +121,6 @@ export function ProjektDetailView({
     projekt.bundesland,
   );
 
-  // ---- Aggregates for the big metrics row ---------------------------------
-  const prices = units.map((u) => u.kaufpreis).filter((v): v is number => v != null);
-  const flaechen = units
-    .map((u) => u.wohnflaeche)
-    .filter((v): v is number => v != null);
-  const renditen = units
-    .map((u) => bruttoRendite(u.kaufpreis, u.miete))
-    .filter((v): v is number => v != null);
-
-  const statusCounts = useMemo(() => {
-    const map = new Map<EinheitStatus, number>();
-    for (const u of units) map.set(u.status, (map.get(u.status) ?? 0) + 1);
-    return map;
-  }, [units]);
-  const freiCount = statusCounts.get("frei") ?? 0;
-  const reserviertCount =
-    (statusCounts.get("reserviert") ?? 0) + (statusCounts.get("auf_anfrage") ?? 0);
-
-  const minPrice = prices.length ? Math.min(...prices) : null;
-
   // ---- Selected unit (drives price card, investment AND calculation) -------
   const firstValid = useMemo(() => {
     if (initialEinheitId && units.some((u) => u.einheit_id === initialEinheitId))
@@ -142,11 +130,9 @@ export function ProjektDetailView({
 
   const [selectedId, setSelectedId] = useState<string | null>(firstValid);
 
-  // Linke Tab-Leiste. Mehr-Einheiten-Projekt → Kaufpreisliste zuerst, sonst
-  // direkt die Kalkulation (eine Einheit braucht keine Liste).
-  const [activeTab, setActiveTab] = useState<string>(
-    units.length > 1 ? "kaufpreisliste" : "kalkulation",
-  );
+  // Linke Tab-Leiste — standardmäßig die Kalkulation (Wunsch: Kalkulationen
+  // direkt offen, nicht erst die Kaufpreisliste).
+  const [activeTab, setActiveTab] = useState<string>("kalkulation");
 
   // Keep the deep-link (?einheit=…) in the URL without a server roundtrip.
   useEffect(() => {
@@ -155,8 +141,6 @@ export function ProjektDetailView({
     url.searchParams.set("einheit", selectedId);
     window.history.replaceState(null, "", url.toString());
   }, [selectedId]);
-
-  const selectedListItem = units.find((u) => u.einheit_id === selectedId) ?? null;
 
   // Detail for the selected unit. Seeded from the server-pre-loaded initialDetail
   // so the first paint needs no client fetch; a ref tracks which unit is already
@@ -187,7 +171,6 @@ export function ProjektDetailView({
         if (cancelled) return;
         if (res.error || !res.einheit) {
           setDetailError(res.error ?? "Einheit nicht gefunden");
-          setDetail(null);
         } else {
           setDetail(res.einheit);
           loadedIdRef.current = selectedId;
@@ -228,231 +211,332 @@ export function ProjektDetailView({
             onShowDetails={() => setActiveTab("details")}
           />
 
-          {/* 2 — Two-column body */}
-          <div className="flex flex-col gap-7 px-4 pb-8 pt-6 sm:px-7 lg:flex-row">
-            {/* LEFT */}
-            <div className="min-w-0 flex-1 space-y-7">
-              {/* Title block */}
-              <div>
-                <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-accent">
-                  {eyebrow}
-                </div>
-                <h1 className="mt-1.5 text-[30px] font-semibold leading-tight tracking-tight text-brand-ink sm:text-[34px]">
-                  {title}
-                </h1>
-                {adresse && (
-                  <div className="mt-3 flex items-center gap-3">
-                    <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[9px] bg-brand-primaryTint text-brand-primary">
-                      <MapPin className="h-[18px] w-[18px]" />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-subtle">
-                        Adresse
-                      </div>
-                      <div className="text-[14px] text-brand-ink">{adresse}</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Big metrics */}
-              <div className="flex flex-wrap gap-x-10 gap-y-5">
-                <Metric label="Kaufpreis">
-                  <span className="inline-block rounded-[7px] bg-brand-accentSoft px-3 py-[3px]">
-                    <span className="text-[27px] font-semibold leading-none text-brand-ink">
-                      {minPrice != null ? `ab ${formatEUR(minPrice)}` : "—"}
-                    </span>
-                  </span>
-                </Metric>
-                <Metric label="Wohnfläche">
-                  <span className="text-[27px] font-semibold leading-none">
-                    {fmtRange(range(flaechen), (n) => formatNumber(n))}
-                  </span>
-                  <span className="ml-1 text-[15px] text-brand-subtle">m²</span>
-                </Metric>
-                <Metric label="Einheiten">
-                  <span className="text-[27px] font-semibold leading-none">
-                    {units.length}
-                  </span>
-                  <span className="ml-1 text-[15px] text-brand-subtle">
-                    · {freiCount} frei
-                  </span>
-                </Metric>
-                <Metric label="Bruttorendite">
-                  <span className="text-[27px] font-semibold leading-none">
-                    {fmtRange(range(renditen), (n) => formatNumber(n))}
-                  </span>
-                  <span className="ml-1 text-[15px] text-brand-subtle">%</span>
-                </Metric>
-              </div>
-
-              {/* Einheiten-Auswahl */}
-              {units.length > 0 && (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-brand-border bg-card p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[9px] bg-brand-primaryTint text-brand-primary">
-                      <Building2 className="h-[18px] w-[18px]" />
-                    </span>
-                    <div>
-                      <div className="text-[15px] font-semibold leading-tight">
-                        {units.length} {units.length === 1 ? "Einheit" : "Einheiten"}
-                      </div>
-                      <div className="text-[12.5px] text-brand-muted">
-                        {freiCount} Frei · {reserviertCount} Reserviert
-                      </div>
-                    </div>
-                  </div>
-
-                  <Select
-                    value={selectedId ?? undefined}
-                    onValueChange={(v) => setSelectedId(v)}
-                  >
-                    <SelectTrigger className="h-auto min-w-[240px] gap-2 rounded-[10px] border-brand-border bg-card px-3 py-2 text-[13px]">
-                      <span className="flex items-center gap-2 truncate">
-                        {selectedListItem && (
-                          <span
-                            className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(selectedListItem.status)}`}
-                          />
-                        )}
-                        <SelectValue placeholder="Wohnung wählen" />
-                      </span>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {units.map((u) => (
-                        <SelectItem key={u.einheit_id} value={u.einheit_id}>
-                          <span className="flex items-center gap-2">
-                            <span
-                              className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(u.status)}`}
-                            />
-                            <span>
-                              Wohnung WE {u.wohnungsnummer}
-                              {u.kaufpreis != null ? ` · ${formatEUR(u.kaufpreis)}` : ""}
-                            </span>
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Chip / button row */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                <button
-                  type="button"
-                  className="rounded-[10px] border border-brand-primary px-4 py-2 text-[13px] font-semibold text-brand-primary transition-colors hover:bg-brand-primary/5"
-                >
-                  {minPrice != null
-                    ? `Ab ${formatEUR(Math.round((minPrice * 0.04) / 12))} mtl. finanzieren`
-                    : "Finanzierung anfragen"}
-                </button>
-                <span className="rounded-[8px] bg-brand-primaryTint px-3 py-2 text-[12.5px] font-semibold text-brand-primary">
-                  Provisionsfrei
-                </span>
-                <span className="rounded-[8px] bg-brand-surfaceMuted px-3 py-2 text-[12.5px] font-medium text-brand-muted">
-                  {projekt.baujahr ? `Baujahr ${projekt.baujahr}` : "Bestand · vermietet"}
-                </span>
-              </div>
-
-              {/* Verkaufsstatus bar */}
-              {units.length > 1 && (
-                <VerkaufsstatusBar
-                  total={units.length}
-                  frei={freiCount}
-                  reserviert={reserviertCount}
-                />
-              )}
-
-              {/* Tab-Leiste: Kaufpreisliste · Kalkulationen · Wohnungsdetails · Pool */}
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-                <TabsList className="h-auto flex-wrap gap-1 rounded-full bg-brand-surfaceMuted p-1">
-                  {units.length > 1 && (
-                    <TabsTrigger value="kaufpreisliste" className={PILL}>
-                      Kaufpreisliste
-                    </TabsTrigger>
-                  )}
-                  <TabsTrigger value="kalkulation" className={PILL}>
-                    Kalkulationen
-                  </TabsTrigger>
-                  <TabsTrigger value="details" className={PILL}>
-                    Wohnungsdetails
-                  </TabsTrigger>
-                  {isAdmin && (
-                    <TabsTrigger value="pool" className={PILL}>
-                      Finanziererpool
-                    </TabsTrigger>
-                  )}
-                </TabsList>
-
-                {units.length > 1 && (
-                  <TabsContent value="kaufpreisliste">
-                    <KaufpreislisteTab
-                      units={units}
-                      selectedId={selectedId}
-                      onSelect={(id) => {
-                        setSelectedId(id);
-                        setActiveTab("kalkulation");
-                      }}
-                    />
-                  </TabsContent>
-                )}
-
-                <TabsContent value="kalkulation">
-                  <UnitTabBody
-                    detail={detail}
-                    loading={detailLoading}
-                    error={detailError}
-                  >
-                    {(d) => (
-                      <KalkulationsTab
-                        key={d.einheit_id}
-                        einheit={d}
-                        kalkContext={kalkContext}
-                      />
-                    )}
-                  </UnitTabBody>
-                </TabsContent>
-
-                <TabsContent value="details">
-                  <UnitTabBody
-                    detail={detail}
-                    loading={detailLoading}
-                    error={detailError}
-                  >
-                    {(d) => (
-                      <EinheitDetailView
-                        key={d.einheit_id}
-                        einheit={d}
-                        kalkContext={kalkContext}
-                        embedded
-                        hideInvestment
-                      />
-                    )}
-                  </UnitTabBody>
-                </TabsContent>
-
-                {isAdmin && (
-                  <TabsContent value="pool">
-                    <FinanziererPoolTab projektId={projekt.id} />
-                  </TabsContent>
-                )}
-              </Tabs>
-            </div>
-
-            {/* RIGHT — sticky: action/investment card, advisor card below */}
-            <aside className="w-full lg:w-[340px] lg:shrink-0">
-              <div className="space-y-4 lg:sticky lg:top-5">
-                <ActionCard
-                  detail={detail}
-                  loading={detailLoading}
-                  kalkContext={kalkContext}
-                />
-                <AdvisorCard />
-              </div>
-            </aside>
-          </div>
+          {/* 2 — Two-column body. Gekeyed per Einheit → frischer Calc-State beim Wechsel. */}
+          {detail ? (
+            <CalcBody
+              key={detail.einheit_id}
+              detail={detail}
+              kalkContext={kalkContext}
+              projekt={projekt}
+              units={units}
+              isAdmin={isAdmin}
+              selectedId={selectedId}
+              onSelectUnit={setSelectedId}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              eyebrow={eyebrow}
+              title={title}
+              adresse={adresse}
+            />
+          ) : (
+            <PlaceholderBody
+              loading={detailLoading}
+              error={detailError}
+              eyebrow={eyebrow}
+              title={title}
+              adresse={adresse}
+            />
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ───────────────────────── Calc body (shared state) ─────────────────────────
+// Owns ONE `useEinheitKalkulation` and feeds both the left calculation tab and
+// the right investment card. Remounted (via key on the unit) when the selection
+// changes, so the calculation resets to the new unit's defaults.
+function CalcBody({
+  detail,
+  kalkContext,
+  projekt,
+  units,
+  isAdmin,
+  selectedId,
+  onSelectUnit,
+  activeTab,
+  setActiveTab,
+  eyebrow,
+  title,
+  adresse,
+}: {
+  detail: EinheitDetail;
+  kalkContext: KalkulationsContext;
+  projekt: ProjektDetail;
+  units: ObjektListItem[];
+  isAdmin: boolean;
+  selectedId: string | null;
+  onSelectUnit: (id: string) => void;
+  activeTab: string;
+  setActiveTab: (v: string) => void;
+  eyebrow: string;
+  title: string;
+  adresse: string | null;
+}) {
+  const k = useEinheitKalkulation(detail, kalkContext, false);
+
+  // ---- Aggregates for the big metrics row ---------------------------------
+  const prices = units.map((u) => u.kaufpreis).filter((v): v is number => v != null);
+  const flaechen = units.map((u) => u.wohnflaeche).filter((v): v is number => v != null);
+  const renditen = units
+    .map((u) => bruttoRendite(u.kaufpreis, u.miete))
+    .filter((v): v is number => v != null);
+  const minPrice = prices.length ? Math.min(...prices) : null;
+
+  const statusCounts = new Map<EinheitStatus, number>();
+  for (const u of units) statusCounts.set(u.status, (statusCounts.get(u.status) ?? 0) + 1);
+  const freiCount = statusCounts.get("frei") ?? 0;
+  const reserviertCount =
+    (statusCounts.get("reserviert") ?? 0) + (statusCounts.get("auf_anfrage") ?? 0);
+
+  const selectedListItem = units.find((u) => u.einheit_id === selectedId) ?? null;
+
+  return (
+    <div className="flex flex-col gap-7 px-4 pb-8 pt-6 sm:px-7 lg:flex-row">
+      {/* LEFT */}
+      <div className="min-w-0 flex-1 space-y-7">
+        {/* Title block */}
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-accent">
+            {eyebrow}
+          </div>
+          <h1 className="mt-1.5 text-[30px] font-semibold leading-tight tracking-tight text-brand-ink sm:text-[34px]">
+            {title}
+          </h1>
+          {adresse && (
+            <div className="mt-3 flex items-center gap-3">
+              <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[9px] bg-brand-primaryTint text-brand-primary">
+                <MapPin className="h-[18px] w-[18px]" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-subtle">
+                  Adresse
+                </div>
+                <div className="text-[14px] text-brand-ink">{adresse}</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Big metrics */}
+        <div className="flex flex-wrap gap-x-10 gap-y-5">
+          <Metric label="Kaufpreis">
+            <span className="inline-block rounded-[7px] bg-brand-accentSoft px-3 py-[3px]">
+              <span className="text-[27px] font-semibold leading-none text-brand-ink">
+                {minPrice != null ? `ab ${formatEUR(minPrice)}` : "—"}
+              </span>
+            </span>
+          </Metric>
+          <Metric label="Wohnfläche">
+            <span className="text-[27px] font-semibold leading-none">
+              {fmtRange(range(flaechen), (n) => formatNumber(n))}
+            </span>
+            <span className="ml-1 text-[15px] text-brand-subtle">m²</span>
+          </Metric>
+          <Metric label="Einheiten">
+            <span className="text-[27px] font-semibold leading-none">{units.length}</span>
+            <span className="ml-1 text-[15px] text-brand-subtle">· {freiCount} frei</span>
+          </Metric>
+          <Metric label="Bruttorendite">
+            <span className="text-[27px] font-semibold leading-none">
+              {fmtRange(range(renditen), (n) => formatNumber(n))}
+            </span>
+            <span className="ml-1 text-[15px] text-brand-subtle">%</span>
+          </Metric>
+        </div>
+
+        {/* Einheiten-Auswahl */}
+        {units.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-brand-border bg-card p-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[9px] bg-brand-primaryTint text-brand-primary">
+                <Building2 className="h-[18px] w-[18px]" />
+              </span>
+              <div>
+                <div className="text-[15px] font-semibold leading-tight">
+                  {units.length} {units.length === 1 ? "Einheit" : "Einheiten"}
+                </div>
+                <div className="text-[12.5px] text-brand-muted">
+                  {freiCount} Frei · {reserviertCount} Reserviert
+                </div>
+              </div>
+            </div>
+
+            <Select value={selectedId ?? undefined} onValueChange={(v) => onSelectUnit(v)}>
+              <SelectTrigger className="h-auto min-w-[240px] gap-2 rounded-[10px] border-brand-border bg-card px-3 py-2 text-[13px]">
+                <span className="flex items-center gap-2 truncate">
+                  {selectedListItem && (
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(selectedListItem.status)}`}
+                    />
+                  )}
+                  <SelectValue placeholder="Wohnung wählen" />
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                {units.map((u) => (
+                  <SelectItem key={u.einheit_id} value={u.einheit_id}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(u.status)}`}
+                      />
+                      <span>
+                        Wohnung WE {u.wohnungsnummer}
+                        {u.kaufpreis != null ? ` · ${formatEUR(u.kaufpreis)}` : ""}
+                      </span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Verkaufsstatus bar (mittig zwischen Auswahl und Tabs) */}
+        {units.length > 1 && (
+          <VerkaufsstatusBar
+            total={units.length}
+            frei={freiCount}
+            reserviert={reserviertCount}
+          />
+        )}
+
+        {/* Tab-Leiste: Kaufpreisliste · Kalkulationen · Wohnungsdetails · Pool */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
+          <TabsList className="h-auto flex-wrap gap-1 rounded-full bg-brand-surfaceMuted p-1">
+            {units.length > 1 && (
+              <TabsTrigger value="kaufpreisliste" className={PILL}>
+                Kaufpreisliste
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="kalkulation" className={PILL}>
+              Kalkulationen
+            </TabsTrigger>
+            <TabsTrigger value="details" className={PILL}>
+              Wohnungsdetails
+            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="pool" className={PILL}>
+                Finanziererpool
+              </TabsTrigger>
+            )}
+          </TabsList>
+
+          {units.length > 1 && (
+            <TabsContent value="kaufpreisliste">
+              <KaufpreislisteTab
+                units={units}
+                selectedId={selectedId}
+                onSelect={(id) => {
+                  onSelectUnit(id);
+                  setActiveTab("kalkulation");
+                }}
+              />
+            </TabsContent>
+          )}
+
+          {/* Kalkulationen — volle Breite für die (größeren) Diagramme. Die
+              Annahmen-Slider leben jetzt rechts; AfA/KfW bleiben hier ausklappbar. */}
+          <TabsContent value="kalkulation" className="space-y-4">
+            <KpiStrip k={k} />
+            <DiagrammePanel k={k} headline={false} big />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <CashflowDetailCard r={k.result} />
+              <RenditenCard r={k.result} />
+            </div>
+            <details className="rounded-[14px] border border-brand-border bg-card p-4">
+              <summary className="flex cursor-pointer list-none items-center gap-2 text-[13.5px] font-semibold text-brand-ink">
+                <SlidersHorizontal className="h-4 w-4 text-brand-primary" />
+                Erweiterte Annahmen &amp; Förderung (AfA, KfW, Szenario)
+              </summary>
+              <div className="mt-4">
+                <AnnahmenPanel k={k} />
+              </div>
+            </details>
+          </TabsContent>
+
+          <TabsContent value="details">
+            <EinheitDetailView
+              key={detail.einheit_id}
+              einheit={detail}
+              kalkContext={kalkContext}
+              embedded
+              hideInvestment
+            />
+          </TabsContent>
+
+          {isAdmin && (
+            <TabsContent value="pool">
+              <FinanziererPoolTab projektId={projekt.id} />
+            </TabsContent>
+          )}
+        </Tabs>
+      </div>
+
+      {/* RIGHT — sticky: action/investment card (mit Slidern), advisor below */}
+      <aside className="w-full lg:w-[340px] lg:shrink-0">
+        <div className="space-y-4 lg:sticky lg:top-5">
+          <InvestmentCard detail={detail} k={k} />
+          <AdvisorCard />
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+// ───────────────────────── Placeholder body (loading / error) ─────────────────────────
+function PlaceholderBody({
+  loading,
+  error,
+  eyebrow,
+  title,
+  adresse,
+}: {
+  loading: boolean;
+  error: string | null;
+  eyebrow: string;
+  title: string;
+  adresse: string | null;
+}) {
+  return (
+    <div className="flex flex-col gap-7 px-4 pb-8 pt-6 sm:px-7 lg:flex-row">
+      <div className="min-w-0 flex-1 space-y-6">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-accent">
+            {eyebrow}
+          </div>
+          <h1 className="mt-1.5 text-[30px] font-semibold leading-tight tracking-tight text-brand-ink sm:text-[34px]">
+            {title}
+          </h1>
+          {adresse && <div className="mt-2 text-[14px] text-brand-muted">{adresse}</div>}
+        </div>
+        {error ? (
+          <div className="rounded-[14px] border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+            {error}
+          </div>
+        ) : (
+          <>
+            <Skeleton className="h-6 w-72" />
+            <Skeleton className="h-64 w-full" />
+          </>
+        )}
+      </div>
+      <aside className="w-full lg:w-[340px] lg:shrink-0">
+        <div className="rounded-[14px] border border-brand-border bg-card p-5">
+          {loading ? (
+            <>
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="mt-2 h-9 w-40" />
+              <Skeleton className="mt-4 h-11 w-full" />
+            </>
+          ) : (
+            <div className="text-[13px] text-brand-muted">
+              Wähle eine Einheit, um Preis und Investition zu sehen.
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }
@@ -513,7 +597,7 @@ function GalleryHero({
         )}
       </div>
 
-      {/* Right column — map (replaces the former two stacked photos) */}
+      {/* Right column — map */}
       <div className="relative hidden h-full flex-1 overflow-hidden rounded-[14px] bg-brand-primaryTint sm:block">
         <HeroMap
           adresse={projekt.adresse}
@@ -552,9 +636,6 @@ function GalleryHero({
 }
 
 // ───────────────────────── Hero map ─────────────────────────
-// Lightweight Mapbox map sized to fill the hero's right column. Reuses the same
-// mapbox lib helpers as KarteTab; falls back to an address placeholder when no
-// valid token is configured or geocoding fails.
 function HeroMap({
   adresse,
   plz,
@@ -630,13 +711,7 @@ function HeroMap({
 }
 
 // ───────────────────────── Big metric ─────────────────────────
-function Metric({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function Metric({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <div className="flex items-baseline tabular-nums text-brand-ink">{children}</div>
@@ -679,8 +754,6 @@ function VerkaufsstatusBar({
 }
 
 // ───────────────────────── Kaufpreisliste tab ─────────────────────────
-// Price list of every unit; clicking a row selects it (drives the right card +
-// calculation tab). The currently selected unit is highlighted.
 function KaufpreislisteTab({
   units,
   selectedId,
@@ -739,88 +812,15 @@ function KaufpreislisteTab({
   );
 }
 
-// ───────────────────────── Unit-driven tab body (loading/error/empty) ─────────────────────────
-function UnitTabBody({
+// ───────────────────────── Investment card (right, mit Slidern) ─────────────────────────
+function InvestmentCard({
   detail,
-  loading,
-  error,
-  children,
-}: {
-  detail: EinheitDetail | null;
-  loading: boolean;
-  error: string | null;
-  children: (d: EinheitDetail) => React.ReactNode;
-}) {
-  if (detail) return <>{children(detail)}</>;
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-5 w-56" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
-  if (error) {
-    return (
-      <div className="rounded-[14px] border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-        {error}
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-[14px] border border-dashed border-brand-border p-8 text-center text-sm text-brand-muted">
-      Wähle eine Einheit, um Details zu sehen.
-    </div>
-  );
-}
-
-// ───────────────────────── Action / investment / advisor card ─────────────────────────
-function ActionCard({
-  detail,
-  loading,
-  kalkContext,
-}: {
-  detail: EinheitDetail | null;
-  loading: boolean;
-  kalkContext: KalkulationsContext;
-}) {
-  if (!detail) {
-    return (
-      <div className="rounded-[14px] border border-brand-border bg-card p-5">
-        {loading ? (
-          <>
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="mt-2 h-9 w-40" />
-            <Skeleton className="mt-4 h-11 w-full" />
-            <Skeleton className="mt-2 h-10 w-full" />
-          </>
-        ) : (
-          <div className="text-[13px] text-brand-muted">
-            Wähle eine Einheit, um Preis und Investition zu sehen.
-          </div>
-        )}
-      </div>
-    );
-  }
-  // key by unit → fresh calculation state when the selected unit changes.
-  return (
-    <InnerActionCard
-      key={detail.einheit_id}
-      detail={detail}
-      kalkContext={kalkContext}
-    />
-  );
-}
-
-function InnerActionCard({
-  detail,
-  kalkContext,
+  k,
 }: {
   detail: EinheitDetail;
-  kalkContext: KalkulationsContext;
+  k: EinheitKalkulation;
 }) {
   const e = detail;
-  const k = useEinheitKalkulation(e, kalkContext, true);
   const { result, effective } = k;
   const praesentationKundeId = e.zuweisungen.find((z) => z.kunde_id)?.kunde_id;
   const praesentationHref = `/objekte/${e.einheit_id}/praesentation${
@@ -869,36 +869,39 @@ function InnerActionCard({
         <SmallAction href={`/objekte/${e.einheit_id}`} icon={Pencil} label="Bearbeiten" />
       </div>
 
-      {/* Ihre Investition */}
+      {/* Ihre Investition — jetzt mit Annahmen-Slidern */}
       <div className="border-t border-brand-borderSoft pt-4">
         <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-subtle">
           Ihre Investition
         </div>
         <div className="mt-3 rounded-[11px] border border-brand-border bg-brand-primaryTint p-3">
-          <div className="text-[12px] text-brand-muted">Eigenkapital</div>
+          <div className="text-[12px] text-brand-muted">Eigenkapital (gesamt)</div>
           <div className="text-[23px] font-semibold leading-tight text-brand-primary">
             {formatEUR(Math.round(result.ekTatsaechlich))}
           </div>
         </div>
-        <dl className="mt-2">
+
+        {/* Slider mit Annahmen */}
+        <div className="mt-4">
+          <InvestitionsSliders k={k} />
+        </div>
+
+        <dl className="mt-4 border-t border-brand-borderSoft pt-3">
           <InvRow label="Gesamtkosten" value={formatEUR(Math.round(result.gesamtkosten))} />
           <InvRow label="Fremdkapital" value={formatEUR(Math.round(result.darlehen))} />
           <InvRow label="Kreditzins" value={`${effective.zins.toFixed(2)} %`} />
           <InvRow
             label="Cashflow n. St."
             value={`${formatEUR(Math.round(result.cashflowNachSteuerMonat))}/Mon`}
-            cashflow
+            cashflow={result.cashflowNachSteuerMonat >= 0}
           />
         </dl>
-        <p className="mt-2 text-[11px] text-brand-subtle">
-          Details &amp; Slider im Tab „Kalkulationen“.
-        </p>
       </div>
     </div>
   );
 }
 
-// ───────────────────────── Advisor card (separate, below the action card) ─────────────────────────
+// ───────────────────────── Advisor card ─────────────────────────
 function AdvisorCard() {
   return (
     <div className="flex items-center gap-3 rounded-[14px] border border-brand-border bg-card p-4">

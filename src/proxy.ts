@@ -17,6 +17,8 @@ const PUBLIC_PREFIXES = [
   "/kunde-portal",
   "/selbstauskunft", // Token-Link: Selbstauskunft ohne Login
   "/auth", // callback routes
+  "/start", // öffentliche Marketing-Landingpage
+  "/roadmap", // öffentliche Produkt-Roadmap
 ];
 
 function isPublic(pathname: string) {

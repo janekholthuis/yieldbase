@@ -8,7 +8,7 @@
 // finanzierung.functions.ts / finanzierer-pool.functions.ts.
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireRole } from "@/lib/auth";
 import { CASE_STATUS } from "@/lib/finanzierung-status";
 import {
   listFinanziererForPool,
@@ -50,7 +50,12 @@ const OfferSchema = z.object({
 });
 
 export async function updateCaseOffer(input: z.input<typeof OfferSchema>) {
-  const { supabase } = await requireUser();
+  // Defense-in-depth: the offer fields (Zins, Rate, …) are the financier's to
+  // fill. RLS lets the owning VP write the same row too (case_vp_update), but it
+  // can't restrict per-column — so gate the offer action to financiers (plus
+  // admin/support). The RLS `case_finanzierer_update` (finanzierer_id = self)
+  // still scopes it to the financier's own assigned case.
+  const { supabase } = await requireRole("finanzierer", "admin", "support");
   const data = OfferSchema.parse(input);
 
   const { caseId, ...patch } = data;

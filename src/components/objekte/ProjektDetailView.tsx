@@ -207,7 +207,6 @@ export function ProjektDetailView({
             projekt={projekt}
             alt={title}
             docCount={projekt.dokumente.length}
-            mapLabel={adresse ?? ""}
             onShowDetails={() => setActiveTab("details")}
           />
 
@@ -287,10 +286,6 @@ function CalcBody({
   const statusCounts = new Map<EinheitStatus, number>();
   for (const u of units) statusCounts.set(u.status, (statusCounts.get(u.status) ?? 0) + 1);
   const freiCount = statusCounts.get("frei") ?? 0;
-  const reserviertCount =
-    (statusCounts.get("reserviert") ?? 0) + (statusCounts.get("auf_anfrage") ?? 0);
-
-  const selectedListItem = units.find((u) => u.einheit_id === selectedId) ?? null;
 
   return (
     <div className="flex flex-col gap-7 px-4 pb-8 pt-6 sm:px-7 lg:flex-row">
@@ -346,63 +341,7 @@ function CalcBody({
           </Metric>
         </div>
 
-        {/* Einheiten-Auswahl */}
-        {units.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-brand-border bg-card p-4">
-            <div className="flex items-center gap-3">
-              <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[9px] bg-brand-primaryTint text-brand-primary">
-                <Building2 className="h-[18px] w-[18px]" />
-              </span>
-              <div>
-                <div className="text-[15px] font-semibold leading-tight">
-                  {units.length} {units.length === 1 ? "Einheit" : "Einheiten"}
-                </div>
-                <div className="text-[12.5px] text-brand-muted">
-                  {freiCount} Frei · {reserviertCount} Reserviert
-                </div>
-              </div>
-            </div>
-
-            <Select value={selectedId ?? undefined} onValueChange={(v) => onSelectUnit(v)}>
-              <SelectTrigger className="h-auto min-w-[240px] gap-2 rounded-[10px] border-brand-border bg-card px-3 py-2 text-[13px]">
-                <span className="flex items-center gap-2 truncate">
-                  {selectedListItem && (
-                    <span
-                      className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(selectedListItem.status)}`}
-                    />
-                  )}
-                  <SelectValue placeholder="Wohnung wählen" />
-                </span>
-              </SelectTrigger>
-              <SelectContent>
-                {units.map((u) => (
-                  <SelectItem key={u.einheit_id} value={u.einheit_id}>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(u.status)}`}
-                      />
-                      <span>
-                        Wohnung WE {u.wohnungsnummer}
-                        {u.kaufpreis != null ? ` · ${formatEUR(u.kaufpreis)}` : ""}
-                      </span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        {/* Verkaufsstatus bar (mittig zwischen Auswahl und Tabs) */}
-        {units.length > 1 && (
-          <VerkaufsstatusBar
-            total={units.length}
-            frei={freiCount}
-            reserviert={reserviertCount}
-          />
-        )}
-
-        {/* Tab-Leiste: Kaufpreisliste · Kalkulationen · Wohnungsdetails · Pool */}
+        {/* Tab-Leiste: Kaufpreisliste · Lage · Kalkulationen · Wohnungsdetails · Pool */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
           <TabsList className="h-auto flex-wrap gap-1 rounded-full bg-brand-surfaceMuted p-1">
             {units.length > 1 && (
@@ -410,6 +349,9 @@ function CalcBody({
                 Kaufpreisliste
               </TabsTrigger>
             )}
+            <TabsTrigger value="lage" className={PILL}>
+              Lage
+            </TabsTrigger>
             <TabsTrigger value="kalkulation" className={PILL}>
               Kalkulationen
             </TabsTrigger>
@@ -435,6 +377,25 @@ function CalcBody({
               />
             </TabsContent>
           )}
+
+          {/* Lage — die Karte (vorher im Hero) */}
+          <TabsContent value="lage">
+            <div className="space-y-3">
+              {adresse && (
+                <div className="flex items-center gap-2 text-[13.5px] text-brand-ink">
+                  <MapPin className="h-4 w-4 text-brand-primary" /> {adresse}
+                </div>
+              )}
+              <div className="h-[460px] overflow-hidden rounded-[14px] border border-brand-border bg-brand-primaryTint">
+                <HeroMap
+                  adresse={projekt.adresse}
+                  plz={projekt.plz}
+                  stadt={projekt.stadt}
+                  label={adresse ?? ""}
+                />
+              </div>
+            </div>
+          </TabsContent>
 
           {/* Kalkulationen — volle Breite für die (größeren) Diagramme. Die
               Annahmen-Slider leben jetzt rechts; AfA/KfW bleiben hier ausklappbar. */}
@@ -477,7 +438,13 @@ function CalcBody({
       {/* RIGHT — sticky: action/investment card (mit Slidern), advisor below */}
       <aside className="w-full lg:w-[340px] lg:shrink-0">
         <div className="space-y-4 lg:sticky lg:top-5">
-          <InvestmentCard detail={detail} k={k} />
+          <InvestmentCard
+            detail={detail}
+            k={k}
+            units={units}
+            selectedId={selectedId}
+            onSelectUnit={onSelectUnit}
+          />
           <AdvisorCard />
         </div>
       </aside>
@@ -546,18 +513,17 @@ function GalleryHero({
   projekt,
   alt,
   docCount,
-  mapLabel,
   onShowDetails,
 }: {
   projekt: ProjektDetail;
   alt: string;
   docCount: number;
-  mapLabel: string;
   onShowDetails: () => void;
 }) {
   const bilder = projekt.bilder;
   const lead = bilder[0] ?? null;
   const totalPhotos = bilder.length;
+  const stacked = [bilder[1] ?? null, bilder[2] ?? null];
 
   return (
     <div className="relative flex h-[300px] gap-3 p-[18px] sm:h-[360px]">
@@ -590,21 +556,44 @@ function GalleryHero({
           <button
             type="button"
             onClick={onShowDetails}
-            className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-[11px] bg-black/55 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-black/70"
+            className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-[11px] bg-black/55 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-black/70 sm:hidden"
           >
             <Images className="h-4 w-4" /> {totalPhotos} Fotos
           </button>
         )}
       </div>
 
-      {/* Right column — map */}
-      <div className="relative hidden h-full flex-1 overflow-hidden rounded-[14px] bg-brand-primaryTint sm:block">
-        <HeroMap
-          adresse={projekt.adresse}
-          plz={projekt.plz}
-          stadt={projekt.stadt}
-          label={mapLabel}
-        />
+      {/* Right column — two stacked photos (Karte lebt jetzt im Lage-Tab) */}
+      <div className="hidden h-full flex-1 flex-col gap-3 sm:flex">
+        {stacked.map((b, i) => (
+          <div
+            key={i}
+            className="relative min-h-0 flex-1 overflow-hidden rounded-[14px] bg-brand-primaryTint"
+          >
+            {b ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={b.url}
+                alt={b.alt ?? alt}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-brand-subtle">
+                <Building2 className="h-8 w-8" />
+              </div>
+            )}
+            {/* „+N Fotos" auf der letzten Kachel, wenn es mehr gibt */}
+            {i === stacked.length - 1 && totalPhotos > 3 && (
+              <button
+                type="button"
+                onClick={onShowDetails}
+                className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-[11px] bg-black/55 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-black/70"
+              >
+                <Images className="h-4 w-4" /> +{totalPhotos - 3} Fotos
+              </button>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Floating round buttons */}
@@ -720,39 +709,6 @@ function Metric({ label, children }: { label: string; children: React.ReactNode 
   );
 }
 
-// ───────────────────────── Verkaufsstatus bar ─────────────────────────
-function VerkaufsstatusBar({
-  total,
-  frei,
-  reserviert,
-}: {
-  total: number;
-  frei: number;
-  reserviert: number;
-}) {
-  const freiPct = total ? (frei / total) * 100 : 0;
-  const resPct = total ? (reserviert / total) * 100 : 0;
-  return (
-    <div className="rounded-[14px] border border-brand-border bg-card p-4">
-      <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-subtle">
-        Verkaufsstatus
-      </div>
-      <div className="mt-3 flex h-2 overflow-hidden rounded-[5px] bg-brand-border">
-        <div className="h-full bg-brand-success" style={{ width: `${freiPct}%` }} />
-        <div className="h-full bg-brand-warning" style={{ width: `${resPct}%` }} />
-      </div>
-      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[12.5px] text-brand-muted">
-        <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-brand-success" /> {frei} Frei
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-brand-warning" /> {reserviert} Reserviert
-        </span>
-      </div>
-    </div>
-  );
-}
-
 // ───────────────────────── Kaufpreisliste tab ─────────────────────────
 function KaufpreislisteTab({
   units,
@@ -816,12 +772,19 @@ function KaufpreislisteTab({
 function InvestmentCard({
   detail,
   k,
+  units,
+  selectedId,
+  onSelectUnit,
 }: {
   detail: EinheitDetail;
   k: EinheitKalkulation;
+  units: ObjektListItem[];
+  selectedId: string | null;
+  onSelectUnit: (id: string) => void;
 }) {
   const e = detail;
   const { result, effective } = k;
+  const selectedListItem = units.find((u) => u.einheit_id === selectedId) ?? null;
   const praesentationKundeId = e.zuweisungen.find((z) => z.kunde_id)?.kunde_id;
   const praesentationHref = `/objekte/${e.einheit_id}/praesentation${
     praesentationKundeId ? `/${praesentationKundeId}` : ""
@@ -829,6 +792,42 @@ function InvestmentCard({
 
   return (
     <div className="space-y-5 rounded-[14px] border border-brand-border bg-card p-5">
+      {/* Einheiten-Auswahl — kompakt, direkt über dem Angebotspreis */}
+      {units.length > 1 && (
+        <div>
+          <div className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-subtle">
+            Einheit
+          </div>
+          <Select value={selectedId ?? undefined} onValueChange={onSelectUnit}>
+            <SelectTrigger className="h-9 w-full gap-2 rounded-[10px] border-brand-border bg-card px-3 text-[13px]">
+              <span className="flex items-center gap-2 truncate">
+                {selectedListItem && (
+                  <span
+                    className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(selectedListItem.status)}`}
+                  />
+                )}
+                <SelectValue placeholder="Wohnung wählen" />
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              {units.map((u) => (
+                <SelectItem key={u.einheit_id} value={u.einheit_id}>
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(u.status)}`}
+                    />
+                    <span>
+                      WE {u.wohnungsnummer}
+                      {u.kaufpreis != null ? ` · ${formatEUR(u.kaufpreis)}` : ""}
+                    </span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* Price */}
       <div>
         <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-accent">

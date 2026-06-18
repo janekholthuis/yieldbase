@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Sparkles, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -178,6 +179,36 @@ export function EinheitForm({
       ? (rawValue(initial, "renovierungen") as Renovierung[])
       : [],
   );
+  const [aiLoading, setAiLoading] = useState(false);
+
+  // PROJ-22: KI-Lageeinschätzung generieren (nur im Edit-Modus — braucht die
+  // gespeicherte Einheit-ID als Kontextquelle). Füllt Standort-Highlights + Tags
+  // als Vorschlag; der Nutzer kann editieren und speichert dann normal das Formular.
+  const einheitId = isEdit ? (initial?.einheit_id as string) : null;
+  async function runAiLage() {
+    if (!einheitId) return;
+    setAiLoading(true);
+    try {
+      const { generateEinheitLage } = await import("@/lib/actions/ki");
+      const res = await generateEinheitLage({ einheitId });
+      setStandortHighlights(res.lageeinschaetzung);
+      if (res.tags.length > 0) {
+        const existing = tagsInput
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean);
+        const merged = Array.from(new Set([...existing, ...res.tags]));
+        setTagsInput(merged.join(", "));
+      }
+      toast.success("KI-Vorschlag eingefügt. Bitte prüfen und speichern.");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "KI-Generierung fehlgeschlagen",
+      );
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   // Live-derived steuerliche Werte.
   const kp = num(kaufpreis);
@@ -608,6 +639,31 @@ export function EinheitForm({
 
         {/* --- Extras --- */}
         <TabsContent value="extras" className="space-y-4 pt-2">
+          {einheitId && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-border bg-brand-surfaceMuted/40 p-3">
+              <div className="text-sm">
+                <p className="font-medium text-brand-ink">KI-Lageeinschätzung</p>
+                <p className="text-xs text-brand-muted">
+                  Generiert Standort-Highlights + Tags aus Adresse und Eckdaten.
+                  Vorschlag — bitte prüfen, dann speichern.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={runAiLage}
+                disabled={aiLoading}
+              >
+                {aiLoading ? (
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-1 h-4 w-4" />
+                )}
+                Per KI generieren
+              </Button>
+            </div>
+          )}
           <Field label="Extras / Besonderheiten / Notizen">
             <Textarea
               value={extras}

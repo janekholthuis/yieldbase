@@ -597,6 +597,16 @@ function SlideLage({ einheit }: { einheit: EinheitDetail }) {
             </ul>
           )}
         </div>
+        {einheit.standort_highlights ? (
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="mb-2 text-xs uppercase tracking-wider text-white/60">
+              Lageeinschätzung
+            </div>
+            <p className="text-sm leading-relaxed text-white/80">
+              {einheit.standort_highlights}
+            </p>
+          </div>
+        ) : null}
       </div>
     </div>
   );

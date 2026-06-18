@@ -44,6 +44,9 @@ function isPrivateAddress(ip: string): boolean {
 /** Wirft, wenn der Host privat/intern auflöst (SSRF). Gibt die geprüfte URL zurück. */
 async function assertPublicUrl(rawUrl: string): Promise<URL> {
   const url = new URL(rawUrl);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("Nur http/https-Adressen werden unterstützt.");
+  }
   const host = url.hostname.toLowerCase();
   if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".internal")) {
     throw new Error("Interne Adressen sind nicht erlaubt.");
@@ -62,17 +65,36 @@ async function assertPublicUrl(rawUrl: string): Promise<URL> {
   return url;
 }
 
+const MAX_REDIRECTS = 5;
+
 /** Lädt eine URL als Text (Timeout + Größen-Cap + SSRF-Guard). */
 async function fetchText(rawUrl: string, accept: string): Promise<string> {
-  await assertPublicUrl(rawUrl);
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(rawUrl, {
-      signal: ctrl.signal,
-      redirect: "follow",
-      headers: { accept, "user-agent": "ObjektpilotBrandingBot/1.0" },
-    });
+    // Redirects MANUELL verfolgen: jeder Hop wird erneut gegen den SSRF-Guard
+    // geprüft. `redirect:"follow"` würde sonst einer 30x-Weiterleitung auf
+    // 169.254.169.254 / interne IPs ohne erneute Validierung folgen (TOCTOU).
+    let currentUrl = rawUrl;
+    let res: Response | null = null;
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      await assertPublicUrl(currentUrl);
+      const r = await fetch(currentUrl, {
+        signal: ctrl.signal,
+        redirect: "manual",
+        headers: { accept, "user-agent": "ObjektpilotBrandingBot/1.0" },
+      });
+      if (r.status >= 300 && r.status < 400) {
+        const loc = r.headers.get("location");
+        if (!loc) throw new Error("Weiterleitung ohne Zieladresse.");
+        // Relative Locations gegen die aktuelle URL auflösen.
+        currentUrl = new URL(loc, currentUrl).toString();
+        continue;
+      }
+      res = r;
+      break;
+    }
+    if (!res) throw new Error("Zu viele Weiterleitungen.");
     if (!res.ok) throw new Error(`Website antwortete mit Status ${res.status}.`);
     const reader = res.body?.getReader();
     if (!reader) return (await res.text()).slice(0, MAX_BYTES);

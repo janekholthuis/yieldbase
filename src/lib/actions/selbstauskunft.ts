@@ -204,6 +204,20 @@ export async function submitMySelbstauskunft(input: z.input<typeof submitSchema>
     throw new Error("Unterschrift des Mitantragstellers fehlt");
 
   const kunde = await findMyKunde(supabase, userId);
+
+  // Immutability: eine bereits eingereichte (unterschriebene) Selbstauskunft
+  // nicht erneut überschreiben — sie ist ein rechtlich verbindliches Dokument.
+  const { data: current } = await supabase
+    .from("selbstauskuenfte")
+    .select("status")
+    .eq("kunde_id", kunde.id)
+    .maybeSingle();
+  if (current?.status === "eingereicht") {
+    throw new Error(
+      "Deine Selbstauskunft wurde bereits eingereicht und kann nicht erneut geändert werden.",
+    );
+  }
+
   const eval_ = auswerten(data);
 
   // Audit-Metadaten.

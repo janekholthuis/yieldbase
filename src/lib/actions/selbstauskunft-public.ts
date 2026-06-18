@@ -199,6 +199,22 @@ export async function submitSelbstauskunftByToken(
 
   const admin = createAdminClient();
   const kunde = await findKundeByToken(admin, parsed.token);
+
+  // Immutability: eine bereits eingereichte (rechtlich unterschriebene)
+  // Selbstauskunft darf über den Token nicht erneut überschrieben werden —
+  // sonst könnte ein zurückbehaltener/geleakter Link ein unterschriebenes
+  // Finanzdokument manipulieren und die Bonität still neu berechnen.
+  const { data: current } = await admin
+    .from("selbstauskuenfte")
+    .select("status")
+    .eq("kunde_id", kunde.id)
+    .maybeSingle();
+  if (current?.status === "eingereicht") {
+    throw new Error(
+      "Diese Selbstauskunft wurde bereits eingereicht und kann nicht erneut geändert werden. Bitte wende dich an deinen Berater.",
+    );
+  }
+
   const eval_ = auswerten(data);
 
   const h = await headers();

@@ -7,7 +7,7 @@
 // empfehlungen.functions.ts / kalkulation.functions.ts / praesentation.functions.ts.
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireRole } from "@/lib/auth";
 import { getEinheitDetail } from "@/lib/data/objekte";
 import type {
   ObjektListItem,
@@ -404,7 +404,16 @@ export async function setZuweisungStatus(input: {
   kundeId: string;
   status: string;
 }) {
-  const { supabase } = await requireUser();
+  // Internal roles only — a customer must never advance pipeline status (RLS on
+  // objekt_kunde_zuweisungen also blocks them; this fails earlier and clearer).
+  const { supabase } = await requireRole(
+    "admin",
+    "support",
+    "vertriebsleiter",
+    "vp_l1",
+    "vp_l2",
+    "vp_l3",
+  );
   const data = z
     .object({
       einheitId: z.string().uuid(),

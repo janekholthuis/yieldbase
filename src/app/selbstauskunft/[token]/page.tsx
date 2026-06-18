@@ -13,6 +13,8 @@ import {
 
 export const metadata = {
   title: "Selbstauskunft",
+  // Magic-Link mit PII-Prefill — niemals indexieren.
+  robots: { index: false, follow: false },
 };
 
 function InvalidLink() {

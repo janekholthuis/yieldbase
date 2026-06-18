@@ -250,7 +250,11 @@ export async function addOrganisationMember(input: {
   rolle?: "admin" | "member";
 }): Promise<void> {
   const { orgId, userId, rolle } = addMemberSchema.parse(input);
-  const { supabase } = await requireUser();
+  const { supabase, userId: callerId } = await requireUser();
+
+  // Defense-in-depth: verify the caller is owner/admin up-front (RLS also
+  // enforces this, but an explicit check fails clearly and independently).
+  await assertOrgManager(supabase, orgId, callerId);
 
   const { error } = await supabase
     .from("organisation_members")
@@ -261,6 +265,23 @@ export async function addOrganisationMember(input: {
   if (error) throw new Error(error.message);
 
   revalidatePath("/", "layout");
+}
+
+/** Throws unless `callerId` is owner/admin of `orgId`. */
+async function assertOrgManager(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  orgId: string,
+  callerId: string,
+): Promise<void> {
+  const { data: me } = await supabase
+    .from("organisation_members")
+    .select("rolle")
+    .eq("organisation_id", orgId)
+    .eq("user_id", callerId)
+    .maybeSingle();
+  if (!me || (me.rolle !== "owner" && me.rolle !== "admin")) {
+    throw new Error("Keine Berechtigung, Mitglieder zu verwalten");
+  }
 }
 
 /**
@@ -325,7 +346,22 @@ export async function removeOrganisationMember(input: {
   userId: string;
 }): Promise<void> {
   const { orgId, userId } = removeMemberSchema.parse(input);
-  const { supabase } = await requireUser();
+  const { supabase, userId: callerId } = await requireUser();
+
+  await assertOrgManager(supabase, orgId, callerId);
+
+  // The org owner must not be removable by an org-admin (would lock them out of
+  // their own org without transferring ownership). Only the owner themselves may
+  // leave, and that path should go through ownership transfer instead.
+  const { data: target } = await supabase
+    .from("organisation_members")
+    .select("rolle")
+    .eq("organisation_id", orgId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (target?.rolle === "owner") {
+    throw new Error("Der Eigentümer der Organisation kann nicht entfernt werden.");
+  }
 
   const { error } = await supabase
     .from("organisation_members")

@@ -10,7 +10,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { activeOrgId } from "@/lib/actions/_org";
+import { activeOrgId, assertOrgAccess } from "@/lib/actions/_org";
 import type { Database } from "@/lib/supabase/types";
 
 type ProvisionStatus = Database["public"]["Enums"]["provision_status"];
@@ -125,9 +125,41 @@ const updateProvisionStatusInput = z.object({
 export async function updateProvisionStatus(
   input: z.infer<typeof updateProvisionStatusInput>,
 ) {
-  await requireRole("admin", "vertriebsleiter");
+  const session = await requireRole("admin", "vertriebsleiter");
+  const { userId, roles } = session;
   const data = updateProvisionStatusInput.parse(input);
   const admin = createAdminClient();
+
+  // The admin client bypasses RLS, so `requireRole` alone would let any VL flip
+  // the status of ANY provision (cross-org / outside their tree). Re-derive the
+  // target's scope and gate exactly like the read path before writing.
+  const { data: row, error: readErr } = await admin
+    .from("provisionen")
+    .select("organisation_id, vp_id")
+    .eq("id", data.id)
+    .maybeSingle();
+  if (readErr) {
+    throw new Error(`Status konnte nicht aktualisiert werden: ${readErr.message}`);
+  }
+  if (!row) throw new Error("Provision nicht gefunden");
+
+  // Tenant isolation (admin/support may act cross-org; everyone else only in
+  // their active org; orphaned rows only for admin/support).
+  await assertOrgAccess(session, row.organisation_id);
+
+  // Within-org: a Vertriebsleiter may only touch provisionen of VPs in their own
+  // tree (matches the `prov_vl_select` RLS policy + the list scope). Admin: all.
+  if (!roles.includes("admin")) {
+    const { data: tree } = await admin
+      .from("vp_hierarchy")
+      .select("vp_id")
+      .eq("vertriebsleiter_id", userId);
+    const allowed = new Set((tree ?? []).map((r) => r.vp_id));
+    allowed.add(userId);
+    if (!row.vp_id || !allowed.has(row.vp_id)) {
+      throw new Error("FORBIDDEN");
+    }
+  }
 
   const { error } = await admin
     .from("provisionen")

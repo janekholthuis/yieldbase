@@ -1,8 +1,10 @@
 // Server-side data access for the Provisionen (commissions) module.
-// Commission model: % of Kaufpreis along the VP hierarchy. A VP sees their own
-// provisionen; admin/Vertriebsleiter see all within their tree. Reads use the
-// admin client (provisionen + hierarchy are not RLS-readable across the sub-tree)
-// after the caller's scope is derived; authorisation is enforced via requireUser.
+// Commission model: the CLOSING VP earns their own commission_rate % of the
+// einheit's Kaufpreis (no upline participation — see actions/provisionen.ts).
+// Visibility: a VP sees their own provisionen; admin/Vertriebsleiter see all
+// within their tree. Reads use the admin client (provisionen + hierarchy are not
+// RLS-readable across the sub-tree) after the caller's scope is derived;
+// authorisation is enforced via requireUser.
 import "server-only";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";

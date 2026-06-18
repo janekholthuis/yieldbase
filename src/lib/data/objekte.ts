@@ -194,14 +194,6 @@ export interface KalkulationsEinheit {
   erhaltungsaufwand: number | null;
 }
 
-const EINHEIT_SELECT = `id, projekt_id, wohnungsnummer, etage, wohnflaeche, zimmer,
-  kaufpreis, miete, status, freigabe_status, vermietet, balkon, keller, aufzug, afa_satz, created_at,
-  projekte:projekt_id (
-    id, name, projekt_typ, bautraeger, cover_image_url, adresse, baujahr,
-    stadt, plz, bundesland, mietrendite_brutto
-  )`;
-
- 
 function mapEinheitRow(row: any): ObjektListItem {
   return {
     einheit_id: row.id,
@@ -412,7 +404,12 @@ export async function getEinheitDetail(einheitId: string): Promise<{
 
   const projektId = (e as any).projekt_id as string;
 
-  const [bildersR, dokR, zuweisungenR, geschwisterR] = await Promise.all([
+  // NB: the "geschwister" (all sibling units, full select) query was removed —
+  // it was loaded on every detail fetch but only rendered by the NON-embedded
+  // EinheitDetailView (GeschwisterCard), which is never mounted (the view is only
+  // used `embedded` in ProjektTabs). Loading all project units per call forced an
+  // expensive per-row RLS scan and was a major contributor to statement timeouts.
+  const [bildersR, dokR, zuweisungenR] = await Promise.all([
     supabase
       .from("objekt_bilder")
       .select("id, url, alt, sort_order")
@@ -427,11 +424,6 @@ export async function getEinheitDetail(einheitId: string): Promise<{
       .select("id, kunde_id, status, created_at")
       .eq("einheit_id", einheitId)
       .order("created_at", { ascending: false }),
-    supabase
-      .from("einheiten")
-      .select(EINHEIT_SELECT)
-      .eq("projekt_id", projektId)
-      .neq("id", einheitId),
   ]);
 
   const zuweisungenRaw = zuweisungenR.data ?? [];
@@ -483,7 +475,9 @@ export async function getEinheitDetail(einheitId: string): Promise<{
       created_at: z.created_at,
       kunde: kundenById.get(z.kunde_id) ?? null,
     })),
-    geschwister: (geschwisterR.data ?? []).filter((r: any) => r.projekte).map(mapEinheitRow),
+    // Geschwister werden nicht mehr geladen (siehe oben) — nur die nicht
+    // gemountete, nicht-eingebettete EinheitDetailView nutzte sie.
+    geschwister: [],
   };
 
   return { einheit: detail, error: null };

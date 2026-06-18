@@ -5,7 +5,7 @@
 // Detail der gewählten Wohnung rechts (lazy geladen, volle Einheit-Funktionen
 // via EinheitDetailView embedded). Ersetzt die separate Einheiten-Unterseite.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -43,10 +43,14 @@ export function ProjektTabs({
   projekt,
   kalkContext,
   initialEinheitId,
+  initialDetail,
 }: {
   projekt: ProjektDetail;
   kalkContext: KalkulationsContext;
   initialEinheitId?: string;
+  /** Server-pre-loaded detail for the initial unit — seeds UnitDetailPane to
+   *  avoid a duplicate client fetch of the same unit the hero already loaded. */
+  initialDetail?: EinheitDetail | null;
 }) {
   const { roles } = useAuth();
   const isAdmin = roles.includes("admin") || roles.includes("support");
@@ -78,6 +82,7 @@ export function ProjektTabs({
           units={units}
           kalkContext={kalkContext}
           initialEinheitId={initialEinheitId}
+          initialDetail={initialDetail}
         />
       </TabsContent>
 
@@ -112,10 +117,12 @@ function EinheitenMasterDetail({
   units,
   kalkContext,
   initialEinheitId,
+  initialDetail,
 }: {
   units: ObjektListItem[];
   kalkContext: KalkulationsContext;
   initialEinheitId?: string;
+  initialDetail?: EinheitDetail | null;
 }) {
   const firstValid = useMemo(() => {
     if (initialEinheitId && units.some((u) => u.einheit_id === initialEinheitId))
@@ -144,7 +151,13 @@ function EinheitenMasterDetail({
 
   // Einzel-Einheit (häufig bei etw_einzeln): direkt das Detail.
   if (units.length === 1 && selectedId) {
-    return <UnitDetailPane einheitId={selectedId} kalkContext={kalkContext} />;
+    return (
+      <UnitDetailPane
+        einheitId={selectedId}
+        kalkContext={kalkContext}
+        initialDetail={initialDetail}
+      />
+    );
   }
 
   // Verkaufsstatus-Kurzfassung (z. B. „14 frei · 4 reserviert · 6 verkauft").
@@ -216,6 +229,7 @@ function EinheitenMasterDetail({
           key={selected.einheit_id}
           einheitId={selected.einheit_id}
           kalkContext={kalkContext}
+          initialDetail={initialDetail}
         />
       ) : (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
@@ -229,15 +243,23 @@ function EinheitenMasterDetail({
 function UnitDetailPane({
   einheitId,
   kalkContext,
+  initialDetail,
 }: {
   einheitId: string;
   kalkContext: KalkulationsContext;
+  initialDetail?: EinheitDetail | null;
 }) {
-  const [detail, setDetail] = useState<EinheitDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Seed from the server-pre-loaded detail when it matches this unit → no
+  // duplicate client fetch of the unit the hero already rendered.
+  const seeded =
+    initialDetail && initialDetail.einheit_id === einheitId ? initialDetail : null;
+  const [detail, setDetail] = useState<EinheitDetail | null>(seeded);
+  const [loading, setLoading] = useState(!seeded);
   const [error, setError] = useState<string | null>(null);
+  const loadedRef = useRef<string | null>(seeded ? einheitId : null);
 
   useEffect(() => {
+    if (loadedRef.current === einheitId) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -249,6 +271,7 @@ function UnitDetailPane({
           setDetail(null);
         } else {
           setDetail(res.einheit);
+          loadedRef.current = einheitId;
         }
       })
       .catch((e) => {

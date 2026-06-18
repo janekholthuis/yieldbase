@@ -400,6 +400,7 @@ export function ProjektDetailView({
             projekt={projekt}
             kalkContext={kalkContext}
             initialEinheitId={selectedId ?? initialEinheitId}
+            initialDetail={initialDetail}
           />
         </div>
       </div>

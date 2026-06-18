@@ -229,7 +229,12 @@ export function DiagrammePanel({
           </span>
         </div>
         <div className={big ? "h-[440px] w-full" : "h-72 w-full"}>
-          <ResponsiveContainer width="100%" height="100%" minHeight={big ? 440 : 288}>
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            minWidth={0}
+            minHeight={big ? 440 : 288}
+          >
             <AreaChart data={result.jahre}>
               <defs>
                 <linearGradient id="vermoegenG" x1="0" y1="0" x2="0" y2="1">
@@ -310,7 +315,12 @@ export function DiagrammePanel({
       <Card className="p-4">
         <h3 className="mb-2 font-semibold text-brand-ink">Cashflow-Entwicklung</h3>
         <div className={big ? "h-80 w-full" : "h-56 w-full"}>
-          <ResponsiveContainer width="100%" height="100%" minHeight={big ? 320 : 224}>
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            minWidth={0}
+            minHeight={big ? 320 : 224}
+          >
             <LineChart data={result.jahre.filter((j) => j.jahr > 0)}>
               <CartesianGrid
                 stroke="#E5E7EB"

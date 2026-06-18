@@ -87,6 +87,105 @@ const ZUSTAND_LABEL: Record<string, string> = {
   neubau: "Neubau",
 };
 
+/**
+ * Geteilte Vermögens-Grafik (helles Theme) — von SlideVermoegen UND der
+ * Kalkulations-Slide genutzt. Erwartet die `jahre` aus dem calculate()-Result.
+ * Wichtig: ResponsiveContainer mit minWidth/minHeight gehärtet (React #310),
+ * der Aufrufer MUSS einen Wrapper mit AUFGELÖSTER fester Höhe liefern.
+ */
+function VermoegensChart({
+  jahre,
+  showLegend = true,
+}: {
+  jahre: { jahr: number; vermoegen: number; restschuld: number; immobilienwert: number }[];
+  showLegend?: boolean;
+}) {
+  const data = jahre.map((j) => ({
+    jahr: j.jahr,
+    Vermögen: Math.round(j.vermoegen),
+    Restschuld: Math.round(j.restschuld),
+    Wert: Math.round(j.immobilienwert),
+  }));
+  return (
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
+      <AreaChart data={data}>
+        <defs>
+          <linearGradient id="vmg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#C99B4D" stopOpacity={0.55} />
+            <stop offset="95%" stopColor="#C99B4D" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="wt" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#0A2E4F" stopOpacity={0.18} />
+            <stop offset="95%" stopColor="#0A2E4F" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
+        <XAxis
+          dataKey="jahr"
+          stroke="#E5E7EB"
+          tick={{ fill: "#6B7785", fontSize: 12, fontFamily: "Inter" }}
+          tickFormatter={(v) => `${v}`}
+        />
+        <YAxis
+          stroke="#E5E7EB"
+          tick={{ fill: "#6B7785", fontSize: 12, fontFamily: "Inter" }}
+          tickFormatter={(v) =>
+            new Intl.NumberFormat("de-DE", {
+              maximumFractionDigits: 0,
+            }).format(Math.round(v / 1000)) + "k"
+          }
+        />
+        <Tooltip
+          cursor={{ stroke: "#E5E7EB" }}
+          content={
+            <BrandTooltip
+              labelFmt={(l) => `Jahr ${l}`}
+              valueFmt={(v) => formatEUR(v)}
+            />
+          }
+        />
+        {showLegend && (
+          <Legend
+            wrapperStyle={{
+              color: "#334155",
+              fontFamily: "Inter",
+              fontSize: 12,
+            }}
+          />
+        )}
+        <Area
+          type="monotone"
+          dataKey="Wert"
+          stroke="#0A2E4F"
+          fill="url(#wt)"
+          strokeWidth={2}
+          dot={false}
+          activeDot={{ r: 6, fill: "#0A2E4F" }}
+        />
+        <Area
+          type="monotone"
+          dataKey="Restschuld"
+          stroke="#64748B"
+          fill="transparent"
+          strokeWidth={2}
+          strokeDasharray="6 4"
+          dot={false}
+          activeDot={{ r: 6, fill: "#64748B" }}
+        />
+        <Area
+          type="monotone"
+          dataKey="Vermögen"
+          stroke="#C99B4D"
+          fill="url(#vmg)"
+          strokeWidth={3}
+          dot={{ r: 4, fill: "#C99B4D", stroke: "#C99B4D" }}
+          activeDot={{ r: 6, fill: "#C99B4D" }}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
 export function PraesentationView({
   einheit,
   kalkContext,
@@ -181,25 +280,25 @@ export function PraesentationView({
   }, [kundeId, einheit.einheit_id]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-anthrazit text-off-white">
+    <div className="fixed inset-0 z-[100] flex flex-col bg-brand-surfaceMuted text-brand-ink">
       {/* Top bar */}
-      <header className="flex items-center justify-between border-b border-white/10 px-6 py-3">
+      <header className="flex items-center justify-between border-b border-brand-border bg-white px-6 py-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-accent font-display font-bold text-anthrazit">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-accent font-display font-bold text-white">
             O
           </div>
           <span className="font-display font-semibold tracking-tight">
             Objektpilot
           </span>
         </div>
-        <div className="font-display text-sm text-white/70">
+        <div className="font-display text-sm text-brand-body">
           {slide + 1} / {TOTAL_SLIDES}
         </div>
         <Button
           variant="ghost"
           size="icon"
           onClick={handleClose}
-          className="text-white/70 hover:bg-white/10 hover:text-white"
+          className="text-brand-body hover:bg-brand-surfaceMuted hover:text-brand-ink"
           aria-label="Präsentation schließen"
         >
           <X className="h-5 w-5" />
@@ -211,7 +310,7 @@ export function PraesentationView({
         <div key={slide} className="h-full w-full animate-fade-in">
           {loading ? (
             <div className="flex h-full items-center justify-center">
-              <Skeleton className="h-64 w-2/3 bg-white/10" />
+              <Skeleton className="h-64 w-2/3 bg-brand-border" />
             </div>
           ) : (
             <div className="mx-auto h-full max-w-[1400px] px-6 py-6 md:py-10">
@@ -228,13 +327,13 @@ export function PraesentationView({
       </main>
 
       {/* Footer nav */}
-      <footer className="flex items-center justify-between border-t border-white/10 px-6 py-3">
+      <footer className="flex items-center justify-between border-t border-brand-border bg-white px-6 py-3">
         <Button
           variant="ghost"
           size="lg"
           onClick={() => setSlide((s) => Math.max(0, s - 1))}
           disabled={slide === 0}
-          className="text-white/80 hover:bg-white/10 hover:text-white disabled:opacity-30"
+          className="text-brand-body hover:bg-brand-surfaceMuted hover:text-brand-ink disabled:opacity-30"
         >
           <ArrowLeft className="h-5 w-5" /> Zurück
         </Button>
@@ -246,7 +345,7 @@ export function PraesentationView({
               className={`h-1.5 rounded-full transition-all ${
                 i === slide
                   ? "w-8 bg-brand-accent"
-                  : "w-2 bg-white/30 hover:bg-white/50"
+                  : "w-2 bg-brand-border hover:bg-brand-subtle"
               }`}
               aria-label={`Slide ${i + 1}`}
             />
@@ -257,7 +356,7 @@ export function PraesentationView({
           size="lg"
           onClick={() => setSlide((s) => Math.min(TOTAL_SLIDES - 1, s + 1))}
           disabled={slide === TOTAL_SLIDES - 1}
-          className="text-white/80 hover:bg-white/10 hover:text-white disabled:opacity-30"
+          className="text-brand-body hover:bg-brand-surfaceMuted hover:text-brand-ink disabled:opacity-30"
         >
           Weiter <ArrowRight className="h-5 w-5" />
         </Button>
@@ -345,7 +444,7 @@ function SlideCover({
           className="absolute inset-0 h-full w-full object-cover"
         />
       ) : (
-        <div className="absolute inset-0 bg-graphit-800" />
+        <div className="absolute inset-0 bg-brand-primaryTint" />
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-anthrazit via-anthrazit/65 to-anthrazit/10" />
       <div className="relative flex h-full flex-col justify-end p-8 md:p-14">
@@ -442,13 +541,13 @@ function SlideUebersicht({ einheit }: { einheit: EinheitDetail }) {
     <div className="grid h-full gap-6 md:grid-cols-2">
       <div className="flex flex-col justify-center space-y-6">
         <div>
-          <div className="text-sm uppercase tracking-wider text-white/60">
+          <div className="text-sm uppercase tracking-wider text-brand-muted">
             Wohnung
           </div>
           <h1 className="font-display text-4xl font-bold md:text-5xl">
             {einheit.wohnungsnummer}
           </h1>
-          <p className="mt-2 text-lg text-white/80">
+          <p className="mt-2 text-lg text-brand-body">
             {[einheit.adresse, einheit.stadt].filter(Boolean).join(", ")}
           </p>
         </div>
@@ -462,10 +561,10 @@ function SlideUebersicht({ einheit }: { einheit: EinheitDetail }) {
           {einheit.etage != null && <Pill>Etage {einheit.etage}</Pill>}
         </div>
         <div>
-          <div className="text-sm uppercase tracking-wider text-white/60">
+          <div className="text-sm uppercase tracking-wider text-brand-muted">
             Kaufpreis
           </div>
-          <div className="font-display text-5xl font-bold text-brand-accent md:text-6xl">
+          <div className="font-display text-5xl font-bold text-brand-primary md:text-6xl">
             {formatEUR(einheit.kaufpreis)}
           </div>
         </div>
@@ -474,12 +573,12 @@ function SlideUebersicht({ einheit }: { einheit: EinheitDetail }) {
             const Icon = f.icon;
             return (
               <div key={f.label} className="flex items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5 text-brand-accent">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-primaryTint text-brand-accent">
                   <Icon className="h-4 w-4" />
                 </span>
                 <div className="min-w-0">
-                  <dt className="text-xs text-white/55">{f.label}</dt>
-                  <dd className="truncate font-display font-semibold text-white">
+                  <dt className="text-xs text-brand-muted">{f.label}</dt>
+                  <dd className="truncate font-display font-semibold text-brand-ink">
                     {f.value}
                   </dd>
                 </div>
@@ -488,13 +587,13 @@ function SlideUebersicht({ einheit }: { einheit: EinheitDetail }) {
           })}
         </dl>
       </div>
-      <div className="overflow-hidden rounded-2xl bg-graphit-800">
+      <div className="overflow-hidden rounded-2xl border border-brand-border bg-brand-primaryTint">
         {hero ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={hero} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full items-center justify-center">
-            <Building2 className="h-16 w-16 text-white/30" />
+            <Building2 className="h-16 w-16 text-brand-subtle" />
           </div>
         )}
       </div>
@@ -524,7 +623,7 @@ function SlideLage({ einheit }: { einheit: EinheitDetail }) {
       mapboxgl.accessToken = MAPBOX_TOKEN;
       map = new mapboxgl.Map({
         container: ref.current,
-        style: "mapbox://styles/mapbox/dark-v11",
+        style: "mapbox://styles/mapbox/light-v11",
         center,
         zoom: 14,
       });
@@ -538,41 +637,41 @@ function SlideLage({ einheit }: { einheit: EinheitDetail }) {
 
   return (
     <div className="grid h-full gap-6 md:grid-cols-3">
-      <div className="overflow-hidden rounded-2xl border border-white/10 md:col-span-2">
+      <div className="overflow-hidden rounded-2xl border border-brand-border bg-white md:col-span-2">
         {hasMapbox() ? (
           <div ref={ref} className="h-full w-full" />
         ) : (
-          <div className="flex h-full items-center justify-center text-white/50">
+          <div className="flex h-full items-center justify-center text-brand-subtle">
             <MapPin className="h-12 w-12" />
           </div>
         )}
       </div>
       <div className="flex flex-col justify-center space-y-5">
         <div>
-          <div className="text-sm uppercase tracking-wider text-white/60">
+          <div className="text-sm uppercase tracking-wider text-brand-muted">
             Lage
           </div>
           <h2 className="font-display text-3xl font-bold">
             {einheit.stadt ?? "—"}
           </h2>
-          <p className="mt-1 text-white/70">
+          <p className="mt-1 text-brand-body">
             {[einheit.adresse, einheit.plz, einheit.bundesland]
               .filter(Boolean)
               .join(", ")}
           </p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <div className="mb-3 text-xs uppercase tracking-wider text-white/60">
+        <div className="rounded-xl border border-brand-border bg-white p-4">
+          <div className="mb-3 text-xs uppercase tracking-wider text-brand-muted">
             Standort-Highlights
           </div>
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-8 w-full rounded-md bg-white/10" />
+                <Skeleton key={i} className="h-8 w-full rounded-md bg-brand-border" />
               ))}
             </div>
           ) : highlights.length === 0 ? (
-            <p className="text-sm text-white/60">
+            <p className="text-sm text-brand-muted">
               Für diese Adresse sind keine Standortdaten verfügbar.
             </p>
           ) : (
@@ -583,12 +682,12 @@ function SlideLage({ einheit }: { einheit: EinheitDetail }) {
                   <li key={h.category} className="flex items-center gap-3">
                     <Icon className="h-4 w-4 shrink-0 text-[#C99B4D]" />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-white">
+                      <div className="truncate text-sm font-medium text-brand-ink">
                         {h.name}
                       </div>
-                      <div className="text-xs text-white/50">{h.label}</div>
+                      <div className="text-xs text-brand-muted">{h.label}</div>
                     </div>
-                    <div className="shrink-0 text-sm font-semibold tabular-nums text-white/80">
+                    <div className="shrink-0 text-sm font-semibold tabular-nums text-brand-body">
                       {formatDistance(h.distanceMeters)}
                     </div>
                   </li>
@@ -598,11 +697,11 @@ function SlideLage({ einheit }: { einheit: EinheitDetail }) {
           )}
         </div>
         {einheit.standort_highlights ? (
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <div className="mb-2 text-xs uppercase tracking-wider text-white/60">
+          <div className="rounded-xl border border-brand-border bg-white p-4">
+            <div className="mb-2 text-xs uppercase tracking-wider text-brand-muted">
               Lageeinschätzung
             </div>
-            <p className="text-sm leading-relaxed text-white/80">
+            <p className="text-sm leading-relaxed text-brand-body">
               {einheit.standort_highlights}
             </p>
           </div>
@@ -626,12 +725,12 @@ function SlideBilder({ einheit }: { einheit: EinheitDetail }) {
   return (
     <div className="grid h-full gap-6 md:grid-cols-2">
       <div className="flex flex-col">
-        <div className="mb-2 text-sm uppercase tracking-wider text-white/60">
+        <div className="mb-2 text-sm uppercase tracking-wider text-brand-muted">
           {leadLabel}
         </div>
         <div
-          className={`flex-1 overflow-hidden rounded-2xl border border-white/10 ${
-            grundriss ? "bg-off-white" : "bg-graphit-800"
+          className={`flex-1 overflow-hidden rounded-2xl border border-brand-border ${
+            grundriss ? "bg-white" : "bg-brand-primaryTint"
           }`}
         >
           {lead ? (
@@ -645,19 +744,19 @@ function SlideBilder({ einheit }: { einheit: EinheitDetail }) {
               onClick={() => setLightbox(lead.url)}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-white/50">
+            <div className="flex h-full items-center justify-center text-brand-subtle">
               Keine Bilder vorhanden
             </div>
           )}
         </div>
       </div>
       <div className="flex flex-col">
-        <div className="mb-2 text-sm uppercase tracking-wider text-white/60">
+        <div className="mb-2 text-sm uppercase tracking-wider text-brand-muted">
           Eindrücke
         </div>
         <div className="grid flex-1 grid-cols-2 gap-2">
           {restBilder.length === 0 ? (
-            <div className="col-span-2 flex items-center justify-center rounded-2xl border border-white/10 text-white/50">
+            <div className="col-span-2 flex items-center justify-center rounded-2xl border border-brand-border text-brand-subtle">
               Keine weiteren Bilder
             </div>
           ) : (
@@ -665,7 +764,7 @@ function SlideBilder({ einheit }: { einheit: EinheitDetail }) {
               <button
                 key={b.id}
                 onClick={() => setLightbox(b.url)}
-                className="overflow-hidden rounded-xl border border-white/10 bg-graphit-800"
+                className="overflow-hidden rounded-xl border border-brand-border bg-brand-primaryTint"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -709,7 +808,7 @@ function SlideEckdaten({ einheit }: { einheit: EinheitDetail }) {
   return (
     <div className="flex h-full flex-col justify-center">
       <div className="mb-8">
-        <div className="text-sm uppercase tracking-wider text-white/60">
+        <div className="text-sm uppercase tracking-wider text-brand-muted">
           Wirtschaftliche Eckdaten
         </div>
         <h2 className="font-display text-3xl font-bold md:text-4xl">
@@ -769,13 +868,13 @@ function DataRow({
       className={`flex items-center justify-between rounded-xl border px-5 py-4 ${
         highlight
           ? "border-brand-accent/40 bg-brand-accent/10"
-          : "border-white/10 bg-white/[0.03]"
+          : "border-brand-border bg-white"
       }`}
     >
-      <span className="text-white/70">{label}</span>
+      <span className="text-brand-body">{label}</span>
       <span
         className={`font-display text-xl font-bold ${
-          highlight ? "text-brand-accent" : "text-white"
+          highlight ? "text-brand-accentText" : "text-brand-ink"
         }`}
       >
         {value}
@@ -844,7 +943,7 @@ function SlideKalkulation({
   return (
     <div className="flex h-full flex-col">
       <div className="mb-4">
-        <div className="text-sm uppercase tracking-wider text-white/60">
+        <div className="text-sm uppercase tracking-wider text-brand-muted">
           Deine Kalkulation
         </div>
         <h2 className="font-display text-2xl font-bold md:text-3xl">
@@ -873,50 +972,70 @@ function SlideKalkulation({
         />
       </div>
 
-      <div className="mt-6 grid flex-1 gap-5 rounded-2xl border border-white/10 bg-white/[0.03] p-5 md:grid-cols-2">
-        <SliderField
-          label="Eigenkapital"
-          value={inputs.ekBetrag}
-          min={0}
-          max={Math.max(50_000, Math.round(inputs.kaufpreis * 0.5))}
-          step={1000}
-          format={(v) => formatEUR(v)}
-          onChange={(v) => set("ekBetrag", v)}
-        />
-        <SliderField
-          label="Zins"
-          value={inputs.zins}
-          min={1}
-          max={8}
-          step={0.1}
-          format={(v) => `${v.toFixed(1)} %`}
-          onChange={(v) => set("zins", v)}
-        />
-        <SliderField
-          label="Tilgung"
-          value={inputs.tilgung}
-          min={0.5}
-          max={6}
-          step={0.1}
-          format={(v) => `${v.toFixed(1)} %`}
-          onChange={(v) => set("tilgung", v)}
-        />
-        <SliderField
-          label="Haltedauer"
-          value={inputs.haltedauerJahre}
-          min={5}
-          max={30}
-          step={1}
-          format={(v) => `${v} Jahre`}
-          onChange={(v) => set("haltedauerJahre", v)}
-        />
-      </div>
-      {kunde && (
-        <div className="mt-3 text-center text-xs text-white/50">
-          Steuersatz {inputs.steuersatz}% übernommen aus dem Profil von{" "}
-          {kunde.vorname ?? "Kunde"}.
+      {/* Slider (links) + live reagierende Vermögens-Grafik (rechts) */}
+      <div className="mt-6 grid flex-1 gap-5 lg:grid-cols-[minmax(0,380px)_1fr]">
+        <div className="grid content-start gap-5 rounded-2xl border border-brand-border bg-white p-5 sm:grid-cols-2 lg:grid-cols-1">
+          <SliderField
+            label="Eigenkapital"
+            value={inputs.ekBetrag}
+            min={0}
+            max={Math.max(50_000, Math.round(inputs.kaufpreis * 0.5))}
+            step={1000}
+            format={(v) => formatEUR(v)}
+            onChange={(v) => set("ekBetrag", v)}
+          />
+          <SliderField
+            label="Zins"
+            value={inputs.zins}
+            min={1}
+            max={8}
+            step={0.1}
+            format={(v) => `${v.toFixed(1)} %`}
+            onChange={(v) => set("zins", v)}
+          />
+          <SliderField
+            label="Tilgung"
+            value={inputs.tilgung}
+            min={0.5}
+            max={6}
+            step={0.1}
+            format={(v) => `${v.toFixed(1)} %`}
+            onChange={(v) => set("tilgung", v)}
+          />
+          <SliderField
+            label="Haltedauer"
+            value={inputs.haltedauerJahre}
+            min={5}
+            max={30}
+            step={1}
+            format={(v) => `${v} Jahre`}
+            onChange={(v) => set("haltedauerJahre", v)}
+          />
+          {kunde && (
+            <div className="text-xs text-brand-muted sm:col-span-2 lg:col-span-1">
+              Steuersatz {inputs.steuersatz}% übernommen aus dem Profil von{" "}
+              {kunde.vorname ?? "Kunde"}.
+            </div>
+          )}
         </div>
-      )}
+
+        <div className="flex min-h-0 flex-col rounded-2xl border border-brand-border bg-white p-5">
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <div className="text-xs uppercase tracking-wider text-brand-muted">
+              Vermögensentwicklung
+            </div>
+            <div className="font-display text-sm font-semibold text-brand-body">
+              Vermögen nach {inputs.haltedauerJahre} J.{" "}
+              <span className="text-brand-primary">
+                {formatEUR(Math.round(result.endVermoegen))}
+              </span>
+            </div>
+          </div>
+          <div className="h-[38vh] min-h-[260px] w-full">
+            <VermoegensChart jahre={result.jahre} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -935,15 +1054,15 @@ function KPI({
       className={`rounded-xl border p-4 ${
         accent
           ? "border-brand-accent/40 bg-brand-accent/10"
-          : "border-white/10 bg-white/[0.03]"
+          : "border-brand-border bg-white"
       }`}
     >
-      <div className="text-xs uppercase tracking-wide text-white/60">
+      <div className="text-xs uppercase tracking-wide text-brand-muted">
         {label}
       </div>
       <div
         className={`mt-1 font-display text-2xl font-bold ${
-          accent ? "text-brand-accent" : "text-white"
+          accent ? "text-brand-accentText" : "text-brand-ink"
         }`}
       >
         {value}
@@ -972,8 +1091,8 @@ function SliderField({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm text-white/70">{label}</span>
-        <span className="font-display font-bold text-brand-accent">
+        <span className="text-sm text-brand-body">{label}</span>
+        <span className="font-display font-bold text-brand-accentText">
           {format(value)}
         </span>
       </div>
@@ -1003,113 +1122,25 @@ function SlideVermoegen({
     [einheit, kunde, defaults],
   );
   const r = useMemo(() => calculate(inputs), [inputs]);
-  const data = r.jahre.map((j) => ({
-    jahr: j.jahr,
-    Vermögen: Math.round(j.vermoegen),
-    Restschuld: Math.round(j.restschuld),
-    Wert: Math.round(j.immobilienwert),
-  }));
 
   return (
     <div className="flex h-full flex-col">
       <div className="mb-4 text-center">
-        <div className="text-sm uppercase tracking-wider text-white/60">
+        <div className="text-sm uppercase tracking-wider text-brand-muted">
           Vermögensaufbau
         </div>
         <h2 className="mt-1 font-display text-3xl font-bold md:text-5xl">
           In {inputs.haltedauerJahre} Jahren baust du dir{" "}
-          <span className="text-brand-accent">
+          <span className="text-brand-primary">
             {formatEUR(Math.round(r.endVermoegen))}
           </span>{" "}
           Vermögen auf.
         </h2>
       </div>
-      <div className="flex-1 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-        <ResponsiveContainer width="100%" height="100%" minHeight={240}>
-          <AreaChart data={data}>
-            <defs>
-              <linearGradient id="vmg" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#C99B4D" stopOpacity={0.6} />
-                <stop offset="95%" stopColor="#C99B4D" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="wt" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#FBF3E2" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#FBF3E2" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid
-              stroke="rgba(255,255,255,0.08)"
-              strokeDasharray="3 3"
-            />
-            <XAxis
-              dataKey="jahr"
-              stroke="rgba(255,255,255,0.25)"
-              tick={{
-                fill: "rgba(255,255,255,0.6)",
-                fontSize: 12,
-                fontFamily: "Inter",
-              }}
-              tickFormatter={(v) => `${v}`}
-            />
-            <YAxis
-              stroke="rgba(255,255,255,0.25)"
-              tick={{
-                fill: "rgba(255,255,255,0.6)",
-                fontSize: 12,
-                fontFamily: "Inter",
-              }}
-              tickFormatter={(v) =>
-                new Intl.NumberFormat("de-DE", {
-                  maximumFractionDigits: 0,
-                }).format(Math.round(v / 1000)) + "k"
-              }
-            />
-            <Tooltip
-              cursor={{ stroke: "rgba(255,255,255,0.15)" }}
-              content={
-                <BrandTooltip
-                  labelFmt={(l) => `Jahr ${l}`}
-                  valueFmt={(v) => formatEUR(v)}
-                />
-              }
-            />
-            <Legend
-              wrapperStyle={{
-                color: "rgba(255,255,255,0.7)",
-                fontFamily: "Inter",
-                fontSize: 12,
-              }}
-            />
-            <Area
-              type="monotone"
-              dataKey="Wert"
-              stroke="#FBF3E2"
-              fill="url(#wt)"
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 6, fill: "#FBF3E2" }}
-            />
-            <Area
-              type="monotone"
-              dataKey="Restschuld"
-              stroke="rgba(255,255,255,0.5)"
-              fill="transparent"
-              strokeWidth={2}
-              strokeDasharray="6 4"
-              dot={false}
-              activeDot={{ r: 6, fill: "rgba(255,255,255,0.7)" }}
-            />
-            <Area
-              type="monotone"
-              dataKey="Vermögen"
-              stroke="#C99B4D"
-              fill="url(#vmg)"
-              strokeWidth={3}
-              dot={{ r: 4, fill: "#C99B4D", stroke: "#C99B4D" }}
-              activeDot={{ r: 6, fill: "#C99B4D" }}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-brand-border bg-white p-4">
+        <div className="h-[52vh] min-h-[280px] w-full">
+          <VermoegensChart jahre={r.jahre} />
+        </div>
       </div>
     </div>
   );
@@ -1125,11 +1156,11 @@ function SlideAbschluss({ einheit }: { einheit: EinheitDetail }) {
       <h2 className="mt-3 max-w-3xl font-display text-3xl font-bold md:text-5xl">
         Wenn du dir diese Wohnung sichern willst, reservieren wir sie jetzt.
       </h2>
-      <p className="mt-4 max-w-xl text-white/70">
+      <p className="mt-4 max-w-xl text-brand-body">
         Mit der Reservierung blockierst du Wohnung {einheit.wohnungsnummer} für{" "}
-        <strong className="text-white">einen Monat verbindlich</strong>. Die
+        <strong className="text-brand-ink">einen Monat verbindlich</strong>. Die
         Reservierungsgebühr beträgt{" "}
-        <strong className="text-white">500 €</strong> und wird beim Kauf
+        <strong className="text-brand-ink">500 €</strong> und wird beim Kauf
         verrechnet. Sprich deinen Berater an, um die Reservierung zu starten.
       </p>
     </div>
@@ -1138,7 +1169,7 @@ function SlideAbschluss({ einheit }: { einheit: EinheitDetail }) {
 
 function Pill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full border border-white/20 bg-white/5 px-3 py-1 text-sm text-white/85">
+    <span className="rounded-full border border-brand-border bg-white px-3 py-1 text-sm text-brand-body">
       {children}
     </span>
   );

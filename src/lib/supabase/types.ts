@@ -14,6 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      demo_links: {
+        Row: {
+          id: string
+          slug: string
+          lead_company: string
+          lead_website: string | null
+          logo_url: string | null
+          primary_color: string | null
+          accent_color: string | null
+          created_by: string | null
+          created_at: string
+          expires_at: string
+          is_active: boolean
+          opened_count: number
+          first_opened_at: string | null
+          last_opened_at: string | null
+        }
+        Insert: {
+          id?: string
+          slug: string
+          lead_company: string
+          lead_website?: string | null
+          logo_url?: string | null
+          primary_color?: string | null
+          accent_color?: string | null
+          created_by?: string | null
+          created_at?: string
+          expires_at?: string
+          is_active?: boolean
+          opened_count?: number
+          first_opened_at?: string | null
+          last_opened_at?: string | null
+        }
+        Update: {
+          id?: string
+          slug?: string
+          lead_company?: string
+          lead_website?: string | null
+          logo_url?: string | null
+          primary_color?: string | null
+          accent_color?: string | null
+          created_by?: string | null
+          created_at?: string
+          expires_at?: string
+          is_active?: boolean
+          opened_count?: number
+          first_opened_at?: string | null
+          last_opened_at?: string | null
+        }
+        Relationships: []
+      }
+      demo_link_leads: {
+        Row: {
+          id: string
+          demo_link_id: string
+          name: string | null
+          company: string | null
+          email: string | null
+          message: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          demo_link_id: string
+          name?: string | null
+          company?: string | null
+          email?: string | null
+          message?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          demo_link_id?: string
+          name?: string | null
+          company?: string | null
+          email?: string | null
+          message?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_link_leads_demo_link_id_fkey"
+            columns: ["demo_link_id"]
+            isOneToOne: false
+            referencedRelation: "demo_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_kalkulations_defaults: {
         Row: {
           id: boolean

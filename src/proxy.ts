@@ -19,6 +19,7 @@ const PUBLIC_PREFIXES = [
   "/auth", // callback routes
   "/start", // öffentliche Marketing-Landingpage
   "/roadmap", // öffentliche Produkt-Roadmap
+  "/fuer", // PROJ-24: öffentliche, gebrandete Lead-Demo-Sandbox (Token-Link)
 ];
 
 function isPublic(pathname: string) {

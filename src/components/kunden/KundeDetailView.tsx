@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Building2,
   ExternalLink,
+  Banknote,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,15 @@ import {
   listKundenZuweisungen,
   getEmpfehlungen,
 } from "@/lib/actions/objekte";
+import {
+  listKundeCases,
+  requestFinanzierung,
+} from "@/lib/actions/finanzierung";
+import {
+  CASE_STATUS_LABEL,
+  type CaseStatus,
+} from "@/lib/finanzierung-status";
+import type { CaseListItem } from "@/lib/data/finanzierung";
 import type { KundeDetail } from "@/lib/data/kunden";
 import type {
   KundeZuweisungItem,
@@ -258,6 +268,7 @@ export function KundeDetailView({
           <TabsTrigger value="selbstauskunft">Selbstauskunft</TabsTrigger>
           <TabsTrigger value="bonitaet">Bonität</TabsTrigger>
           <TabsTrigger value="zuweisungen">Zuweisungen</TabsTrigger>
+          <TabsTrigger value="finanzierung">Finanzierung</TabsTrigger>
           <TabsTrigger value="dokumente">Dokumente</TabsTrigger>
         </TabsList>
 
@@ -311,6 +322,10 @@ export function KundeDetailView({
 
         <TabsContent value="zuweisungen">
           <ZuweisungenTab kundeId={k.id} />
+        </TabsContent>
+
+        <TabsContent value="finanzierung">
+          <FinanzierungTab kundeId={k.id} />
         </TabsContent>
 
         <TabsContent value="dokumente">
@@ -994,6 +1009,226 @@ function ZuweisungRow({ z }: { z: KundeZuweisungItem }) {
         </Button>
       </div>
     </li>
+  );
+}
+
+const CASE_STATUS_TONE: Record<CaseStatus, "default" | "secondary" | "outline" | "destructive"> = {
+  neu: "secondary",
+  in_pruefung: "secondary",
+  angefragt: "secondary",
+  in_bearbeitung: "secondary",
+  unterlagen_fehlen: "outline",
+  angebot_vorhanden: "default",
+  angebot_beim_kunden: "default",
+  angebot_akzeptiert: "default",
+  genehmigt: "default",
+  bewilligt: "default",
+  ausgezahlt: "default",
+  abgelehnt: "destructive",
+  storniert: "destructive",
+};
+
+/**
+ * Finanzierungs-Reiter der Kunden-Akte: zeigt die bestehenden Cases (read,
+ * über v_case_for_vp, Finanzierer pseudonymisiert) und erlaubt es, eine neue
+ * Finanzierung für eine zugewiesene Einheit anzufragen (request_finanzierung).
+ */
+function FinanzierungTab({ kundeId }: { kundeId: string }) {
+  const [cases, setCases] = useState<CaseListItem[] | null>(null);
+  const [zuweisungen, setZuweisungen] = useState<KundeZuweisungItem[] | null>(
+    null,
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [selectedEinheit, setSelectedEinheit] = useState<string>("");
+  const [requesting, setRequesting] = useState(false);
+
+  const load = async () => {
+    try {
+      const [c, z] = await Promise.all([
+        listKundeCases({ kundeId }),
+        listKundenZuweisungen({ kundeId }),
+      ]);
+      setCases(c);
+      setZuweisungen(z);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Laden fehlgeschlagen");
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [c, z] = await Promise.all([
+          listKundeCases({ kundeId }),
+          listKundenZuweisungen({ kundeId }),
+        ]);
+        if (cancelled) return;
+        setCases(c);
+        setZuweisungen(z);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Laden fehlgeschlagen");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [kundeId]);
+
+  // Bei genau einer Zuweisung diese vorauswählen.
+  useEffect(() => {
+    if (zuweisungen && zuweisungen.length === 1 && !selectedEinheit) {
+      setSelectedEinheit(zuweisungen[0].einheit_id);
+    }
+  }, [zuweisungen, selectedEinheit]);
+
+  const hasZuweisung = !!zuweisungen && zuweisungen.length > 0;
+  const multiple = !!zuweisungen && zuweisungen.length > 1;
+
+  const request = async () => {
+    if (!selectedEinheit) {
+      toast.error("Bitte eine Einheit auswählen");
+      return;
+    }
+    setRequesting(true);
+    try {
+      const res = await requestFinanzierung({ kundeId, einheitId: selectedEinheit });
+      if (res.ok) {
+        toast.success("Finanzierung angefragt und an einen Finanzierer übergeben");
+        await load();
+      } else {
+        toast.error(res.error);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Anfrage fehlgeschlagen");
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  if (error) {
+    return <p className="text-sm text-destructive">{error}</p>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <section className="rounded-lg border bg-card p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <Banknote className="h-5 w-5 text-muted-foreground" />
+          <h3 className="text-lg font-medium">Finanzierung anfragen</h3>
+        </div>
+
+        {zuweisungen === null ? (
+          <Skeleton className="h-12 w-full" />
+        ) : !hasZuweisung ? (
+          <div className="space-y-3">
+            <p className="rounded-md border bg-muted/30 p-4 text-sm text-muted-foreground">
+              Diesem Kunden ist noch keine Einheit zugewiesen. Erst eine Einheit
+              zuweisen, dann kann eine Finanzierung angefragt werden.
+            </p>
+            <Button disabled>
+              <Banknote className="mr-1 h-4 w-4" /> Finanzierung anfragen
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-end gap-3">
+            {multiple && (
+              <div className="min-w-[260px] flex-1">
+                <Label>Einheit</Label>
+                <Select
+                  value={selectedEinheit}
+                  onValueChange={setSelectedEinheit}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Einheit wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {zuweisungen!.map((z) => (
+                      <SelectItem key={z.einheit_id} value={z.einheit_id}>
+                        {z.einheit?.wohnungsnummer ?? "—"}
+                        {z.einheit?.projekt_name
+                          ? ` · ${z.einheit.projekt_name}`
+                          : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {!multiple && zuweisungen![0] && (
+              <p className="text-sm text-muted-foreground">
+                Einheit:{" "}
+                <span className="font-medium text-foreground">
+                  {zuweisungen![0].einheit?.wohnungsnummer ?? "—"}
+                  {zuweisungen![0].einheit?.projekt_name
+                    ? ` · ${zuweisungen![0].einheit.projekt_name}`
+                    : ""}
+                </span>
+              </p>
+            )}
+            <Button onClick={request} disabled={requesting || !selectedEinheit}>
+              <Banknote className="mr-1 h-4 w-4" />
+              {requesting ? "Wird angefragt …" : "Finanzierung anfragen"}
+            </Button>
+          </div>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Die Anfrage wird automatisch an einen Finanzierer aus dem Pool des
+          Projekts übergeben (Round-Robin).
+        </p>
+      </section>
+
+      <section className="rounded-lg border bg-card p-4">
+        <h3 className="mb-3 text-lg font-medium">
+          Finanzierungs-Cases
+          {cases && cases.length > 0 && (
+            <span className="ml-2 text-sm text-muted-foreground">
+              ({cases.length})
+            </span>
+          )}
+        </h3>
+        {cases === null ? (
+          <Skeleton className="h-24 w-full" />
+        ) : cases.length === 0 ? (
+          <p className="rounded-md border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+            Noch keine Finanzierung angefragt.
+          </p>
+        ) : (
+          <ul className="divide-y">
+            {cases.map((c) => (
+              <li
+                key={c.id}
+                className="flex flex-wrap items-center gap-3 py-3"
+              >
+                <Building2 className="h-5 w-5 shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium">
+                    {c.einheit?.wohnungsnummer ?? "—"}
+                    {c.einheit?.projekt_name && (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {c.einheit.projekt_name}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Finanzierungspartner ·{" "}
+                    {new Date(c.created_at).toLocaleDateString("de-DE")}
+                    {c.finanzierungs_summe != null && (
+                      <> · {fmt(c.finanzierungs_summe)}</>
+                    )}
+                  </div>
+                </div>
+                <Badge variant={CASE_STATUS_TONE[c.status]}>
+                  {CASE_STATUS_LABEL[c.status]}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   );
 }
 

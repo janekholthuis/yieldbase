@@ -22,6 +22,7 @@ const hexColor = z
 
 const createSchema = z.object({
   name: z.string().trim().min(2).max(120),
+  logoUrl: z.string().trim().url().max(2000).optional().nullable(),
   primaryColor: hexColor.optional(),
   accentColor: hexColor.optional(),
 });
@@ -97,10 +98,11 @@ export async function getActiveOrganisationId(): Promise<string | null> {
  */
 export async function createOrganisation(input: {
   name: string;
+  logoUrl?: string | null;
   primaryColor?: string;
   accentColor?: string;
 }): Promise<ActiveOrg> {
-  const { name, primaryColor, accentColor } = createSchema.parse(input);
+  const { name, logoUrl, primaryColor, accentColor } = createSchema.parse(input);
   const { supabase, userId } = await requireRole("admin", "vertriebsleiter");
 
   // Find a free slug — try the plain slug, then append random suffixes.
@@ -127,6 +129,7 @@ export async function createOrganisation(input: {
       name,
       slug,
       owner_id: userId,
+      logo_url: logoUrl ?? null,
       primary_color: primaryColor ?? null,
       accent_color: accentColor ?? null,
     })

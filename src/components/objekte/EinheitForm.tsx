@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Sparkles, Loader2 } from "lucide-react";
@@ -185,6 +185,22 @@ export function EinheitForm({
   // gespeicherte Einheit-ID als Kontextquelle). Füllt Standort-Highlights + Tags
   // als Vorschlag; der Nutzer kann editieren und speichert dann normal das Formular.
   const einheitId = isEdit ? (initial?.einheit_id as string) : null;
+  // PROJ-22: KI-Button nur zeigen, wenn der Server einen OpenAI-Key hat —
+  // sonst würde der Klick ins Leere laufen. getAiStatus() prüft das serverseitig.
+  const [aiConfigured, setAiConfigured] = useState(false);
+  useEffect(() => {
+    if (!einheitId) return;
+    let active = true;
+    import("@/lib/actions/ki")
+      .then((m) => m.getAiStatus())
+      .then((s) => {
+        if (active) setAiConfigured(s.configured);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [einheitId]);
   async function runAiLage() {
     if (!einheitId) return;
     setAiLoading(true);
@@ -639,7 +655,7 @@ export function EinheitForm({
 
         {/* --- Extras --- */}
         <TabsContent value="extras" className="space-y-4 pt-2">
-          {einheitId && (
+          {einheitId && aiConfigured && (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-border bg-brand-surfaceMuted/40 p-3">
               <div className="text-sm">
                 <p className="font-medium text-brand-ink">KI-Lageeinschätzung</p>

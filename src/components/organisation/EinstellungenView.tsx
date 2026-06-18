@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/select";
 import { FileUpload } from "@/components/dokumente/FileUpload";
 import { BrandingExtractDialog } from "@/components/organisation/BrandingExtractDialog";
+import { rehostLogoFromUrl } from "@/lib/actions/branding-extract";
 import { useAuth } from "@/lib/auth-context";
 import type { ActiveOrg, OrganisationMember } from "@/lib/data/organisationen";
 import {
@@ -218,9 +219,21 @@ function BrandingCard({ org }: { org: ActiveOrg }) {
           open={extractOpen}
           onOpenChange={setExtractOpen}
           onApply={(s) => {
-            if (s.logoUrl) setLogoUrl(s.logoUrl);
             if (s.primaryColor) setPrimary(s.primaryColor);
             if (s.accentColor) setAccent(s.accentColor);
+            if (s.logoUrl) {
+              // Sofort den Hotlink als Vorschau zeigen, dann serverseitig in den
+              // Branding-Bucket re-hosten (kein Hotlinking / kein Brechen, wenn die
+              // Quelle das Bild später entfernt). Bei Fehlschlag bleibt der Hotlink.
+              setLogoUrl(s.logoUrl);
+              void rehostLogoFromUrl({ orgId: org.id, sourceUrl: s.logoUrl })
+                .then((r) => {
+                  if (r.rehosted) setLogoUrl(r.logoUrl);
+                })
+                .catch(() => {
+                  /* graceful: Hotlink bleibt gesetzt */
+                });
+            }
           }}
         />
 
@@ -837,6 +850,7 @@ function CreateOrgCard() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [primary, setPrimary] = useState(DEFAULT_PRIMARY);
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
   const [creating, setCreating] = useState(false);
@@ -849,6 +863,7 @@ function CreateOrgCard() {
 
   function reset() {
     setName("");
+    setLogoUrl(null);
     setPrimary(DEFAULT_PRIMARY);
     setAccent(DEFAULT_ACCENT);
   }
@@ -857,11 +872,32 @@ function CreateOrgCard() {
     if (!canCreate) return;
     setCreating(true);
     try {
-      await createOrganisation({
+      // Org zuerst (mit dem extrahierten Hotlink als initialem Logo) anlegen, dann
+      // — sobald die Org-ID existiert — das Logo serverseitig in den Branding-Bucket
+      // re-hosten und die Bucket-URL nachziehen. Schlägt das Re-Hosting fehl, bleibt
+      // der Hotlink bestehen (Flow bricht nie).
+      const created = await createOrganisation({
         name: name.trim(),
+        logoUrl,
         primaryColor: primary,
         accentColor: accent,
       });
+      if (logoUrl) {
+        try {
+          const r = await rehostLogoFromUrl({
+            orgId: created.id,
+            sourceUrl: logoUrl,
+          });
+          if (r.rehosted) {
+            await updateOrganisationBranding({
+              orgId: created.id,
+              logoUrl: r.logoUrl,
+            });
+          }
+        } catch {
+          /* graceful: initialer Hotlink bleibt am Org-Datensatz */
+        }
+      }
       toast.success("Organisation erstellt");
       setOpen(false);
       reset();
@@ -915,8 +951,35 @@ function CreateOrgCard() {
                 onApply={(s) => {
                   if (s.primaryColor) setPrimary(s.primaryColor);
                   if (s.accentColor) setAccent(s.accentColor);
+                  // Logo als Hotlink vormerken — re-gehostet wird es nach dem
+                  // Anlegen (dann existiert die Org-ID), siehe handleCreate.
+                  if (s.logoUrl) setLogoUrl(s.logoUrl);
                 }}
               />
+              {logoUrl && (
+                <div className="flex items-center gap-3 rounded-lg border border-brand-border bg-brand-surface p-3">
+                  <Avatar className="h-10 w-10 rounded-lg">
+                    <AvatarImage
+                      src={logoUrl}
+                      alt="Logo-Vorschau"
+                      className="object-contain"
+                    />
+                    <AvatarFallback className="rounded-lg bg-brand-primaryTint text-brand-primary">
+                      {name.trim().charAt(0).toUpperCase() || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="flex-1 text-sm text-brand-muted">
+                    Logo erkannt
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setLogoUrl(null)}
+                    className="text-xs text-brand-muted underline-offset-2 hover:underline"
+                  >
+                    Entfernen
+                  </button>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="new-org-name">Name</Label>
                 <Input

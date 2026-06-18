@@ -47,9 +47,6 @@ const LIVE: Item[] = [
     title: "Bulk-Anlage von Einheiten",
     body: "Ganze Einheitenlisten per Excel-Paste in Sekunden importieren.",
   },
-];
-
-const BUILDING: Item[] = [
   {
     title: "Finanzierungen",
     body: "Fälle an Finanzierer übergeben, Angebote einholen, Status verfolgen.",
@@ -65,6 +62,13 @@ const BUILDING: Item[] = [
   {
     title: "Branding-Automatik",
     body: "Logo und Farben automatisch aus der Unternehmens-Website übernehmen.",
+  },
+];
+
+const BUILDING: Item[] = [
+  {
+    title: "Personalisierte Lead-Ansprache",
+    body: "Interessenten eine vorab auf ihr Unternehmen gebrandete Ansicht senden.",
   },
 ];
 

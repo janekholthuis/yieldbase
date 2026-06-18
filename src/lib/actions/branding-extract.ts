@@ -1,11 +1,13 @@
 "use server";
 
 // PROJ-23 — Branding-Auto-Extraktion: lädt eine Website serverseitig und schlägt
-// Logo + Primär-/Akzentfarbe vor. KEIN Schreibzugriff — das Speichern läuft (nach
-// Bestätigung in der Vorschau) über updateOrganisationBranding (PROJ-13).
+// Logo + Primär-/Akzentfarbe vor. Das Re-Hosting des erkannten Logos in den
+// Storage (rehostLogoFromUrl) schreibt in den Branding-Bucket; das Speichern der
+// Branding-Felder selbst läuft (nach Bestätigung) über updateOrganisationBranding.
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { requireRole } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   normalizeUrl,
   absoluteUrl,
@@ -15,6 +17,25 @@ import {
 
 const FETCH_TIMEOUT_MS = 7000;
 const MAX_BYTES = 2_000_000; // 2 MB Cap auf HTML/CSS
+const MAX_LOGO_BYTES = 3_000_000; // 3 MB Cap auf das herunterzuladende Logo-Bild
+
+// Logos werden — wie der manuelle Logo-Upload (EinstellungenView/FileUpload) — in
+// den öffentlichen Bucket `objekt-bilder` unter `org-logos/{orgId}/…` abgelegt.
+const LOGO_BUCKET = "objekt-bilder";
+const LOGO_PATH_PREFIX = "org-logos";
+
+// Erlaubte Bild-Content-Types fürs Re-Hosting → Dateiendung.
+const IMAGE_EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/svg+xml": "svg",
+  "image/x-icon": "ico",
+  "image/vnd.microsoft.icon": "ico",
+  "image/avif": "avif",
+};
 
 /** Privater/loopback/link-local/Metadaten-Bereich? (SSRF-Schutz). */
 function isPrivateAddress(ip: string): boolean {
@@ -118,6 +139,70 @@ async function fetchText(rawUrl: string, accept: string): Promise<string> {
   }
 }
 
+/**
+ * Lädt eine URL als Binärdaten (Timeout + Größen-Cap + SSRF-Guard, Redirects
+ * manuell + pro Hop re-validiert wie fetchText). Liefert Bytes + Content-Type.
+ */
+async function fetchBinary(
+  rawUrl: string,
+  accept: string,
+  maxBytes: number,
+): Promise<{ bytes: Uint8Array; contentType: string }> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    let currentUrl = rawUrl;
+    let res: Response | null = null;
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      await assertPublicUrl(currentUrl);
+      const r = await fetch(currentUrl, {
+        signal: ctrl.signal,
+        redirect: "manual",
+        headers: { accept, "user-agent": "ObjektpilotBrandingBot/1.0" },
+      });
+      if (r.status >= 300 && r.status < 400) {
+        const loc = r.headers.get("location");
+        if (!loc) throw new Error("Weiterleitung ohne Zieladresse.");
+        currentUrl = new URL(loc, currentUrl).toString();
+        continue;
+      }
+      res = r;
+      break;
+    }
+    if (!res) throw new Error("Zu viele Weiterleitungen.");
+    if (!res.ok) throw new Error(`Bild antwortete mit Status ${res.status}.`);
+
+    const contentType = (res.headers.get("content-type") ?? "")
+      .split(";")[0]
+      .trim()
+      .toLowerCase();
+
+    const reader = res.body?.getReader();
+    if (!reader) {
+      const buf = new Uint8Array(await res.arrayBuffer());
+      if (buf.length > maxBytes) throw new Error("Bild ist zu groß.");
+      return { bytes: buf, contentType };
+    }
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        total += value.length;
+        chunks.push(value);
+        if (total > maxBytes) {
+          await reader.cancel();
+          throw new Error("Bild ist zu groß.");
+        }
+      }
+    }
+    return { bytes: concat(chunks), contentType };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function concat(chunks: Uint8Array[]): Uint8Array {
   const len = chunks.reduce((n, c) => n + c.length, 0);
   const out = new Uint8Array(len);
@@ -165,4 +250,74 @@ export async function extractBrandingFromUrl(input: {
   }
 
   return buildSuggestion(html, normalized, css);
+}
+
+export interface RehostLogoResult {
+  /** Endgültige Logo-URL: Bucket-URL bei Erfolg, sonst der ursprüngliche Hotlink. */
+  logoUrl: string;
+  /** true = im Storage re-gehostet, false = graceful auf den Hotlink zurückgefallen. */
+  rehosted: boolean;
+}
+
+/**
+ * Lädt ein extrahiertes Logo SERVERSEITIG herunter (SSRF-geschützt, Größen-Cap,
+ * Content-Type muss image/* sein) und legt es im Branding-Bucket (`objekt-bilder`
+ * unter `org-logos/{orgId}/…`) ab — analog zum manuellen Logo-Upload. Gespeichert
+ * wird dann die stabile Bucket-URL statt des fremden Hotlinks.
+ *
+ * Bricht NIE den Flow: schlägt Download/Upload/Validierung fehl, fällt das
+ * Ergebnis graceful auf den ursprünglichen Hotlink zurück (rehosted: false).
+ *
+ * Nur admin/support/vertriebsleiter (Org-Verwalter).
+ */
+export async function rehostLogoFromUrl(input: {
+  orgId: string;
+  sourceUrl: string;
+}): Promise<RehostLogoResult> {
+  await requireRole("admin", "support", "vertriebsleiter");
+
+  const fallback: RehostLogoResult = { logoUrl: input.sourceUrl, rehosted: false };
+
+  // orgId muss eine UUID sein (verhindert Path-Traversal im Object-Key).
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.orgId)) {
+    return fallback;
+  }
+
+  try {
+    const normalized = normalizeUrl(input.sourceUrl);
+    const { bytes, contentType } = await fetchBinary(
+      normalized,
+      "image/*",
+      MAX_LOGO_BYTES,
+    );
+
+    if (bytes.length === 0) return fallback;
+    const ext = IMAGE_EXT[contentType];
+    if (!ext) {
+      // Kein (erlaubter) Bild-Content-Type → nicht re-hosten, Hotlink behalten.
+      return fallback;
+    }
+
+    const id = Math.random().toString(36).slice(2, 10);
+    const path = `${LOGO_PATH_PREFIX}/${input.orgId}/${id}-extracted.${ext}`;
+
+    // Service-Role-Client: dieser Write läuft serverseitig nach Rollen-Check;
+    // der Object-Key ist strikt auf die orgId gescopt.
+    const admin = createAdminClient();
+    const { error } = await admin.storage.from(LOGO_BUCKET).upload(path, bytes, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType,
+    });
+    if (error) return fallback;
+
+    const publicUrl = admin.storage.from(LOGO_BUCKET).getPublicUrl(path).data
+      .publicUrl;
+    if (!publicUrl) return fallback;
+
+    return { logoUrl: publicUrl, rehosted: true };
+  } catch {
+    // Jeder Fehler (SSRF-Block, Timeout, zu groß, Upload) → Hotlink-Fallback.
+    return fallback;
+  }
 }

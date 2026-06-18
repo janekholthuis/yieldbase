@@ -39,6 +39,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EinheitDetailView } from "@/components/objekte/EinheitDetailView";
 import { FinanziererPoolTab } from "@/components/objekte/FinanziererPoolTab";
+import { ImageLightbox } from "@/components/objekte/ImageLightbox";
 import {
   useEinheitKalkulation,
   type EinheitKalkulation,
@@ -524,9 +525,16 @@ function GalleryHero({
   const lead = bilder[0] ?? null;
   const totalPhotos = bilder.length;
   const stacked = [bilder[1] ?? null, bilder[2] ?? null];
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   return (
     <div className="relative flex h-[300px] gap-3 p-[18px] sm:h-[360px]">
+      <ImageLightbox
+        images={bilder}
+        index={lightboxIndex}
+        onIndexChange={setLightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+      />
       {/* Big image */}
       <div className="relative h-full flex-[1.7] overflow-hidden rounded-[14px] bg-brand-primaryTint">
         {lead ? (
@@ -534,7 +542,8 @@ function GalleryHero({
           <img
             src={lead.url}
             alt={lead.alt ?? alt}
-            className="h-full w-full object-cover"
+            onClick={() => setLightboxIndex(0)}
+            className="h-full w-full cursor-zoom-in object-cover"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-brand-subtle">
@@ -551,11 +560,11 @@ function GalleryHero({
           Grundrisse &amp; Dokumente{docCount ? ` (${docCount})` : ""}
         </button>
 
-        {/* Overlay chip — all photos */}
+        {/* Overlay chip — all photos → Lightbox (mobil; Desktop nutzt die Stapel-Fotos) */}
         {totalPhotos > 1 && (
           <button
             type="button"
-            onClick={onShowDetails}
+            onClick={() => setLightboxIndex(0)}
             className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-[11px] bg-black/55 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-black/70 sm:hidden"
           >
             <Images className="h-4 w-4" /> {totalPhotos} Fotos
@@ -575,18 +584,19 @@ function GalleryHero({
               <img
                 src={b.url}
                 alt={b.alt ?? alt}
-                className="h-full w-full object-cover"
+                onClick={() => setLightboxIndex(i + 1)}
+                className="h-full w-full cursor-zoom-in object-cover"
               />
             ) : (
               <div className="flex h-full items-center justify-center text-brand-subtle">
                 <Building2 className="h-8 w-8" />
               </div>
             )}
-            {/* „+N Fotos" auf der letzten Kachel, wenn es mehr gibt */}
+            {/* „+N Fotos" auf der letzten Kachel → Lightbox */}
             {i === stacked.length - 1 && totalPhotos > 3 && (
               <button
                 type="button"
-                onClick={onShowDetails}
+                onClick={() => setLightboxIndex(0)}
                 className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-[11px] bg-black/55 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-black/70"
               >
                 <Images className="h-4 w-4" /> +{totalPhotos - 3} Fotos

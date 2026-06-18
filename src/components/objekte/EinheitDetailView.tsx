@@ -96,12 +96,17 @@ export function EinheitDetailView({
   einheit,
   kalkContext,
   embedded = false,
+  hideInvestment = false,
 }: {
   einheit: EinheitDetail;
   kalkContext: KalkulationsContext;
   /** When rendered inside the project page master-detail: drop the outer page
    * chrome (container padding + back/all-objects nav) so it sits in a panel. */
   embedded?: boolean;
+  /** Embedded only: skip the EinheitInvestmentView (chart + investment sidebar)
+   * when the host page already renders calculation/investment surfaces — avoids
+   * a triple of the same chart on the consolidated project page. */
+  hideInvestment?: boolean;
 }) {
   const e = einheit;
   const router = useRouter();
@@ -321,16 +326,18 @@ export function EinheitDetailView({
           die Kalkulation sofort sichtbar. Sekundär-Tabs darunter. */}
       {embedded ? (
         <div className="space-y-4">
-          <EinheitInvestmentView
-            einheit={e}
-            kalkContext={kalkContext}
-            showGallery={false}
-            onReserve={
-              reserveCandidateId
-                ? () => setReserveKundeId(reserveCandidateId)
-                : undefined
-            }
-          />
+          {!hideInvestment && (
+            <EinheitInvestmentView
+              einheit={e}
+              kalkContext={kalkContext}
+              showGallery={false}
+              onReserve={
+                reserveCandidateId
+                  ? () => setReserveKundeId(reserveCandidateId)
+                  : undefined
+              }
+            />
+          )}
 
           <Tabs defaultValue="details">
             <TabsList className="flex-wrap">

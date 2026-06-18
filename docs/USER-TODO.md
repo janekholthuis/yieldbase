@@ -1,6 +1,6 @@
 # 🔑 Objektpilot — Offene Aufgaben
 
-> Live: **https://portal.erfolg-mit-immobilien.com** (Custom-Domain auf Vercel, deployt von `main`; alte URL `objekt-pilot.vercel.app` bleibt als Vercel-Default bestehen)
+> Live: **https://emi-hub.de** (Custom-Domain auf Vercel, deployt von `main`; alte URL `objekt-pilot.vercel.app` bleibt als Vercel-Default bestehen)
 
 ## 🎯 V1-Scope (Stand 2026-06-12)
 **V1 aktiv:** Objekte (inkl. Kalkulation, Bilder, Dokumente, Karte), Kunden,
@@ -16,18 +16,18 @@ Reservierungen (inkl. Mailing), **Mein Team** (VP anlegen & verwalten), Profil.
 - [ ] **V1-Kernflows QA + INDEX-Status angleichen** (Objekte/Kunden/Reservierungen/Team) — viele stehen in INDEX noch auf „In Progress", sind aber live
 - [x] **Einladungs-Mail** gebaut: `send-invite-email` Edge-Function + Versand in `createInvite` + Accept-Link-Fallback in TeamView (2026-06-12)
 - [x] **Resend-Versand auf Next.js-direkt umgestellt** (2026-06-18): Invite-/Portal-Link-/Reservierungs-Mails gehen jetzt direkt über `RESEND_API_KEY` der Next.js-/Vercel-Env (nicht mehr über Supabase-Edge-Functions). Key ist gesetzt → Versand läuft.
-- [ ] **Verifizierte Absender-Domain in Resend** (deine Seite, login-/zustellungskritisch): in Resend eine eigene Domain verifizieren und in **Vercel-Env** einen Absender setzen — `EMAIL_FROM` (globaler Default) und/oder spezifisch `INVITE_FROM_EMAIL` / `PORTAL_FROM_EMAIL` / `RESERVATION_FROM_EMAIL` (Format z. B. `Objektpilot <noreply@deine-domain.de>`), optional `RESERVATION_BCC_EMAIL`. Ohne verifizierte Domain liefert `onboarding@resend.dev` nur an den Resend-Account-Owner.
-- [ ] **OpenAI-Key-Name (optional vereinheitlichen):** du hast `OPEN_API_KEY` gesetzt (funktioniert — der Client liest beide). Sauberer wäre der Standardname `OPENAI_API_KEY` in Vercel. Modell via `OPENAI_MODEL` überschreibbar (Default `gpt-4o-mini`).
+- [x] **Resend-Domain `emi-hub.de` verifiziert + `EMAIL_FROM` gesetzt** (2026-06-18). Versand läuft jetzt produktiv über `@emi-hub.de`. Optional pro Flow überschreibbar: `INVITE_FROM_EMAIL` / `PORTAL_FROM_EMAIL` / `RESERVATION_FROM_EMAIL`, optional `RESERVATION_BCC_EMAIL`.
+- [x] **OpenAI-Key gesetzt — lokal + Vercel-Env (Prod)** (2026-06-18). „Per KI generieren" läuft jetzt auch live. Modell via `OPENAI_MODEL` (Default `gpt-4o-mini`).
 
 ## 🟡 Optional / später
 - [ ] **Leaked-Password-Schutz aktivieren** (Supabase → Auth → Passwords; HaveIBeenPwned-Check) — Advisor-Hinweis
 - [ ] **Öffentlichen Storage-Bucket prüfen** (Advisor: „public bucket allows listing") — Listing ggf. einschränken
-- [ ] **Domain `portal.erfolg-mit-immobilien.com` finalisieren** (Code ist domain-agnostisch — nur Config, login-kritisch):
-  1. **Vercel** → Projekt → Settings → Domains: `portal.erfolg-mit-immobilien.com` hinzufügen + DNS-CNAME beim Provider setzen.
-  2. **Vercel** → Settings → Environment Variables: `NEXT_PUBLIC_SITE_URL=https://portal.erfolg-mit-immobilien.com` (Production) → danach **Redeploy**.
-  3. **Supabase** → Auth → URL Configuration: **Site URL** = `https://portal.erfolg-mit-immobilien.com`; unter **Redirect URLs** zusätzlich `https://portal.erfolg-mit-immobilien.com/**` aufnehmen (sonst brechen Invite-/Magic-/Reset-Links). ⚠️ login-kritisch.
+- [x] **Domain `emi-hub.de` finalisiert** (2026-06-18; ersetzt das frühere `portal.erfolg-mit-immobilien.com`). Code ist domain-agnostisch — Restpunkte sind reine Config:
+  1. **Vercel** → Projekt → Settings → Domains: `emi-hub.de` hinzufügen + DNS-CNAME beim Provider setzen. ✅ erledigt
+  2. **Vercel** → Settings → Environment Variables: `NEXT_PUBLIC_SITE_URL=https://emi-hub.de` (Production) → danach **Redeploy**. ⚠️ prüfen, dass der Wert auf `emi-hub.de` zeigt (nur Fallback, da der Request-Origin normalerweise greift).
+  3. **Supabase** → Auth → URL Configuration: **Redirect URL** `https://emi-hub.de/**` aufgenommen ✅ (2026-06-18). Falls noch nicht geschehen: **Site URL** ebenfalls auf `https://emi-hub.de` setzen.
   4. _(E-Mail-Edge-Function-Secrets nicht mehr nötig — Mails gehen jetzt direkt aus Next.js; der Portal-/Reservierungs-Magic-Link nutzt den Request-Origin bzw. `NEXT_PUBLIC_SITE_URL`.)_
-  5. **Mapbox**-Token (falls URL-Restriction aktiv): neue Domain zur erlaubten Referrer-Liste hinzufügen.
+  5. **Mapbox**-Token (falls URL-Restriction aktiv): `emi-hub.de` zur erlaubten Referrer-Liste hinzufügen.
 - [ ] Auth-Email-Templates anpassen (Vorlagen: `OLD APP/docs/email-templates/`)
 - [ ] RLS-Policies gegen das cookie-basierte `@supabase/ssr`-Auth gegenprüfen
 - [ ] Struktur-Gaps entscheiden ([STRUCTURE-AUDIT.md](STRUCTURE-AUDIT.md)): Projektentwickler-Tabelle? Datenraum-Tabelle?
@@ -41,4 +41,16 @@ Echte Preise/Flächen/Mieten liegen auf den **vollen** `Project`/`Property`-Ress
 `Api*`-Listen. Sync zieht jetzt echte Daten (synthetischer Generator entfernt),
 Volllauf erledigt (222 Projekte, 2108 Einheiten, 7023 Fotos, 9703 Dokumente).
 UI-Trigger in den Einstellungen + täglicher Vercel-Cron (inkrementell). Details:
-`docs/INVESTAGON-PLAN.md`. **Offen (deine Seite):** `CRON_SECRET` in Vercel-Env setzen.
+`docs/INVESTAGON-PLAN.md`.
+
+**Wichtig — Credentials gehören NICHT in `.env.local`:** Investagon-ORG-ID + API-Key
+werden **pro Organisation in der DB** gespeichert (`organisationen.investagon_org_id`
+/`investagon_api_key`) und über die **App → Einstellungen → Karte „Investagon-
+Synchronisierung"** (admin/support) eingetragen. Ein Eintrag in `.env.local`/Vercel
+wird vom Sync **ignoriert**.
+
+**Investagon-Credentials gesetzt** (2026-06-18, in den App-Einstellungen) ✅.
+
+**`CRON_SECRET` gesetzt** (2026-06-18, Vercel-Env) ✅. Der automatische tägliche
+Investagon-Sync (`/api/cron/investagon-sync`, 04:00) ist damit scharf; Vercel Cron
+sendet das Secret automatisch als `Authorization: Bearer <secret>`.

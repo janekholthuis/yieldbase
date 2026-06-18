@@ -13,6 +13,8 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { calculateBonitaet } from "@/lib/bonitaet";
+import { sendEmail } from "@/lib/email/resend";
+import { portalLinkEmail } from "@/lib/email/templates";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 
@@ -401,27 +403,21 @@ export async function activateKundenportal(input: { id: string }): Promise<{
   return { ok: true, userId: newUserId, magicLinkSent, action_link };
 }
 
-// Versendet den Portal-Login-Link via Resend-Edge-Function (best-effort).
-// Liefert true bei Erfolg; bei fehlender Resend-Konfiguration / nicht
-// verifizierter Domain false → der Aufrufer zeigt den Link zum Kopieren.
+// Versendet den Portal-Login-Link direkt via Resend (best-effort). Liefert true
+// bei Erfolg; bei fehlender Resend-Konfiguration false → der Aufrufer zeigt den
+// Link zum Kopieren. (Früher über die Supabase-Edge-Function send-portal-link.)
 async function sendPortalLinkEmail(
-  admin: ReturnType<typeof createAdminClient>,
-  args: { to: string; name: string | null; loginUrl: string | null },
+  _admin: ReturnType<typeof createAdminClient>,
+  args: { to: string; name: string | null; loginUrl: string | null; orgName?: string | null },
 ): Promise<boolean> {
   if (!args.loginUrl) return false;
-  try {
-    const { error } = await admin.functions.invoke("send-portal-link", {
-      body: {
-        to: args.to,
-        kundeName: args.name,
-        orgName: null,
-        loginUrl: args.loginUrl,
-      },
-    });
-    return !error;
-  } catch {
-    return false;
-  }
+  const { subject, html } = portalLinkEmail({
+    kundeName: args.name,
+    orgName: args.orgName ?? null,
+    loginUrl: args.loginUrl,
+  });
+  const res = await sendEmail({ to: args.to, subject, html, from: process.env.PORTAL_FROM_EMAIL });
+  return res.ok;
 }
 
 // ───────────── resendPortalLink ─────────────

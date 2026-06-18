@@ -86,3 +86,55 @@ E2E/unit tests deferred: the core generation flow (AC-4) is broken by BUG-1, so 
 
 ### Recommendation
 Fix **BUG-1** and **BUG-2** (both backend, same upsert) before any deploy; resolve **BUG-3/BUG-4** and clarify **Q-5** next. Status stays **In Review**.
+
+---
+
+## QA Test Results — 2026-06-18 (Provisionen-Reaktivierung)
+
+**Tester:** QA Engineer (code-level audit + live Prod-DB-Verifikation; kein Browser/Staging-Seed in dieser Umgebung)
+**Kontext:** PROJ-9 Provisionen wurde aus dem V1-Soft-Gate reaktiviert (Nav-`hidden` entfernt, `/provisionen` von `FeatureComingSoon` zurück auf echten View verdrahtet). Dieser Pass prüft den reaktivierten Code + den Stand der alten BUG-1…6.
+**Production-ready:** ✅ **BUG-P1 (High) GEFIXT 2026-06-18** — Mandanten- + Tree-Guard in `updateProvisionStatus` (Zeile liest `organisation_id`/`vp_id`, dann `assertOrgAccess` + VL-Tree-Check vor dem Write); Note-P3 (Doc-Drift) ebenfalls behoben. tsc + 206 Tests grün. Restliche Alt-Bugs verifiziert geschlossen, Commission-Modell (altes Q-5) durch „Closing-VP-only" final geklärt. **Rest-Low:** BUG-P2 (Status-Transition/Audit) — Produktentscheidung, blockiert nicht.
+
+### Verifikation der Alt-Befunde (gegen Prod-DB)
+- **BUG-1 ✅ geschlossen (DB-verifiziert)** — `uq_provisionen_deal_vp` ist jetzt ein **non-partial** `UNIQUE (deal_id, vp_id)` (kein `WHERE` mehr) → `onConflict: "deal_id,vp_id"` inferiert sauber.
+- **BUG-2 ✅ geschlossen (Code-verifiziert)** — `generateProvisionen` lässt `status` im Upsert weg (`actions/provisionen.ts:89-101`); Re-Run aktualisiert nur `provisionssatz`/`betrag`, bestehender Payout-Status bleibt.
+- **Q-5 ✅ geklärt** — Modell ist jetzt **Closing-VP-only** (nur der VP auf der Reservierung bekommt seinen eigenen Satz, keine Upline-Beteiligung; `actions/provisionen.ts:4-6,84-87`). Damit entfällt die „Σ-Sätze über die Kette"-Frage.
+- BUG-3/BUG-4/BUG-6 betreffen **Team** (nicht Provisionen) und waren im vorigen Pass abgehakt — hier nicht erneut getestet.
+
+### Akzeptanzkriterien (abgeleitet)
+| # | Kriterium | Ergebnis |
+|---|-----------|----------|
+| 1 | Rollen-gescopte Liste (admin=alle · VL=Baum · VP=selbst), fail-closed | ✅ Pass (`listProvisionen` org+tree-gescopt) |
+| 2 | Summen je Status | ✅ Pass |
+| 3 | admin/VL ändern Provisionsstatus | ⚠️ Funktioniert, **aber Autorisierungslücke (BUG-P1)** |
+| 4 | Provisionen aus Reservierungen erzeugen (Closing-VP) | ✅ Pass (Constraint live ✓, Status-Erhalt ✓, org+tree-gescopt) |
+| 5 | Reaktivierung: Route rendert echten View, Nav entgated | ✅ Pass (Build listet `/provisionen` dynamisch; tsc + 206 Tests + Build grün) |
+
+### Bugs
+
+**BUG-P1 — High · `updateProvisionStatus` umgeht Mandanten-/Tree-Isolation**
+`src/lib/actions/provisionen.ts:125-142` autorisiert nur per `requireRole("admin","vertriebsleiter")` und schreibt dann via **Admin-Client (RLS-Bypass)** mit `.update({status}).eq("id", id)` — **ohne** Org-Scope und **ohne** Tree-Scope. Auf der DB ist provisionen-RLS bewusst geschichtet: RESTRICTIVE `org_isolation` (Mandanten-Guard) + nur `prov_admin_all` als PERMISSIVE-UPDATE-Policy; VL haben **nur SELECT**-Policies (`prov_vl_select`/`prov_vp_subtree`). Das RLS-Design sagt also: *nur admin darf schreiben, VL nur lesen, niemals cross-org*. Die Action hebelt das aus.
+**Impact:** Ein `vertriebsleiter` kann den Status **jeder** Provision setzen — auch einer **fremden Organisation** (Tenant-Isolation gebrochen) oder eines VP **außerhalb seines Sub-Trees**. Das ist eine finanzielle Status-Mutation (z. B. `ausgezahlt`/`storniert`). Server-Actions sind direkt per POST aufrufbar; RLS ist hier **keine** Backstop, weil der Admin-Client sie umgeht.
+**Mitigant:** Provision-IDs sind nicht-enumerierbare UUIDs (Angreifer braucht eine bekannte/geleakte ID). Innerhalb der eigenen Org sieht ein VL fremde Tree-IDs nicht in der UI.
+**Fix-Richtung (Backend):** vor dem Update die Zeile lesen (`organisation_id`, `vp_id`), dann `assertOrgAccess(session, row.organisation_id)` (analog BUG-001 Objekt-CRUD) **und** für `vertriebsleiter` prüfen, dass `vp_id` im eigenen Baum liegt — oder Status-Writes ganz auf `admin` beschränken (deckt sich mit der RLS-Absicht). Gleiches Muster ist in `generateProvisionen` bereits korrekt (org+tree-gescopt) — nur der Status-Write fehlt.
+
+**BUG-P2 — Low · keine Status-Übergangs-Prüfung / kein Audit-Trail**
+`updateProvisionStatus` akzeptiert jeden der 5 Status bedingungslos — eine als `ausgezahlt` markierte Provision kann still auf `pipeline` zurückgesetzt werden, und es gibt keinen Audit-Eintrag (wer/wann) für eine finanzielle Status-Änderung. Business-Rule-/Compliance-Lücke, kein Sicherheitsbug.
+
+**Note-P3 — Low/Doc · veralteter Kommentar**
+Der Header von `src/lib/data/provisionen.ts` beschreibt noch „% of Kaufpreis **along the VP hierarchy**", was dem nun maßgeblichen Closing-VP-only-Modell (`actions/provisionen.ts`) widerspricht. Reine Doku-Drift.
+
+**Note-P4 — Low/Obs · Admin-Cross-Org by design** (= Note-7, unverändert)
+Reads/Writes laufen über den Admin-Client; ein Plattform-`admin` sieht/handelt über alle Orgs. Konsistent mit dem Plattform-Admin-Modell der PRD.
+
+### Positives
+- `listProvisionen`/`provisionenSummary` korrekt **org + tree** gescopt und fail-closed (support/roleless → eigene ID → sieht nichts).
+- `generateProvisionen` org+tree-gescopt; BUG-1-Constraint live bestätigt; Status-Erhalt bei Re-Run (BUG-2) im Code verifiziert; Ketten-Walk entfällt im Closing-VP-Modell.
+- Prod-DB: **0 ERROR**-Advisors, 55 WARN (unverändert); provisionen-RLS sauber geschichtet.
+- tsc + **206 Tests** + Build grün; `/provisionen` baut als dynamische Server-Route.
+
+### Nicht erledigt diese Runde
+Keine Unit-/E2E-Tests ergänzt: kein Browser/Staging-Seed in der Umgebung, und der einzige umsetzbare Befund (BUG-P1) ist eine Autorisierungslücke, die sinnvoll **nach** dem Fix mit einem gezielten Test (`_org`-Guard-Regression, analog `src/lib/actions/_org.test.ts`) abgedeckt wird.
+
+### Empfehlung
+**BUG-P1 (High) vor dem Deploy fixen** — Mandanten-/Tree-Guard im `updateProvisionStatus` (Backend). BUG-P2 + Notes sind Low und blockieren nicht. Status bleibt **In Review**.

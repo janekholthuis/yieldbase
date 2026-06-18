@@ -15,6 +15,8 @@ import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { activeOrgId } from "@/lib/actions/_org";
 import { passwordSchema } from "@/lib/password";
+import { sendEmail } from "@/lib/email/resend";
+import { inviteEmail } from "@/lib/email/templates";
 import type { Database } from "@/lib/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -182,17 +184,20 @@ export async function createInvite(input: z.infer<typeof createInviteInput>) {
       inviter?.name ??
       ([inviter?.vorname, inviter?.nachname].filter(Boolean).join(" ") || null);
 
-    const { error: fnErr } = await admin.functions.invoke("send-invite-email", {
-      body: {
-        to: data.email,
-        inviterName,
-        orgName: org?.name ?? null,
-        roleLabel: ROLE_LABEL[data.role] ?? data.role,
-        acceptUrl,
-        expiresAt: expires_at,
-      },
+    const { subject, html } = inviteEmail({
+      inviterName,
+      orgName: org?.name ?? null,
+      roleLabel: ROLE_LABEL[data.role] ?? data.role,
+      acceptUrl,
+      expiresAt: expires_at,
     });
-    emailSent = !fnErr;
+    const res = await sendEmail({
+      to: data.email,
+      subject,
+      html,
+      from: process.env.INVITE_FROM_EMAIL,
+    });
+    emailSent = res.ok;
   } catch {
     emailSent = false;
   }

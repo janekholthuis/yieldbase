@@ -24,6 +24,8 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendEmail } from "@/lib/email/resend";
+import { reservationEmail } from "@/lib/email/templates";
 import {
   getReservierungContext,
   type ReservierungContext,
@@ -75,6 +77,21 @@ const createInput = z.object({
 export async function createReservierung(input: z.input<typeof createInput>) {
   const { supabase, userId } = await requireUser();
   const data = createInput.parse(input);
+
+  // Ownership: verify the customer is in the caller's scope via the authed
+  // (RLS) client BEFORE any write. The reservierungen INSERT policy only checks
+  // vp_id/org, not that kunde_id belongs to the caller — without this an
+  // attacker who knows a foreign kunde UUID could reference it (and trigger the
+  // admin-client portal activation downstream). RLS on `kunden` restricts this
+  // read to the caller's own subtree/org.
+  const { data: kundeOwn } = await supabase
+    .from("kunden")
+    .select("id")
+    .eq("id", data.kundeId)
+    .maybeSingle();
+  if (!kundeOwn) {
+    throw new Error("Kunde nicht gefunden oder keine Berechtigung.");
+  }
 
   // Sub-Block 10: Hard-Block — Reservierung nur möglich, wenn das Projekt
   // hinter der Einheit vollständige Bank-Daten (Kontoinhaber + IBAN) hat.
@@ -425,42 +442,63 @@ export async function sendReservierungEmail(input: { id: string }) {
   for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]!);
   const pdfBase64 = btoa(bin);
 
-  // TODO(migration): the OLD APP derived siteUrl from the incoming request
-  // origin / x-forwarded-host. In Next.js we read it from the request headers
-  // and fall back to NEXT_PUBLIC_SITE_URL (sane default for non-request contexts).
+  // siteUrl aus den Request-Headern (Origin / x-forwarded-host), Fallback Env.
   const hdrs = await headers();
-  const siteUrl =
+  const siteUrl = (
     hdrs.get("origin") ??
     (hdrs.get("x-forwarded-host")
       ? `https://${hdrs.get("x-forwarded-host")}`
-      : process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000");
+      : process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000")
+  ).replace(/\/$/, "");
 
-  // Invoke the `send-reservation-email` edge function. Works once the edge fn
-  // is deployed; the authed client forwards the user's JWT automatically.
-  const { data: json, error: fnErr } = await supabase.functions.invoke(
-    "send-reservation-email",
-    {
-      body: {
-        kunde: rr.kunde,
-        vp: rr.vp,
-        einheit: rr.einheit,
-        bank: {
-          kontoinhaber: rr.bank_kontoinhaber,
-          iban: rr.bank_iban,
-          bic: rr.bank_bic,
-        },
-        reservierungsgebuehr: rr.reservierungsgebuehr,
-        expiresAt: rr.expires_at,
-        pdfBase64,
-        pdfFilename: `Reservierung_${rr.einheit?.wohnungsnummer ?? "Wohnung"}.pdf`,
-        siteUrl,
-      },
+  // Portal-Magic-Link erzeugen (best-effort) — früher in der Edge-Function.
+  // generateLink braucht den Admin-Client; der Kunde muss ein verknüpftes
+  // Auth-Konto haben (Portal aktiviert) — sonst ohne Portal-Block versenden.
+  let portalUrl: string | null = null;
+  try {
+    const admin = createAdminClient();
+    const { data: link } = await admin.auth.admin.generateLink({
+      type: "magiclink",
+      email: rr.kunde.email,
+      options: { redirectTo: `${siteUrl}/portal/dokumente` },
+    });
+    portalUrl = link?.properties?.action_link ?? null;
+  } catch {
+    portalUrl = null;
+  }
+
+  const { subject, html } = reservationEmail({
+    kunde: rr.kunde,
+    vp: rr.vp,
+    einheit: rr.einheit,
+    bank: {
+      kontoinhaber: rr.bank_kontoinhaber,
+      iban: rr.bank_iban,
+      bic: rr.bank_bic,
     },
-  );
-  if (fnErr) {
-    throw new Error(`Email-Versand fehlgeschlagen: ${fnErr.message}`);
+    reservierungsgebuehr: rr.reservierungsgebuehr,
+    expiresAt: rr.expires_at,
+    portalUrl,
+  });
+
+  const res = await sendEmail({
+    to: rr.kunde.email,
+    subject,
+    html,
+    from: process.env.RESERVATION_FROM_EMAIL,
+    cc: rr.vp?.email ? [rr.vp.email] : undefined,
+    bcc: process.env.RESERVATION_BCC_EMAIL ? [process.env.RESERVATION_BCC_EMAIL] : undefined,
+    attachments: [
+      {
+        filename: `Reservierung_${rr.einheit?.wohnungsnummer ?? "Wohnung"}.pdf`,
+        content: pdfBase64,
+      },
+    ],
+  });
+  if (!res.ok) {
+    throw new Error(`Email-Versand fehlgeschlagen: ${res.error ?? "unbekannt"}`);
   }
 
   revalidatePath("/reservierungen");
-  return { ok: true, recipient: rr.kunde.email, id: json?.id ?? null };
+  return { ok: true, recipient: rr.kunde.email, id: res.id ?? null };
 }

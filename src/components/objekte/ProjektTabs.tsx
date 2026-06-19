@@ -20,6 +20,7 @@ import { MapPin, ChevronDown, Layers } from "lucide-react";
 import { VerkaufsstatusTabelle } from "@/components/objekte/VerkaufsstatusTabelle";
 import { KarteTab } from "@/components/objekte/KarteTab";
 import { StandortHighlights } from "@/components/objekte/StandortHighlights";
+import { SectionCard } from "@/components/ui/section-card";
 import { BankDatenCard } from "@/components/objekte/BankDatenCard";
 import { FinanziererPoolTab } from "@/components/objekte/FinanziererPoolTab";
 import { EinheitDetailView } from "@/components/objekte/EinheitDetailView";
@@ -88,6 +89,7 @@ export function ProjektTabs({
 
       <TabsContent value="lage" className="space-y-4">
         <KarteTab adresse={projekt.adresse} plz={projekt.plz} stadt={projekt.stadt} />
+        <LageHighlightsText einheiten={units} />
         <StandortHighlights
           adresse={projekt.adresse}
           plz={projekt.plz}
@@ -106,6 +108,20 @@ export function ProjektTabs({
         </>
       )}
     </Tabs>
+  );
+}
+
+// Freitext-Lage-Highlights (KI/manuell, Feld standort_highlights). Projektweit:
+// alle Einheiten teilen die Adresse, daher zeigen wir den ersten gepflegten Text.
+function LageHighlightsText({ einheiten }: { einheiten: ObjektListItem[] }) {
+  const text = einheiten
+    .map((e) => e.standort_highlights)
+    .find((h): h is string => !!h && h.trim().length > 0);
+  if (!text) return null;
+  return (
+    <SectionCard title="Lage-Highlights" subtitle="Standortbeschreibung">
+      <p className="whitespace-pre-line text-sm text-muted-foreground">{text}</p>
+    </SectionCard>
   );
 }
 

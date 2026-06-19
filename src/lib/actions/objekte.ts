@@ -159,6 +159,7 @@ export async function getEmpfehlungen(input: { kundeId: string }): Promise<{
         keller: r.keller,
         aufzug: r.aufzug,
         afa_satz: r.afa_satz ?? null,
+        standort_highlights: null,
         created_at: r.created_at,
       };
       const { score, reason } = calcScore({

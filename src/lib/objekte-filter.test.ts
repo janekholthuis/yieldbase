@@ -47,6 +47,7 @@ function item(over: Partial<ObjektListItem>): ObjektListItem {
     keller: false,
     aufzug: false,
     afa_satz: 2,
+    standort_highlights: null,
     created_at: "2026-01-01",
     ...over,
   };

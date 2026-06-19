@@ -5,6 +5,7 @@
 // Business-Komposition (kein shadcn-Pendant) — eigenes Overlay mit a11y.
 
 import { useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 export interface LightboxImage {
@@ -53,9 +54,15 @@ export function ImageLightbox({
   }, [open, go, onClose]);
 
   if (!open || index == null) return null;
+  // SSR guard: this overlay only renders after a client interaction, so there is
+  // no hydration mismatch (it is null on the server and on first client paint).
+  if (typeof document === "undefined") return null;
   const current = images[index];
 
-  return (
+  // Portal to <body> so the fixed overlay is anchored to the viewport, not to a
+  // transformed/filtered ancestor (e.g. the styled gallery hero) — which would
+  // otherwise clip it to a containing block and render it mid-page.
+  return createPortal(
     <div
       className="fixed inset-0 z-[200] flex flex-col bg-black/92 backdrop-blur-sm"
       role="dialog"
@@ -136,6 +143,7 @@ export function ImageLightbox({
           ))}
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

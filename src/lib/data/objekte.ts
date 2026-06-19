@@ -53,6 +53,9 @@ export interface ObjektListItem {
   keller: boolean;
   aufzug: boolean;
   afa_satz: number | null;
+  /** Free-text location highlights (KI/manual). Only loaded for the project
+   *  detail view; null on the global list to keep that query lean. */
+  standort_highlights: string | null;
   created_at: string;
 }
 
@@ -221,6 +224,7 @@ function mapEinheitRow(row: any): ObjektListItem {
     keller: row.keller,
     aufzug: row.aufzug,
     afa_satz: row.afa_satz ?? null,
+    standort_highlights: row.standort_highlights ?? null,
     created_at: row.created_at,
   };
 }
@@ -518,7 +522,8 @@ export async function getProjektDetail(projektId: string): Promise<{
         .from("einheiten")
         // Kein projekte-Embed nötig — wir haben das Projekt `p` bereits; der
         // Embed-Join über zwei Tabellen unter RLS ist teuer und vermeidbar.
-        .select(EINHEIT_LIST_COLS)
+        // standort_highlights nur hier (nicht in der globalen Liste) für den Lage-Tab.
+        .select(`${EINHEIT_LIST_COLS}, standort_highlights`)
         .eq("projekt_id", projektId)
         .order("wohnungsnummer", { ascending: true })
         .abortSignal(queryTimeout()),

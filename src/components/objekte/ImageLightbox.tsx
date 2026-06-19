@@ -77,10 +77,11 @@ export function ImageLightbox({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Schließen"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          aria-label="Bildansicht schließen"
+          className="flex items-center gap-2 rounded-full bg-white px-3.5 py-2 text-sm font-semibold text-brand-ink shadow-lg ring-1 ring-black/10 transition-colors hover:bg-white/90"
         >
-          <X className="h-5 w-5" />
+          <X className="h-5 w-5" strokeWidth={2.5} />
+          <span className="hidden sm:inline">Schließen</span>
         </button>
       </div>
 

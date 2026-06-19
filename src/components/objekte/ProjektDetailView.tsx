@@ -40,6 +40,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EinheitDetailView } from "@/components/objekte/EinheitDetailView";
 import { FinanziererPoolTab } from "@/components/objekte/FinanziererPoolTab";
 import { ImageLightbox } from "@/components/objekte/ImageLightbox";
+import { StandortHighlights } from "@/components/objekte/StandortHighlights";
 import {
   useEinheitKalkulation,
   type EinheitKalkulation,
@@ -288,6 +289,12 @@ function CalcBody({
   for (const u of units) statusCounts.set(u.status, (statusCounts.get(u.status) ?? 0) + 1);
   const freiCount = statusCounts.get("frei") ?? 0;
 
+  // Freitext-Lage-Highlights (Feld standort_highlights, KI/manuell). Projektweit:
+  // alle Einheiten teilen die Adresse → erster gepflegter Text.
+  const lageHighlights = units
+    .map((u) => u.standort_highlights)
+    .find((h): h is string => !!h && h.trim().length > 0);
+
   return (
     <div className="flex flex-col gap-7 px-4 pb-8 pt-6 sm:px-7 lg:flex-row">
       {/* LEFT */}
@@ -395,6 +402,21 @@ function CalcBody({
                   label={adresse ?? ""}
                 />
               </div>
+              <StandortHighlights
+                adresse={projekt.adresse}
+                plz={projekt.plz}
+                stadt={projekt.stadt}
+              />
+              {lageHighlights && (
+                <div className="rounded-[14px] border border-brand-border bg-card p-4">
+                  <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-brand-subtle">
+                    Lage-Highlights
+                  </h3>
+                  <p className="whitespace-pre-line text-[13.5px] leading-relaxed text-brand-body">
+                    {lageHighlights}
+                  </p>
+                </div>
+              )}
             </div>
           </TabsContent>
 

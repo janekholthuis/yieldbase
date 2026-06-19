@@ -33,6 +33,7 @@ export function MobileTabbar() {
               <li key={item.to}>
                 <Link
                   href={item.to}
+                  prefetch={false}
                   className={
                     "relative flex flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] transition-colors " +
                     (active

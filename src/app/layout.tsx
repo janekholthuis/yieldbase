@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { getActiveOrganisation } from "@/lib/data/organisationen";
+import { getSessionUser } from "@/lib/auth";
 import { buildOrgThemeCss } from "@/lib/branding";
 
 export const metadata: Metadata = {
@@ -14,7 +15,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const org = await getActiveOrganisation();
+  // Both share the per-request cached getSessionUser() (one auth round-trip).
+  const [org, session] = await Promise.all([
+    getActiveOrganisation(),
+    getSessionUser(),
+  ]);
   const themeCss = buildOrgThemeCss(org);
 
   return (
@@ -25,6 +30,8 @@ export default async function RootLayout({
         ) : null}
         <Providers
           activeOrg={org ? { name: org.name, logoUrl: org.logoUrl } : null}
+          initialRoles={session?.roles ?? []}
+          initialUserId={session?.userId ?? null}
         >
           {children}
         </Providers>

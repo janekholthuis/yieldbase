@@ -39,7 +39,7 @@ export function AppSidebar() {
       className="border-r border-brand-border [&_[data-sidebar=sidebar]]:bg-brand-surface"
     >
       <SidebarHeader className="border-b border-brand-divider">
-        <Link href="/dashboard" className="flex items-center px-2 py-1.5">
+        <Link href="/dashboard" prefetch={false} className="flex items-center px-2 py-1.5">
           {collapsed ? (
             <ObjektpilotLogo size={26} className="shrink-0" />
           ) : (
@@ -92,7 +92,7 @@ export function AppSidebar() {
                           : "rounded-lg text-brand-body hover:!bg-brand-surfaceMuted hover:!text-brand-primary"
                       }
                     >
-                      <Link href={item.to} className="flex items-center gap-3">
+                      <Link href={item.to} prefetch={false} className="flex items-center gap-3">
                         <item.icon className="h-[18px] w-[18px]" strokeWidth={2} />
                         <span>{item.title}</span>
                       </Link>

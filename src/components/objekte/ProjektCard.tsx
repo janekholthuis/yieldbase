@@ -68,7 +68,7 @@ export function ProjektCard({ data }: { data: ProjektCardData }) {
   const href = `/objekte/projekt/${data.projekt_id}`;
 
   return (
-    <Link href={href} className="group block focus:outline-none">
+    <Link href={href} prefetch={false} className="group block focus:outline-none">
       <Card className="overflow-hidden transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg group-focus-visible:ring-2 group-focus-visible:ring-ring h-full flex flex-col">
         {/* Cover */}
         <div className="relative h-48 w-full overflow-hidden bg-muted">

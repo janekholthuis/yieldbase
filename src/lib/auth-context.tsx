@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -24,12 +25,24 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({
+  children,
+  initialRoles = [],
+  initialUserId = null,
+}: {
+  children: ReactNode;
+  initialRoles?: AppRole[];
+  initialUserId?: string | null;
+}) {
   // One browser client per provider instance (shares cookie storage).
   const [supabase] = useState(() => createClient());
   const [session, setSession] = useState<Session | null>(null);
-  const [roles, setRoles] = useState<AppRole[]>([]);
+  // Seed roles from the server (root layout) so the common page-load path never
+  // queries user_roles from the browser — that direct REST call was the source
+  // of the CORS console errors and an extra DB round-trip per load.
+  const [roles, setRoles] = useState<AppRole[]>(initialRoles);
   const [loading, setLoading] = useState(true);
+  const knownUserId = useRef<string | null>(initialUserId);
 
   async function fetchRoles(userId: string): Promise<AppRole[]> {
     const { data } = await supabase
@@ -43,27 +56,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 1. Subscribe FIRST
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
-      if (newSession?.user) {
+      const uid = newSession?.user?.id ?? null;
+      if (!uid) {
+        knownUserId.current = null;
+        setRoles([]);
+        return;
+      }
+      // Only hit the DB when the signed-in user differs from what the server
+      // already rendered — the normal load path keeps the seeded roles.
+      if (uid !== knownUserId.current) {
+        knownUserId.current = uid;
         // Defer to avoid deadlocks inside the auth callback.
         setTimeout(() => {
-          fetchRoles(newSession.user.id).then(setRoles);
+          fetchRoles(uid).then(setRoles);
         }, 0);
-      } else {
-        setRoles([]);
       }
     });
 
-    // 2. THEN bootstrap
+    // 2. THEN bootstrap from local cookies (no network/DB round-trip).
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
-      if (data.session?.user) {
-        fetchRoles(data.session.user.id).then((r) => {
-          setRoles(r);
-          setLoading(false);
-        });
-      } else {
-        setLoading(false);
-      }
+      setLoading(false);
     });
 
     return () => sub.subscription.unsubscribe();

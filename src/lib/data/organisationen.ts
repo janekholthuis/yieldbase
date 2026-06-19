@@ -65,19 +65,26 @@ export async function getActiveOrganisation(): Promise<ActiveOrg | null> {
     if (!session) return null;
     const { supabase, userId } = session;
 
-    const { data: profile, error: profileErr } = await supabase
+    // Single DB round-trip: read the user's active org id and embed its branding
+    // via the profiles_active_organisation_id_fkey FK. Previously this was two
+    // serial queries (profiles → organisationen) on every page load — under DB
+    // contention that doubled the hot-path latency for the root layout.
+    const { data, error } = await supabase
       .from("profiles")
-      .select("active_organisation_id")
+      .select(`organisationen:active_organisation_id(${BRANDING_SELECT})`)
       .eq("id", userId)
       .maybeSingle();
-    if (profileErr || !profile?.active_organisation_id) return null;
+    if (error || !data) return null;
 
-    const { data: org, error: orgErr } = await supabase
-      .from("organisationen")
-      .select(BRANDING_SELECT)
-      .eq("id", profile.active_organisation_id)
-      .maybeSingle();
-    if (orgErr || !org) return null;
+    const org = (
+      data as unknown as {
+        organisationen: Pick<
+          OrganisationRow,
+          "id" | "name" | "slug" | "logo_url" | "primary_color" | "accent_color"
+        > | null;
+      }
+    ).organisationen;
+    if (!org) return null;
 
     return toActiveOrg(org);
   } catch {

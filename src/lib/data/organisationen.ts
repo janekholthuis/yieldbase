@@ -3,7 +3,9 @@
 // user via the cookie Supabase client. Members can SELECT their orgs; the SQL
 // helpers is_org_member / is_org_admin back the policies.
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { getSessionUser, requireUser } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
 
 type OrganisationRow = Database["public"]["Tables"]["organisationen"]["Row"];
@@ -38,6 +40,31 @@ export interface OrganisationMember {
 
 const BRANDING_SELECT = "id,name,slug,logo_url,primary_color,accent_color";
 
+/**
+ * Cross-request cached branding for a single org. Branding is non-secret and
+ * changes rarely (org setup), so it is read with the service client (sidestepping
+ * the heavy organisationen RLS on the hot path) and shared across all users of the
+ * org. TTL-based freshness: a branding edit self-heals within 60s; the settings UI
+ * shows the new values immediately from updateOrganisationBranding's return value,
+ * so only the global layout chrome lags by at most the TTL.
+ */
+function getOrgBrandingCached(orgId: string): Promise<ActiveOrg | null> {
+  return unstable_cache(
+    async (): Promise<ActiveOrg | null> => {
+      const admin = createAdminClient();
+      const { data, error } = await admin
+        .from("organisationen")
+        .select(BRANDING_SELECT)
+        .eq("id", orgId)
+        .maybeSingle();
+      if (error || !data) return null;
+      return toActiveOrg(data);
+    },
+    ["org-branding", orgId],
+    { revalidate: 60 },
+  )();
+}
+
 function toActiveOrg(
   row: Pick<
     OrganisationRow,
@@ -63,30 +90,22 @@ export async function getActiveOrganisation(): Promise<ActiveOrg | null> {
   try {
     const session = await getSessionUser();
     if (!session) return null;
-    const { supabase, userId } = session;
+    const { userId } = session;
 
-    // Single DB round-trip: read the user's active org id and embed its branding
-    // via the profiles_active_organisation_id_fkey FK. Previously this was two
-    // serial queries (profiles → organisationen) on every page load — under DB
-    // contention that doubled the hot-path latency for the root layout.
-    const { data, error } = await supabase
+    // Resolve which org is active for this user. Self-scoped read by the
+    // already-authenticated userId via the service client — keeps the heavy
+    // profiles RLS policy off the per-request hot path. Reads only the user's
+    // own active_organisation_id, so no data crosses tenant boundaries.
+    const admin = createAdminClient();
+    const { data: profile, error } = await admin
       .from("profiles")
-      .select(`organisationen:active_organisation_id(${BRANDING_SELECT})`)
+      .select("active_organisation_id")
       .eq("id", userId)
       .maybeSingle();
-    if (error || !data) return null;
+    if (error || !profile?.active_organisation_id) return null;
 
-    const org = (
-      data as unknown as {
-        organisationen: Pick<
-          OrganisationRow,
-          "id" | "name" | "slug" | "logo_url" | "primary_color" | "accent_color"
-        > | null;
-      }
-    ).organisationen;
-    if (!org) return null;
-
-    return toActiveOrg(org);
+    // Branding itself is served from the cross-request cache (warm = no DB).
+    return await getOrgBrandingCached(profile.active_organisation_id);
   } catch {
     return null;
   }

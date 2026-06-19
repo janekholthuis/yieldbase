@@ -204,6 +204,8 @@ export async function updateOrganisationBranding(input: {
     );
   }
 
+  // The cross-request branding cache (60s TTL) self-heals; callers get the new
+  // values immediately from this return. revalidatePath re-renders the layout.
   revalidatePath("/", "layout");
 
   return {

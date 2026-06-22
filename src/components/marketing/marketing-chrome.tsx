@@ -3,14 +3,30 @@ import { ArrowRight } from "lucide-react";
 
 /* Geteilte Marketing-Navigation + Footer für Landing (`/`) und Roadmap. */
 
+/** Objekt-Pilot-Logo-Mark — navy Quadrat mit weißem Navigations-/Piloten-Pfeil. */
+function BrandMark({ className }: { className?: string }) {
+  return (
+    <span
+      className={`grid place-items-center bg-brand-primary text-white ${className ?? ""}`}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden
+        className="h-[58%] w-[58%]"
+      >
+        <path d="M12 3.5 L19 20.5 L12 16.6 L5 20.5 Z" />
+      </svg>
+    </span>
+  );
+}
+
 export function MarketingNav() {
   return (
     <header className="sticky top-0 z-40 border-b border-brand-border bg-white/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center bg-brand-primary text-sm font-bold text-white">
-            OP
-          </span>
+          <BrandMark className="h-8 w-8" />
           <span className="text-[15px] font-semibold tracking-tight text-brand-ink">
             Objekt&nbsp;Pilot
           </span>
@@ -53,9 +69,7 @@ export function MarketingFooter() {
     <footer className="border-t border-brand-border bg-white">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-10 sm:flex-row">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-7 w-7 place-items-center bg-brand-primary text-xs font-bold text-white">
-            OP
-          </span>
+          <BrandMark className="h-7 w-7" />
           <span className="text-sm font-semibold text-brand-ink">Objekt Pilot</span>
         </div>
         <p className="text-sm text-brand-muted">

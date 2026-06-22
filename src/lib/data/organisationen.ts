@@ -144,6 +144,49 @@ export async function resolveOrgForHost(host: string | null): Promise<ActiveOrg 
   return getOrgByDomainCached(h);
 }
 
+/**
+ * Pin the signed-in user's active organisation to the org that owns the request
+ * Host (custom domain), so data scoping (RLS `current_org_id()` reads
+ * `active_organisation_id`) follows the domain — not just branding (PROJ-30).
+ *
+ * Safe by construction: only ever switches to an org the user is **a member of**
+ * (non-members are untouched — never breaks their scoping), only writes on an
+ * actual mismatch, self-scoped to the user's own profile row, and never throws.
+ */
+export async function alignActiveOrgToHost(host: string | null): Promise<void> {
+  try {
+    const hostOrg = await resolveOrgForHost(host);
+    if (!hostOrg) return; // neutral domain — leave the user's active org as-is
+    const session = await getSessionUser();
+    if (!session) return;
+
+    const admin = createAdminClient();
+    const [memRes, profRes] = await Promise.all([
+      admin
+        .from("organisation_members")
+        .select("organisation_id")
+        .eq("organisation_id", hostOrg.id)
+        .eq("user_id", session.userId)
+        .maybeSingle(),
+      admin
+        .from("profiles")
+        .select("active_organisation_id")
+        .eq("id", session.userId)
+        .maybeSingle(),
+    ]);
+
+    if (!memRes.data) return; // not a member of the host org → never re-scope
+    if (profRes.data?.active_organisation_id === hostOrg.id) return; // already aligned
+
+    await admin
+      .from("profiles")
+      .update({ active_organisation_id: hostOrg.id })
+      .eq("id", session.userId);
+  } catch {
+    /* org alignment must never break the app */
+  }
+}
+
 /** Organisations the current user is a member of, with their role, ordered by name. */
 export async function listMyOrganisations(): Promise<MyOrganisation[]> {
   const { supabase, userId } = await requireUser();

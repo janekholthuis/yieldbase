@@ -61,13 +61,13 @@ export function MobileTabbar() {
         </ul>
       </nav>
       {showFab && (
-        <button
-          type="button"
+        <Link
+          href="/kunden/neu"
           aria-label="Neuer Kunde"
           className="fixed bottom-[calc(env(safe-area-inset-bottom)+5rem)] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-brand-primary text-white shadow-popover transition-colors hover:bg-brand-primaryHover md:hidden"
         >
           <Plus className="h-6 w-6" />
-        </button>
+        </Link>
       )}
     </>
   );

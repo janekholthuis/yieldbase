@@ -99,8 +99,10 @@ export function Topbar() {
             </Button>
           )}
           {showNewSubVp && (
-            <Button size="default" className="hidden lg:inline-flex" variant="outline">
-              <Plus className="mr-1 h-4 w-4" /> Neuer Sub-VP
+            <Button asChild size="default" className="hidden lg:inline-flex" variant="outline">
+              <Link href="/team">
+                <Plus className="mr-1 h-4 w-4" /> Neuer Sub-VP
+              </Link>
             </Button>
           )}
 

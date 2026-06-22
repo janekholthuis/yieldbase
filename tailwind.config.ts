@@ -49,19 +49,33 @@ const config: Config = {
   			},
   			destructive: {
   				DEFAULT: 'oklch(var(--destructive) / <alpha-value>)',
-  				foreground: 'oklch(var(--destructive-foreground) / <alpha-value>)'
+  				foreground: 'oklch(var(--destructive-foreground) / <alpha-value>)',
+  				soft: 'oklch(var(--destructive-soft) / <alpha-value>)'
   			},
   			success: {
   				DEFAULT: 'oklch(var(--success) / <alpha-value>)',
-  				foreground: 'oklch(var(--success-foreground) / <alpha-value>)'
+  				foreground: 'oklch(var(--success-foreground) / <alpha-value>)',
+  				soft: 'oklch(var(--success-soft) / <alpha-value>)'
   			},
   			warning: {
   				DEFAULT: 'oklch(var(--warning) / <alpha-value>)',
-  				foreground: 'oklch(var(--warning-foreground) / <alpha-value>)'
+  				foreground: 'oklch(var(--warning-foreground) / <alpha-value>)',
+  				soft: 'oklch(var(--warning-soft) / <alpha-value>)'
   			},
   			info: {
   				DEFAULT: 'oklch(var(--info) / <alpha-value>)',
-  				foreground: 'oklch(var(--info-foreground) / <alpha-value>)'
+  				foreground: 'oklch(var(--info-foreground) / <alpha-value>)',
+  				soft: 'oklch(var(--info-soft) / <alpha-value>)'
+  			},
+  			/* PROJ-25: Porsche-Struktur-Tokens */
+  			contrast: {
+  				high: 'oklch(var(--contrast-high) / <alpha-value>)',
+  				medium: 'oklch(var(--contrast-medium) / <alpha-value>)',
+  				low: 'oklch(var(--contrast-low) / <alpha-value>)'
+  			},
+  			state: {
+  				hover: 'oklch(var(--state-hover) / <alpha-value>)',
+  				active: 'oklch(var(--state-active) / <alpha-value>)'
   			},
   			border: 'oklch(var(--border) / <alpha-value>)',
   			input: 'oklch(var(--input) / <alpha-value>)',
@@ -123,6 +137,26 @@ const config: Config = {
   				info: '#3E7CB1',
   				infoSoft: '#E8F0F8'
   			}
+  		},
+  		/* PROJ-25: benannte Spacing-Skala (Porsche-Stufen, additiv) */
+  		spacing: {
+  			xs: '4px',
+  			s: '8px',
+  			m: '16px',
+  			l: '24px',
+  			xl: '36px',
+  			'2xl': '48px',
+  			'3xl': '64px'
+  		},
+  		transitionTimingFunction: {
+  			ds: 'var(--motion-ease)',
+  			'ds-out': 'var(--motion-ease-out)',
+  			'ds-in': 'var(--motion-ease-in)'
+  		},
+  		transitionDuration: {
+  			'ds-short': '120ms',
+  			'ds-moderate': '220ms',
+  			'ds-long': '360ms'
   		},
   		borderRadius: {
   			sm: 'calc(var(--radius) - 4px)',

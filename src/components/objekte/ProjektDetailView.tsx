@@ -14,9 +14,6 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import {
   ArrowLeft,
-  Heart,
-  Share2,
-  MoreHorizontal,
   MapPin,
   Mail,
   FileText,
@@ -325,10 +322,8 @@ function CalcBody({
         {/* Big metrics */}
         <div className="flex flex-wrap gap-x-10 gap-y-5">
           <Metric label="Kaufpreis">
-            <span className="inline-block rounded-[7px] bg-brand-accentSoft px-3 py-[3px]">
-              <span className="text-[27px] font-semibold leading-none text-brand-ink">
-                {minPrice != null ? `ab ${formatEUR(minPrice)}` : "—"}
-              </span>
+            <span className="text-[27px] font-semibold leading-none text-brand-ink">
+              {minPrice != null ? `ab ${formatEUR(minPrice)}` : "—"}
             </span>
           </Metric>
           <Metric label="Wohnfläche">
@@ -628,30 +623,14 @@ function GalleryHero({
         ))}
       </div>
 
-      {/* Floating round buttons */}
+      {/* Zurück-Link (einzige Hero-Overlay-Aktion — keine dekorativen Buttons) */}
       <Link
         href="/objekte"
         aria-label="Zurück zu Objekte"
-        className="absolute left-7 top-7 flex h-[42px] w-[42px] items-center justify-center rounded-full bg-card text-brand-ink shadow-[0_2px_10px_rgba(0,0,0,0.16)] transition-colors hover:bg-brand-surfaceMuted"
+        className="absolute left-7 top-7 flex h-[42px] w-[42px] items-center justify-center rounded-full bg-card text-brand-ink shadow-[0_2px_10px_rgba(0,0,0,0.16)] transition-colors hover:bg-state-hover"
       >
         <ArrowLeft className="h-5 w-5" />
       </Link>
-      <div className="absolute right-7 top-7 flex gap-2">
-        {[
-          { icon: Heart, label: "Merken" },
-          { icon: Share2, label: "Teilen" },
-          { icon: MoreHorizontal, label: "Mehr" },
-        ].map(({ icon: Icon, label }) => (
-          <button
-            key={label}
-            type="button"
-            aria-label={label}
-            className="flex h-[42px] w-[42px] items-center justify-center rounded-full bg-card text-brand-ink shadow-[0_2px_10px_rgba(0,0,0,0.16)] transition-colors hover:bg-brand-surfaceMuted"
-          >
-            <Icon className="h-5 w-5" />
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
@@ -885,12 +864,6 @@ function InvestmentCard({
             <Mail className="mr-2 h-4 w-4" /> Anfragen
           </Link>
         </Button>
-        <button
-          type="button"
-          className="w-full rounded-[10px] border border-brand-border py-[11px] text-[13px] font-semibold text-brand-ink transition-colors hover:bg-brand-surfaceMuted"
-        >
-          Preis vorschlagen
-        </button>
       </div>
 
       {/* Small outline actions */}

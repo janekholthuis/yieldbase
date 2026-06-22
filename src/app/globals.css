@@ -66,6 +66,29 @@
     --input: 0.93 0.008 256;
     --ring: 0.32 0.07 250;
 
+    /* ── Porsche-Struktur-Tokens (PROJ-25): Contrast-Stufen für Text ── */
+    --contrast-high: 0.21 0.03 257;    /* Primärtext (= foreground) */
+    --contrast-medium: 0.50 0.02 257;  /* Sekundärtext (= muted-foreground) */
+    --contrast-low: 0.65 0.02 257;     /* Tertiär / Placeholder / disabled */
+
+    /* Notification Soft-Flächen (Chips, Alerts, Badges) */
+    --success-soft: 0.95 0.03 155;
+    --warning-soft: 0.96 0.045 85;
+    --destructive-soft: 0.95 0.03 27;
+    --info-soft: 0.95 0.03 245;
+
+    /* State-Tokens (neutrale Hover/Active-Flächen) */
+    --state-hover: 0.97 0.004 257;
+    --state-active: 0.94 0.006 257;
+
+    /* Motion-Tokens */
+    --motion-duration-short: 120ms;
+    --motion-duration-moderate: 220ms;
+    --motion-duration-long: 360ms;
+    --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
+
     --chart-1: 0.32 0.07 250;     /* Navy */
     --chart-2: 0.55 0.10 245;     /* Navy-Light */
     --chart-3: 0.71 0.12 80;      /* Gold */
@@ -122,6 +145,18 @@
     --border: 0.35 0.02 257;
     --input: 0.35 0.02 257;
     --ring: 0.71 0.12 80;
+
+    /* Porsche-Struktur-Tokens (dark) */
+    --contrast-high: 0.97 0.005 257;
+    --contrast-medium: 0.70 0.02 257;
+    --contrast-low: 0.55 0.02 257;
+    --success-soft: 0.30 0.04 155;
+    --warning-soft: 0.32 0.05 85;
+    --destructive-soft: 0.30 0.05 27;
+    --info-soft: 0.30 0.04 245;
+    --state-hover: 0.26 0.025 257;
+    --state-active: 0.30 0.03 257;
+
     --chart-1: 0.32 0.07 250;
     --chart-2: 0.55 0.10 245;
     --chart-3: 0.71 0.12 80;
@@ -170,4 +205,28 @@
 }
 .page-fade {
   animation: pageFadeIn 180ms ease-out both;
+}
+
+/* ── A11y (PROJ-25): sichtbarer Fokus auf nackten Links/Tab-Targets ──
+   shadcn-Primitives bringen ihren eigenen focus-visible:ring mit; dieser
+   Fallback greift nur dort, wo kein eigener Ring definiert ist. */
+@layer base {
+  a:focus-visible,
+  [tabindex]:not([tabindex="-1"]):focus-visible {
+    outline: 2px solid oklch(var(--ring));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+/* Reduced Motion respektieren */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

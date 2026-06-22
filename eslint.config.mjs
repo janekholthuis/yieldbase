@@ -16,6 +16,8 @@ const eslintConfig = [
       "OLD APP/**",
       "yieldbase/**",
       "supabase/**",
+      // local-only migration workspace (gitignored: dumps, scripts, creds)
+      "migration/**",
       "public/**",
       // shadcn/ui primitives are vendored copy-paste code (CLAUDE.md: never
       // modify them) — don't lint them.

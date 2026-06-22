@@ -1,4 +1,10 @@
-project_id = "ffagjzkkzlywejzjfgue"
+project_id = "gfbokqnjwmkcpcundtfs"
+
+# Synthetischer Seed für Branch-/Local-DBs (Staging). Läuft bei db reset / start
+# und beim Provisionieren jeder Supabase-Branch-DB. Siehe docs/STAGING-PLAN.md.
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
 
 # Seed-Funktion ist nach Bootstrap nur noch über Admin-JWT zugänglich.
 # verify_jwt = true zwingt Aufrufer zu einem gültigen Supabase-Token;

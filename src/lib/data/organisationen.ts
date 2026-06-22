@@ -111,6 +111,39 @@ export async function getActiveOrganisation(): Promise<ActiveOrg | null> {
   }
 }
 
+/** Cross-request cached org branding looked up by custom domain (host). */
+function getOrgByDomainCached(domain: string): Promise<ActiveOrg | null> {
+  return unstable_cache(
+    async (): Promise<ActiveOrg | null> => {
+      const admin = createAdminClient();
+      const { data } = await admin
+        .from("organisationen")
+        .select(BRANDING_SELECT)
+        .eq("domain", domain)
+        .maybeSingle();
+      return data ? toActiveOrg(data) : null;
+    },
+    ["org-by-domain", domain],
+    { revalidate: 60 },
+  )();
+}
+
+/**
+ * Resolve the org that owns the request's Host (custom domain) — or null for the
+ * neutral canonical Vercel URL / localhost. Works WITHOUT a session, so the public
+ * login/marketing surface on a custom domain is already org-branded (PROJ-30).
+ * `www.` is normalised; ports are stripped.
+ */
+export async function resolveOrgForHost(host: string | null): Promise<ActiveOrg | null> {
+  if (!host) return null;
+  let h = host.split(":")[0].trim().toLowerCase();
+  if (!h || h === "localhost" || h.endsWith(".localhost") || h.endsWith(".vercel.app")) {
+    return null;
+  }
+  if (h.startsWith("www.")) h = h.slice(4);
+  return getOrgByDomainCached(h);
+}
+
 /** Organisations the current user is a member of, with their role, ordered by name. */
 export async function listMyOrganisations(): Promise<MyOrganisation[]> {
   const { supabase, userId } = await requireUser();

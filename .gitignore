@@ -47,3 +47,6 @@ OLD APP/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Supabase migration (local only — DB passwords + dumps, never commit)
+/migration/

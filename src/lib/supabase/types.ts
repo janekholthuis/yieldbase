@@ -1199,6 +1199,8 @@ export type Database = {
         Row: {
           accent_color: string | null
           created_at: string
+          domain: string | null
+          domain_verified: boolean
           id: string
           investagon_api_key: string | null
           investagon_org_id: string | null
@@ -1213,6 +1215,8 @@ export type Database = {
         Insert: {
           accent_color?: string | null
           created_at?: string
+          domain?: string | null
+          domain_verified?: boolean
           id?: string
           investagon_api_key?: string | null
           investagon_org_id?: string | null
@@ -1227,6 +1231,8 @@ export type Database = {
         Update: {
           accent_color?: string | null
           created_at?: string
+          domain?: string | null
+          domain_verified?: boolean
           id?: string
           investagon_api_key?: string | null
           investagon_org_id?: string | null

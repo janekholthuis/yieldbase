@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/select";
 import { FileUpload } from "@/components/dokumente/FileUpload";
 import { BrandingExtractDialog } from "@/components/organisation/BrandingExtractDialog";
+import { DomainCard } from "@/components/organisation/DomainCard";
 import { rehostLogoFromUrl } from "@/lib/actions/branding-extract";
 import { useAuth } from "@/lib/auth-context";
 import type { ActiveOrg, OrganisationMember } from "@/lib/data/organisationen";
@@ -136,6 +137,8 @@ export function EinstellungenView({
               </CardContent>
             </Card>
           )}
+
+          {canManageOrg && <DomainCard orgId={activeOrg.id} />}
 
           <MembersCard
             orgId={activeOrg.id}

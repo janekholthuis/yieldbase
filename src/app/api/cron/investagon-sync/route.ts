@@ -13,6 +13,13 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function GET(request: Request) {
+  // Never run the sync against a non-production (preview/branch) DB — Vercel only
+  // fires crons on Production deployments, but this guards manual/preview hits too
+  // so a Supabase branch DB is never mutated by the sync.
+  if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production") {
+    return NextResponse.json({ skipped: "non-production environment" });
+  }
+
   const secret = process.env.CRON_SECRET;
   const auth = request.headers.get("authorization");
   if (!secret || auth !== `Bearer ${secret}`) {

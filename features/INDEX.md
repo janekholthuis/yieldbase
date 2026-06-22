@@ -70,7 +70,7 @@
 | PROJ-27 | Link-Tracking im Beratungsprozess (Öffnungs-/Interaktions-Tracking für geteilte Links: Präsentation/Exposé, Selbstauskunft-Token-Link, Demo-Link — wer/wann geöffnet, Status im CRM, Benachrichtigung an VP) | Roadmap (kein Spec) | — | 2026-06-19 |
 | PROJ-28 | Individuelle Präsentationen mit Steuervorteilen (Präsentation/Exposé individuell auf Objekt **und** Kunde gemünzt — persönl. Steuersatz/AfA-Effekt/Liquidität, Kalkulation-2.0-Engine je Kunde, personalisierte PDF) | Roadmap (kein Spec) | — | 2026-06-19 |
 | PROJ-29 | KI-Objektmatching & -vergleich (KI matcht passende Einheiten zu Kunde/Suchprofil + KI-gestützter Side-by-side-Vergleich/Begründung; baut auf PROJ-17 Suchagenten + PROJ-18 Objektvergleiche) | Roadmap (kein Spec) | — | 2026-06-19 |
-| PROJ-30 | Org-Custom-Domains (App kanonisch auf Vercel-URL; jede Org verbindet eine eigene Domain via Vercel-API → Host→Org-Auflösung, org-gebrandete App; emi-hub.de → Haupt-Org) | In Progress (DB-Fundament + emi-hub-Mapping live; Vercel-Client/Host-Auflösung/UI offen) | features/PROJ-30-org-custom-domains.md | 2026-06-22 |
+| PROJ-30 | Org-Custom-Domains (App kanonisch „Objekt Pilot" auf Vercel-URL; jede Org verbindet eigene Domain via Vercel-API → Host→Org-Auflösung + Active-Org-Pinning, org-gebrandete App mit Rollen-Login; emi-hub.de → Haupt-Org) | Deployed (2026-06-22; DB+Mapping, Vercel-Client+UI, Host-Auflösung, Host-Pinning, Rebrand, OrgLanding — live & verifiziert) | features/PROJ-30-org-custom-domains.md | 2026-06-22 |
 
 <!-- Add features above this line -->
 

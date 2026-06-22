@@ -36,4 +36,12 @@ Domain der Haupt-Org „Erfolg mit Immobilien".
 
 ## Fortschritt
 - ✅ DB-Migration + emi-hub→Haupt-Org-Mapping (live auf Prod `gfbokqnjwmkcpcundtfs`).
-- ⏳ Vercel-API-Client, Host-Auflösung, Actions, UI — folgen (teils nach Vercel-Token).
+- ✅ Vercel-Domains-API-Client + `VERCEL_API_TOKEN`/`PROJECT_ID`/`TEAM_ID` in Vercel-Env (Token verifiziert).
+- ✅ Host→Org-Auflösung (`resolveOrgForHost`) im Root-Layout; brandet auch ausgeloggt.
+- ✅ Server-Actions (`connectOrgDomain`/`getOrgDomainStatus`/`verifyOrgDomain`/`disconnectOrgDomain`, org-admin-gegated).
+- ✅ Einstellungen → DomainCard (verbinden, DNS-Records, Verify-Status, trennen).
+- ✅ App generisch „Objekt Pilot" (Metadata, Chrome, Landing, Logo-Mark); neutrale URL = SaaS-Landing.
+- ✅ OrgLanding auf Org-Domain: gebrandet + Rollen-Login (Kunde/Finanzierer/Vertriebspartner → `/login` mit Redirect-Hint). `/` und `/start` host-aware.
+- ✅ **Host-Pinning der Active-Org** (`alignActiveOrgToHost` im `(app)`-Layout): Daten-Scoping folgt der Domain für Org-Mitglieder (RLS unverändert; nur Mitglieder, Write nur bei Mismatch).
+- **Live deployed** (Commits `faef0d4`/`d5b3465`/`353456a`/`d8c0da4` → emi-hub.de + objekt-pilot.vercel.app, beide Landings verifiziert).
+- **Offen:** eigenes echtes Objekt-Pilot-Logo (aktuell SVG-Mark); Finanzierer-Active-Org-Edgecase (Nicht-Mitglieder werden bewusst nicht gepinnt).

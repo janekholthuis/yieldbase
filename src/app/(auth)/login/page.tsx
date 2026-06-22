@@ -29,7 +29,7 @@ function LoginInner() {
   return (
     <AuthShell
       title="Willkommen zurück"
-      subtitle="Melde dich an, um auf dein Objektpilot-Konto zuzugreifen."
+      subtitle="Melde dich an, um fortzufahren."
       footer={
         <Link href="/forgot-password" className="text-foreground hover:underline">
           Passwort vergessen?

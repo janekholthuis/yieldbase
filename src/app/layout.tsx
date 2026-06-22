@@ -10,8 +10,8 @@ import { getSessionUser } from "@/lib/auth";
 import { buildOrgThemeCss } from "@/lib/branding";
 
 export const metadata: Metadata = {
-  title: "Objektpilot Vertriebsplattform",
-  description: "Multi-Tenant Vertriebsplattform für Bestandsimmobilien.",
+  title: "Objekt Pilot",
+  description: "Die Vertriebsplattform für den Immobilienvertrieb.",
 };
 
 export default async function RootLayout({

@@ -17,9 +17,10 @@ import {
 import { MarketingNav, MarketingFooter } from "@/components/marketing/marketing-chrome";
 
 /* ------------------------------------------------------------------ */
-/*  EMI Hub — Marketing-Landingpage                                    */
+/*  Objekt Pilot — SaaS-Marketing-Landingpage (neutrale Domain)        */
 /*  Hell, seriös, kantig. Navy/Gold. Keine verspielten Verläufe.       */
-/*  Gerendert unter `/` (logged-out) und `/start`.                     */
+/*  Gerendert unter `/` (neutrale Domain, logged-out) und `/start`.    */
+/*  Auf einer Org-Custom-Domain rendert `/` stattdessen OrgLanding.    */
 /* ------------------------------------------------------------------ */
 
 export function LandingPage() {
@@ -109,7 +110,7 @@ function BeforeAfter() {
           </h2>
           <p className="mt-4 text-lg text-brand-body">
             Ihr Vertrieb verliert Zeit zwischen Postfächern, Tabellen und Chats.
-            EMI Hub führt alles zusammen.
+            Objekt Pilot führt alles zusammen.
           </p>
         </div>
 
@@ -212,7 +213,7 @@ function AfterPanel() {
           <span className="h-2.5 w-2.5 rounded-full bg-brand-border" />
           <span className="h-2.5 w-2.5 rounded-full bg-brand-border" />
           <span className="ml-2 text-xs font-medium text-brand-muted">
-            app.emi-hub.de
+            app.objekt-pilot.de
           </span>
         </div>
         <div className="grid grid-cols-[112px_1fr]">
@@ -310,7 +311,7 @@ function ReplaceStack() {
             </h2>
             <p className="mt-5 max-w-md text-lg leading-relaxed text-white/70">
               Kein Wechseln, kein Kopieren, kein Suchen. Was Ihr Vertrieb heute
-              auf sechs Tools verteilt, läuft in EMI Hub an einem Ort —
+              auf sechs Tools verteilt, läuft in Objekt Pilot an einem Ort —
               nachvollziehbar und revisionssicher.
             </p>
             <Link
@@ -471,7 +472,7 @@ function FinalCta() {
               Bringen Sie Ihren Vertrieb auf eine Plattform.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-lg text-white/75">
-              Sehen Sie in einer kurzen Demo, wie EMI Hub Objekte, Kunden und
+              Sehen Sie in einer kurzen Demo, wie Objekt Pilot Objekte, Kunden und
               Finanzierung zusammenführt.
             </p>
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">

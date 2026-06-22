@@ -9,10 +9,10 @@ export function MarketingNav() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2.5">
           <span className="grid h-8 w-8 place-items-center bg-brand-primary text-sm font-bold text-white">
-            EH
+            OP
           </span>
           <span className="text-[15px] font-semibold tracking-tight text-brand-ink">
-            EMI&nbsp;Hub
+            Objekt&nbsp;Pilot
           </span>
         </Link>
 
@@ -54,12 +54,12 @@ export function MarketingFooter() {
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-10 sm:flex-row">
         <div className="flex items-center gap-2.5">
           <span className="grid h-7 w-7 place-items-center bg-brand-primary text-xs font-bold text-white">
-            EH
+            OP
           </span>
-          <span className="text-sm font-semibold text-brand-ink">EMI Hub</span>
+          <span className="text-sm font-semibold text-brand-ink">Objekt Pilot</span>
         </div>
         <p className="text-sm text-brand-muted">
-          © 2026 EMI Hub · Eine Plattform statt zehn Tools.
+          © 2026 Objekt Pilot · Eine Plattform statt zehn Tools.
         </p>
         <div className="flex items-center gap-6 text-sm text-brand-body">
           <Link href="/roadmap" className="hover:text-brand-ink">

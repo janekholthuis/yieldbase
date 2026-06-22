@@ -109,11 +109,10 @@ export function OrgLanding({ org }: { org: ActiveOrg }) {
         </div>
       </section>
 
-      {/* Footer — dezenter SaaS-Hinweis */}
+      {/* Footer */}
       <footer className="border-t border-brand-border bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6 text-sm text-brand-muted">
-          <span>© 2026 {org.name}</span>
-          <span>Bereitgestellt über Objekt Pilot</span>
+        <div className="mx-auto max-w-5xl px-6 py-6 text-sm text-brand-muted">
+          © 2026 {org.name}
         </div>
       </footer>
     </main>

@@ -393,27 +393,36 @@ export async function getEinheitDetail(einheitId: string): Promise<{
        grundstueckswert_anteil, grundstuecksanteil_qm, afa_satz, erhaltungsaufwand,
        nutzungsart, objektzustand, stellplaetze_anzahl, stellplatz_preis,
        kaufpreis_wohnung, kaufpreis_moebel, lage_im_haus, renovierungen, tags, standort_highlights,
-       miteigentumsanteil, vermietet_seit, energieklasse, heizungsart, extras,
-       projekte:projekt_id (
-         id, name, projekt_typ, bautraeger, cover_image_url, adresse, baujahr,
-         stadt, plz, bundesland, mietrendite_brutto, bank_iban
-       )`,
+       miteigentumsanteil, vermietet_seit, energieklasse, heizungsart, extras`,
     )
     .eq("id", einheitId)
     .maybeSingle();
 
-  if (eErr || !e || !(e as any).projekte) {
+  if (eErr || !e) {
     return { einheit: null, error: eErr?.message ?? "Nicht gefunden" };
   }
 
   const projektId = (e as any).projekt_id as string;
 
-  // NB: the "geschwister" (all sibling units, full select) query was removed —
+  // NB 1: the projekte data is fetched as a separate single-table lookup (below)
+  // rather than via a `projekte:projekt_id(...)` embed. The embed forces a 2-table
+  // RLS join on every detail load (the dominant cost of this hot path); a plain
+  // PK read of projekte runs in parallel for free since projektId is needed anyway
+  // (see the same deliberate choice in getProjektDetail).
+  // NB 2: the "geschwister" (all sibling units, full select) query was removed —
   // it was loaded on every detail fetch but only rendered by the NON-embedded
   // EinheitDetailView (GeschwisterCard), which is never mounted (the view is only
   // used `embedded` in ProjektTabs). Loading all project units per call forced an
   // expensive per-row RLS scan and was a major contributor to statement timeouts.
-  const [bildersR, dokR, zuweisungenR] = await Promise.all([
+  const [projektR, bildersR, dokR, zuweisungenR] = await Promise.all([
+    supabase
+      .from("projekte")
+      .select(
+        `id, name, projekt_typ, bautraeger, cover_image_url, adresse, baujahr,
+         stadt, plz, bundesland, mietrendite_brutto, bank_iban`,
+      )
+      .eq("id", projektId)
+      .maybeSingle(),
     supabase
       .from("objekt_bilder")
       .select("id, url, alt, sort_order")
@@ -429,6 +438,13 @@ export async function getEinheitDetail(einheitId: string): Promise<{
       .eq("einheit_id", einheitId)
       .order("created_at", { ascending: false }),
   ]);
+
+  if (!projektR.data) {
+    return { einheit: null, error: "Nicht gefunden" };
+  }
+  // Attach the separately-fetched projekt so mapEinheitRow + the `e.projekte`
+  // reads below behave exactly as with the former embed.
+  (e as any).projekte = projektR.data;
 
   const zuweisungenRaw = zuweisungenR.data ?? [];
   const kundeIds = [...new Set(zuweisungenRaw.map((z) => z.kunde_id).filter(Boolean))];

@@ -12,12 +12,16 @@ export default async function CaseDetailPage({
   params: Promise<{ caseId: string }>;
 }) {
   const { caseId } = await params;
-  let caseData;
-  try {
-    caseData = await getCase({ caseId });
-  } catch {
+  // The comments don't depend on the case row — load both in parallel.
+  const [caseResult, kommentare] = await Promise.all([
+    getCase({ caseId }).then(
+      (data) => ({ data, ok: true as const }),
+      () => ({ data: null, ok: false as const }),
+    ),
+    listCaseKommentare({ caseId }),
+  ]);
+  if (!caseResult.ok || !caseResult.data) {
     notFound();
   }
-  const kommentare = await listCaseKommentare({ caseId });
-  return <CaseDetailView caseData={caseData} kommentare={kommentare} />;
+  return <CaseDetailView caseData={caseResult.data} kommentare={kommentare} />;
 }

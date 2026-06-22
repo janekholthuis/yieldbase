@@ -14,9 +14,16 @@ export const metadata = {
 };
 
 export default async function EinstellungenPage() {
-  const [activeOrg, myOrgs] = await Promise.all([
-    getActiveOrganisation(),
+  // The active org is needed to scope the member list, but listMyOrganisations
+  // and the (org-scoped) member list don't depend on each other — kick the member
+  // fetch off from the active org without serialising it behind listMyOrganisations.
+  const activeOrgPromise = getActiveOrganisation();
+  const [activeOrg, myOrgs, members] = await Promise.all([
+    activeOrgPromise,
     listMyOrganisations(),
+    activeOrgPromise.then((org) =>
+      org ? listOrganisationMembers(org.id).catch(() => [] as OrganisationMember[]) : [],
+    ),
   ]);
 
   // The active org row carries branding but not the caller's role — pull the
@@ -24,15 +31,6 @@ export default async function EinstellungenPage() {
   const activeMembership = activeOrg
     ? (myOrgs.find((o) => o.id === activeOrg.id) ?? null)
     : null;
-
-  let members: OrganisationMember[] = [];
-  if (activeOrg) {
-    try {
-      members = await listOrganisationMembers(activeOrg.id);
-    } catch {
-      members = [];
-    }
-  }
 
   return (
     <EinstellungenView

@@ -19,9 +19,14 @@ export default async function ProjektDetailPage({
   const { projektId } = await params;
   const sp = await searchParams;
   const initialEinheitId = Array.isArray(sp.einheit) ? sp.einheit[0] : sp.einheit;
-  const [{ projekt, error }, kalkContext] = await Promise.all([
+  // When the URL deep-links a specific unit (`?einheit=`, e.g. a shared
+  // presentation link), fetch its full detail in parallel with the project so the
+  // externally-shared path has no waterfall. Without a deep-link we must wait for
+  // the project to know which unit is first (handled below).
+  const [{ projekt, error }, kalkContext, deepLinkDetailRes] = await Promise.all([
     getProjektDetail(projektId),
     getKalkulationsContext(),
+    initialEinheitId ? getEinheitDetail(initialEinheitId) : Promise.resolve(null),
   ]);
 
   if (error || !projekt) {
@@ -42,14 +47,16 @@ export default async function ProjektDetailPage({
   // Pre-load the initially selected unit's full detail server-side so the hero's
   // price/investment card + wealth chart render immediately — no client-side
   // fetch (and no skeleton hang under DB contention) for the default view.
-  const initialUnitId =
-    initialEinheitId &&
-    projekt.einheiten.some((u) => u.einheit_id === initialEinheitId)
-      ? initialEinheitId
-      : (projekt.einheiten[0]?.einheit_id ?? null);
-  const initialDetail = initialUnitId
-    ? (await getEinheitDetail(initialUnitId)).einheit
-    : null;
+  // Reuse the parallel deep-link fetch when it resolved to a unit that actually
+  // belongs to this project; otherwise fall back to the project's first unit.
+  const deepLinkValid =
+    !!deepLinkDetailRes?.einheit &&
+    projekt.einheiten.some((u) => u.einheit_id === initialEinheitId);
+  let initialDetail = deepLinkValid ? (deepLinkDetailRes!.einheit ?? null) : null;
+  if (!initialDetail) {
+    const firstId = projekt.einheiten[0]?.einheit_id ?? null;
+    initialDetail = firstId ? (await getEinheitDetail(firstId)).einheit : null;
+  }
 
   return (
     <ProjektDetailView

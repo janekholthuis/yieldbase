@@ -10,8 +10,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import dynamic from "next/dynamic";
 import {
   ArrowLeft,
   MapPin,
@@ -50,7 +49,19 @@ import {
 } from "@/components/objekte/EinheitKalkulationPanel";
 import { getEinheitDetailAction } from "@/lib/actions/objekte";
 import { useAuth } from "@/lib/auth-context";
-import { MAPBOX_TOKEN, hasMapbox, geocodeAddressParts } from "@/lib/mapbox";
+
+// mapbox-gl (~250 KB) lebt in HeroMap und wird per next/dynamic (ssr:false) erst
+// geladen, wenn der „Lage"-Tab gerendert wird — nicht im initialen Bundle der
+// Projektseite. Fallback: schlichter Platzhalter während des Ladens.
+const HeroMap = dynamic(
+  () => import("@/components/objekte/HeroMap").then((m) => m.HeroMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full w-full animate-pulse bg-brand-primaryTint" />
+    ),
+  },
+);
 import type { KalkulationsContext } from "@/lib/data/kalkulation-context";
 import {
   formatEUR,
@@ -633,81 +644,6 @@ function GalleryHero({
       </Link>
     </div>
   );
-}
-
-// ───────────────────────── Hero map ─────────────────────────
-function HeroMap({
-  adresse,
-  plz,
-  stadt,
-  label,
-}: {
-  adresse: string;
-  plz: string | null;
-  stadt: string | null;
-  label: string;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    if (!hasMapbox()) {
-      setFailed(true);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      const center = await geocodeAddressParts(adresse, plz, stadt);
-      if (cancelled || !ref.current) return;
-      if (!center) {
-        setFailed(true);
-        return;
-      }
-      mapboxgl.accessToken = MAPBOX_TOKEN;
-      const map = new mapboxgl.Map({
-        container: ref.current,
-        style: "mapbox://styles/mapbox/light-v11",
-        center,
-        zoom: 14.5,
-        attributionControl: false,
-        cooperativeGestures: true,
-        locale: {
-          "ScrollZoomBlocker.CtrlMessage": "Strg + Scrollen zum Zoomen",
-          "ScrollZoomBlocker.CmdMessage": "⌘ + Scrollen zum Zoomen",
-          "TouchPanBlocker.Message": "Mit zwei Fingern bewegen",
-        },
-      });
-      mapRef.current = map;
-      map.addControl(
-        new mapboxgl.NavigationControl({ showCompass: false }),
-        "top-right",
-      );
-
-      const el = document.createElement("div");
-      el.style.cssText =
-        "width:16px;height:16px;border-radius:9999px;background:#B8893E;" +
-        "border:3px solid #ffffff;box-shadow:0 1px 8px rgba(15,23,42,.45);";
-      new mapboxgl.Marker({ element: el }).setLngLat(center).addTo(map);
-    })();
-    return () => {
-      cancelled = true;
-      mapRef.current?.remove();
-      mapRef.current = null;
-    };
-  }, [adresse, plz, stadt]);
-
-  if (failed) {
-    return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-brand-subtle">
-        <MapPin className="h-8 w-8" />
-        <span className="px-4 text-center text-[12px] text-brand-muted">
-          {label || "Karte nicht verfügbar"}
-        </span>
-      </div>
-    );
-  }
-  return <div ref={ref} className="h-full w-full" />;
 }
 
 // ───────────────────────── Big metric ─────────────────────────

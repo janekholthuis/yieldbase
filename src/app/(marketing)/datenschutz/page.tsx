@@ -3,10 +3,11 @@ import { MarketingNav, MarketingFooter } from "@/components/marketing/marketing-
 
 // PROJ-34: DSGVO-Datenschutzerklärung der Enablence Ltd. (übernommen 2026-06-28).
 //
-// ⚠️ Stack-Hinweis: Abschnitt „Hosting" nennt All-Inkl (gilt für enablence.ai).
-// Diese App läuft auf Vercel + Supabase (+ Resend/OpenAI/Easybill). Vor Go-Live
-// klären, ob der Hosting-/Sub-Prozessoren-Abschnitt auf den App-Stack angepasst
-// wird. Telefon hier mit der echten Nummer aus dem Impressum (Paste-Dummy ersetzt).
+// Hosting-/Sub-Prozessoren-Abschnitt auf den echten App-Stack angepasst
+// (Vercel + Supabase + Resend/OpenAI/Easybill statt All-Inkl), da diese App nicht
+// bei All-Inkl, sondern auf Vercel/Supabase läuft. Telefon mit der echten Nummer
+// aus dem Impressum. Hinweis: Genaue Anschriften/Transfer-Mechanismen (SCC/DPF)
+// der US-Anbieter sind vor seriösem Go-Live anwaltlich zu bestätigen.
 
 export const metadata: Metadata = {
   title: "Datenschutzerklärung — Objekt Pilot",
@@ -103,32 +104,93 @@ export default function DatenschutzPage() {
           jederzeit an uns wenden.
         </P>
 
-        <H2>2. Hosting</H2>
-        <P>Wir hosten die Inhalte unserer Website bei folgendem Anbieter:</P>
-        <H3>All-Inkl</H3>
+        <H2>2. Hosting und eingesetzte Dienste</H2>
         <P>
-          Anbieter ist die ALL-INKL.COM - Neue Medien Münnich, Inh. René Münnich,
-          Hauptstraße 68, 02742 Friedersdorf (nachfolgend All-Inkl). Details
-          entnehmen Sie der Datenschutzerklärung von All-Inkl:{" "}
+          Wir hosten diese Anwendung und verarbeiten die darin anfallenden Daten
+          mithilfe der folgenden Anbieter. Mit allen Auftragsverarbeitern bestehen
+          Verträge zur Auftragsverarbeitung nach Art. 28 DSGVO. Die Verarbeitung
+          erfolgt auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO (berechtigtes
+          Interesse an einer zuverlässigen, sicheren Bereitstellung) bzw. – soweit
+          zur Vertragserfüllung erforderlich – Art. 6 Abs. 1 lit. b DSGVO. Soweit
+          eine Einwilligung abgefragt wurde, erfolgt die Verarbeitung auf Grundlage
+          von Art. 6 Abs. 1 lit. a DSGVO und § 25 Abs. 1 TDDDG; sie ist jederzeit
+          widerrufbar.
+        </P>
+
+        <H3>Vercel (Hosting & Auslieferung)</H3>
+        <P>
+          Die Anwendung wird bei der Vercel Inc. (USA) gehostet und ausgeliefert.
+          Details:{" "}
           <a
-            href="https://all-inkl.com/datenschutzinformationen/"
+            href="https://vercel.com/legal/privacy-policy"
             className="text-brand-primary underline underline-offset-2"
             target="_blank"
             rel="noopener noreferrer"
           >
-            https://all-inkl.com/datenschutzinformationen/
+            vercel.com/legal/privacy-policy
           </a>
           .
         </P>
+
+        <H3>Supabase (Datenbank, Authentifizierung, Datei-Speicher)</H3>
         <P>
-          Die Verwendung von All-Inkl erfolgt auf Grundlage von Art. 6 Abs. 1 lit.
-          f DSGVO. Wir haben ein berechtigtes Interesse an einer möglichst
-          zuverlässigen Darstellung unserer Website. Sofern eine entsprechende
-          Einwilligung abgefragt wurde, erfolgt die Verarbeitung ausschließlich auf
-          Grundlage von Art. 6 Abs. 1 lit. a DSGVO und § 25 Abs. 1 TDDDG, soweit
-          die Einwilligung die Speicherung von Cookies oder den Zugriff auf
-          Informationen im Endgerät des Nutzers (z. B. Device-Fingerprinting) im
-          Sinne des TDDDG umfasst. Die Einwilligung ist jederzeit widerrufbar.
+          Anwendungsdaten (z. B. Konten, Objekt-, Kunden- und Vorgangsdaten) werden
+          bei der Supabase, Inc. (USA) verarbeitet und gespeichert. Details:{" "}
+          <a
+            href="https://supabase.com/privacy"
+            className="text-brand-primary underline underline-offset-2"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            supabase.com/privacy
+          </a>
+          .
+        </P>
+
+        <H3>Weitere Auftragsverarbeiter</H3>
+        <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-relaxed text-brand-body">
+          <li>
+            <strong>Resend</strong> (Resend, Inc., USA) – Versand von
+            Transaktions-E-Mails (z. B. Einladungen, Bestätigungen).{" "}
+            <a
+              href="https://resend.com/legal/privacy-policy"
+              className="text-brand-primary underline underline-offset-2"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              resend.com/legal/privacy-policy
+            </a>
+          </li>
+          <li>
+            <strong>OpenAI</strong> (OpenAI, L.L.C., USA) – KI-gestützte Inhalte,
+            sofern diese Funktionen aktiviert sind.{" "}
+            <a
+              href="https://openai.com/policies/privacy-policy"
+              className="text-brand-primary underline underline-offset-2"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              openai.com/policies/privacy-policy
+            </a>
+          </li>
+          <li>
+            <strong>easybill</strong> (easybill GmbH, Deutschland) – Erstellung von
+            Rechnungen.{" "}
+            <a
+              href="https://www.easybill.de/datenschutz"
+              className="text-brand-primary underline underline-offset-2"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              easybill.de/datenschutz
+            </a>
+          </li>
+        </ul>
+        <P>
+          Soweit Daten an Anbieter mit Sitz in den USA übermittelt werden, erfolgt
+          dies auf Grundlage geeigneter Garantien gemäß Art. 44 ff. DSGVO,
+          insbesondere der EU-Standardvertragsklauseln bzw. – soweit der jeweilige
+          Anbieter zertifiziert ist – des EU-US Data Privacy Framework.
         </P>
 
         <H2>3. Allgemeine Hinweise und Pflichtinformationen</H2>

@@ -39,6 +39,7 @@ export default async function RootLayout({
         ) : null}
         <Providers
           activeOrg={org ? { name: org.name, logoUrl: org.logoUrl } : null}
+          entitlements={org?.entitlements ?? null}
           initialRoles={session?.roles ?? []}
           initialUserId={session?.userId ?? null}
         >

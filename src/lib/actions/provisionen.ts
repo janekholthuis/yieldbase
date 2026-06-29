@@ -9,6 +9,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
+import { assertEntitlement } from "@/lib/entitlements-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { activeOrgId, assertOrgAccess } from "@/lib/actions/_org";
 import type { Database } from "@/lib/supabase/types";
@@ -126,6 +127,7 @@ export async function updateProvisionStatus(
   input: z.infer<typeof updateProvisionStatusInput>,
 ) {
   const session = await requireRole("admin", "vertriebsleiter");
+  await assertEntitlement("provisionen"); // PROJ-31: defense-in-depth
   const { userId, roles } = session;
   const data = updateProvisionStatusInput.parse(input);
   const admin = createAdminClient();

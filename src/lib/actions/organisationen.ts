@@ -14,6 +14,11 @@ import {
   getActiveOrganisation,
   listMyOrganisations,
 } from "@/lib/data/organisationen";
+import {
+  ENTITLEMENT_CATALOG,
+  type EntitlementKey,
+  type EntitlementOverrides,
+} from "@/lib/entitlements";
 
 // ───────────── Shared schemas ─────────────
 const hexColor = z
@@ -133,7 +138,7 @@ export async function createOrganisation(input: {
       primary_color: primaryColor ?? null,
       accent_color: accentColor ?? null,
     })
-    .select("id,name,slug,logo_url,primary_color,accent_color")
+    .select("id,name,slug,logo_url,primary_color,accent_color,entitlements")
     .single();
   if (insertErr || !org) {
     throw new Error(insertErr?.message ?? "Organisation konnte nicht erstellt werden");
@@ -159,6 +164,7 @@ export async function createOrganisation(input: {
     logoUrl: org.logo_url,
     primaryColor: org.primary_color,
     accentColor: org.accent_color,
+    entitlements: (org.entitlements ?? {}) as EntitlementOverrides,
   };
 }
 
@@ -195,7 +201,7 @@ export async function updateOrganisationBranding(input: {
     .from("organisationen")
     .update(patch)
     .eq("id", parsed.orgId)
-    .select("id,name,slug,logo_url,primary_color,accent_color")
+    .select("id,name,slug,logo_url,primary_color,accent_color,entitlements")
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!org) {
@@ -215,7 +221,52 @@ export async function updateOrganisationBranding(input: {
     logoUrl: org.logo_url,
     primaryColor: org.primary_color,
     accentColor: org.accent_color,
+    entitlements: (org.entitlements ?? {}) as EntitlementOverrides,
   };
+}
+
+const KNOWN_ENTITLEMENT_KEYS = new Set<string>(
+  ENTITLEMENT_CATALOG.map((d) => d.key),
+);
+
+const entitlementsSchema = z.object({
+  orgId: z.string().uuid(),
+  entitlements: z.record(z.string(), z.boolean()),
+});
+
+/**
+ * Set an org's feature entitlements (PROJ-31). Commercial gate — only PLATFORM
+ * operators (admin/support) may grant/revoke features, never the customer org's
+ * own admin. Writes via the admin client (operators aren't necessarily members of
+ * the target org); unknown keys are dropped so stored jsonb stays catalog-clean.
+ */
+export async function updateOrganisationEntitlements(input: {
+  orgId: string;
+  entitlements: EntitlementOverrides;
+}): Promise<EntitlementOverrides> {
+  const { orgId, entitlements } = entitlementsSchema.parse(input);
+  await requireRole("admin", "support");
+
+  const clean: Record<string, boolean> = {};
+  for (const [key, value] of Object.entries(entitlements)) {
+    if (KNOWN_ENTITLEMENT_KEYS.has(key)) clean[key] = value;
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("organisationen")
+    .update({ entitlements: clean })
+    .eq("id", orgId)
+    .select("entitlements")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Organisation nicht gefunden");
+
+  // Branding/entitlements cache (60s TTL) self-heals; the layout chrome catches up
+  // within the TTL, the settings UI reflects the change immediately from this return.
+  revalidatePath("/", "layout");
+
+  return (data.entitlements ?? {}) as EntitlementOverrides;
 }
 
 /** Set the caller's active organisation. Caller must be a member of the target org. */

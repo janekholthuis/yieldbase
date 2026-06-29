@@ -53,7 +53,7 @@ export function MarketingNav() {
           </Link>
           <Link
             href="/login"
-            className="inline-flex h-9 items-center gap-1.5 bg-brand-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-primaryHover"
+            className="inline-flex h-9 items-center gap-1.5 bg-brand-primary px-4 text-sm font-semibold text-white transition-colors duration-ds-short ease-ds-out hover:bg-brand-primaryHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
           >
             Demo ansehen
             <ArrowRight className="h-4 w-4" />
@@ -73,14 +73,17 @@ export function MarketingFooter() {
           <span className="text-sm font-semibold text-brand-ink">Objekt Pilot</span>
         </div>
         <p className="text-sm text-brand-muted">
-          © 2026 Objekt Pilot · Eine Plattform statt zehn Tools.
+          © 2026 Objekt Pilot · Ein Produkt der Enablence Ltd.
         </p>
-        <div className="flex items-center gap-6 text-sm text-brand-body">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-brand-body">
           <Link href="/roadmap" className="hover:text-brand-ink">
             Roadmap
           </Link>
-          <Link href="/#module" className="hover:text-brand-ink">
-            Module
+          <Link href="/impressum" className="hover:text-brand-ink">
+            Impressum
+          </Link>
+          <Link href="/datenschutz" className="hover:text-brand-ink">
+            Datenschutz
           </Link>
           <Link href="/login" className="hover:text-brand-ink">
             Anmelden

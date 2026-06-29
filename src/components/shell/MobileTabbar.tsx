@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useEntitlements } from "@/components/providers";
 import { mobileNav, canSeeQuickAction } from "@/lib/navigation";
 
 /**
@@ -14,7 +15,8 @@ import { mobileNav, canSeeQuickAction } from "@/lib/navigation";
  */
 export function MobileTabbar() {
   const { roles } = useAuth();
-  const items = mobileNav(roles);
+  const entitlements = useEntitlements();
+  const items = mobileNav(roles, entitlements);
   const pathname = usePathname();
   const showFab = canSeeQuickAction("new-customer", roles);
 

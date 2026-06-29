@@ -11,6 +11,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useAuth } from "@/lib/auth-context";
+import { useEntitlements } from "@/components/providers";
 import { navigableNav } from "@/lib/navigation";
 import { searchEntities, type SearchResult } from "@/lib/actions/search";
 
@@ -22,7 +23,8 @@ export function CommandPalette({
   onOpenChange: (v: boolean) => void;
 }) {
   const { roles } = useAuth();
-  const items = navigableNav(roles);
+  const entitlements = useEntitlements();
+  const items = navigableNav(roles, entitlements);
   const router = useRouter();
 
   const [query, setQuery] = useState("");

@@ -7,6 +7,7 @@ import { unstable_cache } from "next/cache";
 import { getSessionUser, requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
+import type { EntitlementOverrides } from "@/lib/entitlements";
 
 type OrganisationRow = Database["public"]["Tables"]["organisationen"]["Row"];
 type MemberRolle = "owner" | "admin" | "member";
@@ -19,6 +20,8 @@ export interface ActiveOrg {
   logoUrl: string | null;
   primaryColor: string | null;
   accentColor: string | null;
+  /** PROJ-31: per-org feature overrides (raw jsonb). Resolve via resolveEntitlements(). */
+  entitlements: EntitlementOverrides;
 }
 
 export interface MyOrganisation {
@@ -38,7 +41,8 @@ export interface OrganisationMember {
   rolle: MemberRolle;
 }
 
-const BRANDING_SELECT = "id,name,slug,logo_url,primary_color,accent_color";
+const BRANDING_SELECT =
+  "id,name,slug,logo_url,primary_color,accent_color,entitlements";
 
 /**
  * Cross-request cached branding for a single org. Branding is non-secret and
@@ -68,7 +72,13 @@ function getOrgBrandingCached(orgId: string): Promise<ActiveOrg | null> {
 function toActiveOrg(
   row: Pick<
     OrganisationRow,
-    "id" | "name" | "slug" | "logo_url" | "primary_color" | "accent_color"
+    | "id"
+    | "name"
+    | "slug"
+    | "logo_url"
+    | "primary_color"
+    | "accent_color"
+    | "entitlements"
   >,
 ): ActiveOrg {
   return {
@@ -78,7 +88,16 @@ function toActiveOrg(
     logoUrl: row.logo_url,
     primaryColor: row.primary_color,
     accentColor: row.accent_color,
+    entitlements: toEntitlementOverrides(row.entitlements),
   };
+}
+
+/** Narrow the jsonb column to the override map; tolerate null/garbage shapes. */
+function toEntitlementOverrides(value: unknown): EntitlementOverrides {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as EntitlementOverrides;
+  }
+  return {};
 }
 
 /**
@@ -194,7 +213,7 @@ export async function listMyOrganisations(): Promise<MyOrganisation[]> {
   const { data, error } = await supabase
     .from("organisation_members")
     .select(
-      "rolle,organisationen!inner(id,name,slug,logo_url,primary_color,accent_color)",
+      "rolle,organisationen!inner(id,name,slug,logo_url,primary_color,accent_color,entitlements)",
     )
     .eq("user_id", userId);
   if (error) throw new Error(error.message);
@@ -203,7 +222,13 @@ export async function listMyOrganisations(): Promise<MyOrganisation[]> {
     rolle: string;
     organisationen: Pick<
       OrganisationRow,
-      "id" | "name" | "slug" | "logo_url" | "primary_color" | "accent_color"
+      | "id"
+      | "name"
+      | "slug"
+      | "logo_url"
+      | "primary_color"
+      | "accent_color"
+      | "entitlements"
     > | null;
   }>;
 

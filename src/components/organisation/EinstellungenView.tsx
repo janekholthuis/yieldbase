@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -63,7 +64,14 @@ import {
   removeOrganisationMember,
   updateOrganisationBranding,
   addOrgMemberByEmail,
+  updateOrganisationEntitlements,
 } from "@/lib/actions/organisationen";
+import {
+  ENTITLEMENT_CATALOG,
+  resolveEntitlements,
+  type EntitlementKey,
+  type EntitlementOverrides,
+} from "@/lib/entitlements";
 import {
   getInvestagonStatus,
   syncInvestagon,
@@ -100,6 +108,9 @@ export function EinstellungenView({
   const canCreateOrg =
     roles.includes("admin") || roles.includes("vertriebsleiter");
   const canSyncInvestagon = roles.includes("admin") || roles.includes("support");
+  // PROJ-31: only platform operators set which features a customer org has.
+  const canManageEntitlements =
+    roles.includes("admin") || roles.includes("support");
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 md:px-6">
@@ -139,6 +150,8 @@ export function EinstellungenView({
           )}
 
           {canManageOrg && <DomainCard orgId={activeOrg.id} />}
+
+          {canManageEntitlements && <EntitlementsCard org={activeOrg} />}
 
           <MembersCard
             orgId={activeOrg.id}
@@ -335,6 +348,80 @@ function BrandingCard({ org }: { org: ActiveOrg }) {
 
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={!canSave}>
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Speichern
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ───────────── Feature-Freischaltung (PROJ-31, admin/support) ─────────────
+
+function EntitlementsCard({ org }: { org: ActiveOrg }) {
+  const router = useRouter();
+  const [state, setState] = useState<EntitlementOverrides>(() =>
+    resolveEntitlements(org.entitlements),
+  );
+  const [saving, setSaving] = useState(false);
+
+  // Dirty-Check gegen den aufgelösten Ausgangszustand.
+  const initial = resolveEntitlements(org.entitlements);
+  const dirty = ENTITLEMENT_CATALOG.some((d) => state[d.key] !== initial[d.key]);
+
+  function toggle(key: EntitlementKey, value: boolean) {
+    setState((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleSave() {
+    if (!dirty || saving) return;
+    setSaving(true);
+    try {
+      await updateOrganisationEntitlements({
+        orgId: org.id,
+        entitlements: state,
+      });
+      toast.success("Funktionen gespeichert");
+      router.refresh();
+    } catch (e) {
+      toast.error("Funktionen konnten nicht gespeichert werden", {
+        description: e instanceof Error ? e.message : "Fehlgeschlagen",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card className="rounded-xl">
+      <CardHeader>
+        <CardTitle className="text-base">Funktionen (Freischaltung)</CardTitle>
+        <CardDescription>
+          Steuern Sie pro Organisation, welche Funktionen verfügbar sind. Nur für
+          Plattform-Administration sichtbar.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ul className="divide-y divide-brand-border">
+          {ENTITLEMENT_CATALOG.map((d) => (
+            <li key={d.key} className="flex items-center gap-4 py-3">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-brand-primary">
+                  {d.label}
+                </div>
+                <p className="text-xs text-brand-muted">{d.description}</p>
+              </div>
+              <Switch
+                checked={state[d.key] ?? false}
+                onCheckedChange={(v) => toggle(d.key, v)}
+                aria-label={d.label}
+              />
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 flex justify-end">
+          <Button onClick={handleSave} disabled={!dirty || saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Speichern
           </Button>

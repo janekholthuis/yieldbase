@@ -21,7 +21,19 @@ import { MarketingNav, MarketingFooter } from "@/components/marketing/marketing-
 /*  Hell, seriös, kantig. Navy/Gold. Keine verspielten Verläufe.       */
 /*  Gerendert unter `/` (neutrale Domain, logged-out) und `/start`.    */
 /*  Auf einer Org-Custom-Domain rendert `/` stattdessen OrgLanding.    */
+/*                                                                     */
+/*  PROJ-25 Porsche-Disziplin: Motion-Tokens (duration + ease) auf      */
+/*  Übergängen + sichtbare :focus-visible-Ringe auf jedem CTA           */
+/*  (Tastatur-A11y). Struktur statt Optik — kein Re-Layout.             */
 /* ------------------------------------------------------------------ */
+
+// Gemeinsame Motion- + Fokus-Klassen (PROJ-25). FOCUS_GOLD für CTAs auf hellen/
+// navy Flächen, FOCUS_NAVY für CTAs auf goldenen/weißen Flächen.
+const MOTION = "transition-colors duration-ds-short ease-ds-out";
+const FOCUS_GOLD =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2";
+const FOCUS_NAVY =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2";
 
 export function LandingPage() {
   return (
@@ -76,14 +88,14 @@ function Hero() {
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/login"
-            className="inline-flex h-12 w-full items-center justify-center gap-2 bg-brand-primary px-7 text-base font-semibold text-white transition-colors hover:bg-brand-primaryHover sm:w-auto"
+            className={`inline-flex h-12 w-full items-center justify-center gap-2 bg-brand-primary px-7 text-base font-semibold text-white hover:bg-brand-primaryHover sm:w-auto ${MOTION} ${FOCUS_GOLD}`}
           >
             Jetzt starten
             <ArrowRight className="h-4 w-4" />
           </Link>
           <a
             href="#plattform"
-            className="inline-flex h-12 w-full items-center justify-center border border-brand-ink/15 bg-white px-7 text-base font-semibold text-brand-ink transition-colors hover:bg-brand-surfaceMuted sm:w-auto"
+            className={`inline-flex h-12 w-full items-center justify-center border border-brand-ink/15 bg-white px-7 text-base font-semibold text-brand-ink hover:bg-brand-surfaceMuted sm:w-auto ${MOTION} ${FOCUS_NAVY}`}
           >
             Wie es funktioniert
           </a>
@@ -316,7 +328,7 @@ function ReplaceStack() {
             </p>
             <Link
               href="/login"
-              className="mt-8 inline-flex h-11 items-center gap-2 bg-brand-accent px-6 text-base font-semibold text-white transition-colors hover:bg-brand-accentHover"
+              className={`mt-8 inline-flex h-11 items-center gap-2 bg-brand-accent px-6 text-base font-semibold text-white hover:bg-brand-accentHover ${MOTION} ${FOCUS_NAVY} focus-visible:ring-offset-brand-ink`}
             >
               Stack zusammenführen
               <ArrowRight className="h-4 w-4" />
@@ -402,7 +414,7 @@ function Modules() {
             return (
               <div
                 key={m.title}
-                className="group bg-white p-7 transition-colors hover:bg-brand-surfaceMuted"
+                className={`group bg-white p-7 hover:bg-brand-surfaceMuted ${MOTION}`}
               >
                 <span className="grid h-11 w-11 place-items-center border border-brand-border bg-brand-primaryTint text-brand-primary">
                   <Icon className="h-5 w-5" />
@@ -478,14 +490,14 @@ function FinalCta() {
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/login"
-                className="inline-flex h-12 w-full items-center justify-center gap-2 bg-white px-7 text-base font-semibold text-brand-primary transition-colors hover:bg-white/90 sm:w-auto"
+                className={`inline-flex h-12 w-full items-center justify-center gap-2 bg-white px-7 text-base font-semibold text-brand-primary hover:bg-white/90 sm:w-auto ${MOTION} ${FOCUS_GOLD} focus-visible:ring-offset-brand-primary`}
               >
                 Demo ansehen
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 href="/login"
-                className="inline-flex h-12 w-full items-center justify-center border border-white/30 px-7 text-base font-semibold text-white transition-colors hover:bg-white/10 sm:w-auto"
+                className={`inline-flex h-12 w-full items-center justify-center border border-white/30 px-7 text-base font-semibold text-white hover:bg-white/10 sm:w-auto ${MOTION} ${FOCUS_GOLD} focus-visible:ring-offset-brand-primary`}
               >
                 Anmelden
               </Link>

@@ -16,6 +16,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth-context";
+import { useEntitlements } from "@/components/providers";
 import { visibleNav } from "@/lib/navigation";
 import { ObjektpilotLogo, ObjektpilotWordmark } from "@/components/brand/ObjektpilotLogo";
 
@@ -28,7 +29,8 @@ import { ObjektpilotLogo, ObjektpilotWordmark } from "@/components/brand/Objektp
  */
 export function AppSidebar() {
   const { roles } = useAuth();
-  const items = visibleNav(roles);
+  const entitlements = useEntitlements();
+  const items = visibleNav(roles, entitlements);
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = usePathname();

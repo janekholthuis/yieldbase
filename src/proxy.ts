@@ -20,6 +20,8 @@ const PUBLIC_PREFIXES = [
   "/start", // öffentliche Marketing-Landingpage
   "/roadmap", // öffentliche Produkt-Roadmap
   "/fuer", // PROJ-24: öffentliche, gebrandete Lead-Demo-Sandbox (Token-Link)
+  "/impressum", // Pflichtangaben nach § 5 DDG (öffentlich)
+  "/datenschutz", // DSGVO-Datenschutzerklärung (öffentlich)
 ];
 
 function isPublic(pathname: string) {

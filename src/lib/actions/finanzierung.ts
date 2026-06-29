@@ -9,6 +9,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireUser, requireRole } from "@/lib/auth";
+import { assertEntitlement } from "@/lib/entitlements-server";
 import { CASE_STATUS } from "@/lib/finanzierung-status";
 import {
   listFinanziererForPool,
@@ -181,6 +182,7 @@ export async function requestFinanzierung(
   input: z.input<typeof requestFinanzierungInput>,
 ): Promise<{ ok: true; caseId: string } | { ok: false; error: string }> {
   const { supabase } = await requireUser();
+  await assertEntitlement("finanzierungen"); // PROJ-31: defense-in-depth
   const data = requestFinanzierungInput.parse(input);
 
   const { data: caseId, error } = await supabase.rpc("request_finanzierung", {

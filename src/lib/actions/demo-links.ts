@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
+import { assertEntitlement } from "@/lib/entitlements-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email/resend";
 import {
@@ -75,6 +76,7 @@ export async function createDemoLink(
   input: z.infer<typeof createSchema>,
 ): Promise<{ ok: true; slug: string; id: string } | { ok: false; error: string }> {
   const session = await requireRole("admin", "support");
+  await assertEntitlement("demo_links"); // PROJ-31: defense-in-depth
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Ungültige Eingabe." };
   const data = parsed.data;

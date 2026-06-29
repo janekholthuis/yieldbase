@@ -1201,6 +1201,7 @@ export type Database = {
           created_at: string
           domain: string | null
           domain_verified: boolean
+          entitlements: Json
           id: string
           investagon_api_key: string | null
           investagon_org_id: string | null
@@ -1217,6 +1218,7 @@ export type Database = {
           created_at?: string
           domain?: string | null
           domain_verified?: boolean
+          entitlements?: Json
           id?: string
           investagon_api_key?: string | null
           investagon_org_id?: string | null
@@ -1233,6 +1235,7 @@ export type Database = {
           created_at?: string
           domain?: string | null
           domain_verified?: boolean
+          entitlements?: Json
           id?: string
           investagon_api_key?: string | null
           investagon_org_id?: string | null

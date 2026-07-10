@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Check, Hammer, Compass } from "lucide-react";
+import { ArrowRight, Check, Compass } from "lucide-react";
 import { MarketingNav, MarketingFooter } from "@/components/marketing/marketing-chrome";
 
 /* ------------------------------------------------------------------ */
@@ -63,9 +63,6 @@ const LIVE: Item[] = [
     title: "Branding-Automatik",
     body: "Logo und Farben automatisch aus der Unternehmens-Website übernehmen.",
   },
-];
-
-const BUILDING: Item[] = [
   {
     title: "Personalisierte Lead-Ansprache",
     body: "Interessenten eine vorab auf ihr Unternehmen gebrandete Ansicht senden.",
@@ -128,20 +125,13 @@ export function RoadmapPage() {
       {/* Board */}
       <section className="bg-white">
         <div className="mx-auto max-w-6xl px-6 py-16 md:py-24">
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-2">
             <Column
               tone="live"
               icon={Check}
               label="Live"
               note="Verfügbar"
               items={LIVE}
-            />
-            <Column
-              tone="building"
-              icon={Hammer}
-              label="In Entwicklung"
-              note="Bald verfügbar"
-              items={BUILDING}
             />
             <Column
               tone="planned"
@@ -199,11 +189,6 @@ const TONES = {
     dot: "bg-brand-success",
     chip: "bg-brand-successSoft text-brand-success",
     iconBg: "bg-brand-successSoft text-brand-success",
-  },
-  building: {
-    dot: "bg-brand-accent",
-    chip: "bg-brand-accentSoft text-brand-accentText",
-    iconBg: "bg-brand-accentSoft text-brand-accentText",
   },
   planned: {
     dot: "bg-brand-primary",

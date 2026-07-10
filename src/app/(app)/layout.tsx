@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { getSessionUser, isKundeOnly } from "@/lib/auth";
 import { alignActiveOrgToHost } from "@/lib/data/organisationen";
 import { AppShell } from "@/components/shell/AppShell";
@@ -20,5 +20,10 @@ export default async function AppLayout({
   // page's queries already see the aligned org. No-op for non-members/neutral URL.
   await alignActiveOrgToHost((await headers()).get("host"));
 
-  return <AppShell>{children}</AppShell>;
+  // Sidebar-Einklapp-Zustand über Reloads hinweg merken (shadcn-Cookie,
+  // server-seitig gelesen → kein Hydration-Mismatch). Default: ausgeklappt.
+  const sidebarOpen =
+    (await cookies()).get("sidebar_state")?.value !== "false";
+
+  return <AppShell defaultSidebarOpen={sidebarOpen}>{children}</AppShell>;
 }

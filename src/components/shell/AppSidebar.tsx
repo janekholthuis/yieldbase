@@ -13,8 +13,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useEntitlements } from "@/components/providers";
 import { visibleNav } from "@/lib/navigation";
@@ -31,7 +33,7 @@ export function AppSidebar() {
   const { roles } = useAuth();
   const entitlements = useEntitlements();
   const items = visibleNav(roles, entitlements);
-  const { state } = useSidebar();
+  const { state, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = usePathname();
 
@@ -106,7 +108,26 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter />
+      <SidebarFooter className="border-t border-brand-divider">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={toggleSidebar}
+              tooltip={collapsed ? "Menü ausklappen" : "Menü einklappen"}
+              aria-label={collapsed ? "Menü ausklappen" : "Menü einklappen"}
+              className="rounded-lg text-brand-body hover:!bg-brand-surfaceMuted hover:!text-brand-primary"
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="h-[18px] w-[18px]" strokeWidth={2} />
+              ) : (
+                <PanelLeftClose className="h-[18px] w-[18px]" strokeWidth={2} />
+              )}
+              <span>Einklappen</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   );
 }

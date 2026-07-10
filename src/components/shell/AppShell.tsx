@@ -8,7 +8,13 @@ import { Topbar } from "./Topbar";
 import { MobileTabbar } from "./MobileTabbar";
 import { FeedbackButton } from "./FeedbackButton";
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  defaultSidebarOpen = true,
+}: {
+  children: ReactNode;
+  defaultSidebarOpen?: boolean;
+}) {
   const pathname = usePathname();
 
   // Präsentations-Route: nur Slideshow, ohne Sidebar/Topbar
@@ -23,7 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   // design: navy+gold token-map for AppShell — Off-White bg-brand-bg (Master-Spec)
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={defaultSidebarOpen}>
       <div className="flex min-h-screen w-full bg-brand-bg">
         <AppSidebar />
         <SidebarInset className="flex min-w-0 flex-1 flex-col bg-brand-bg">

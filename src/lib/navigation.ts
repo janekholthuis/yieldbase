@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Building2,
   Users,
+  Contact,
   CalendarCheck,
   Banknote,
   Wallet,
@@ -45,6 +46,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   { title: "Objekte", to: "/objekte", icon: Building2, roles: ALL_INTERNAL, mobile: true },
   { title: "Kunden", to: "/kunden", icon: Users, roles: ALL_INTERNAL, mobile: true },
+  { title: "CRM", to: "/crm", icon: Contact, roles: ALL_INTERNAL },
   {
     title: "Reservierungen",
     to: "/reservierungen",

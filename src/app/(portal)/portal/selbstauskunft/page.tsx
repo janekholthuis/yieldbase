@@ -1,5 +1,10 @@
 import { getMySelbstauskunftContext } from "@/lib/actions/selbstauskunft";
-import { SelbstauskunftWizard } from "@/components/portal/SelbstauskunftWizard";
+import {
+  SelbstauskunftHub,
+  type SelbstauskunftDocsContext,
+} from "@/components/portal/SelbstauskunftHub";
+import { requireUser } from "@/lib/auth";
+import { getPortalDashboard } from "@/lib/data/portal";
 import {
   emptySelbstauskunft,
   emptyPerson,
@@ -20,7 +25,22 @@ export default async function SelbstauskunftPage({
   searchParams: Promise<SP>;
 }) {
   const sp = await searchParams;
-  const ctx = await getMySelbstauskunftContext();
+  const [ctx, { userId }, dashboard] = await Promise.all([
+    getMySelbstauskunftContext(),
+    requireUser(),
+    getPortalDashboard(),
+  ]);
+
+  // Unterlagen-Bereich nur, wenn ein Kundenprofil verknüpft ist (Upload braucht
+  // den authed Kontext). Snapshot der bereits hochgeladenen Kategorien.
+  const docs: SelbstauskunftDocsContext | undefined = dashboard.kunde
+    ? {
+        kundeId: dashboard.kunde.id,
+        berufStatus: dashboard.kunde.beruf_status,
+        currentUserId: userId,
+        uploadedCategories: dashboard.dokumentKategorien,
+      }
+    : undefined;
 
   let data: SelbstauskunftData;
   if (ctx.existing?.daten) {
@@ -63,12 +83,13 @@ export default async function SelbstauskunftPage({
   };
 
   return (
-    <SelbstauskunftWizard
+    <SelbstauskunftHub
       initialData={data}
       alreadySubmitted={ctx.existing?.status === "eingereicht"}
       submittedAt={ctx.existing?.submitted_at ?? null}
       startStep={ctx.existing?.step ?? 0}
       crm={crm}
+      docs={docs}
     />
   );
 }

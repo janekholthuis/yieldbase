@@ -4,6 +4,8 @@
 export interface RenderedEmail {
   subject: string;
   html: string;
+  /** Optionaler Plaintext-Fallback (nur bei Templates, die ihn liefern). */
+  text?: string;
 }
 
 function esc(s: string | null | undefined): string {
@@ -107,6 +109,40 @@ export function inviteEmail(b: {
   return {
     subject: `Einladung zu ${org}`,
     html: shell(org, "#1e3a5f", inner, `${org} · Vertriebsplattform`),
+  };
+}
+
+// ───────────── Selbstauskunft-Reminder (du-Ton, Kundenportal) ─────────────
+export function selbstauskunftReminderEmail(b: {
+  vorname: string | null;
+  percent: number;
+  resumeUrl: string;
+}): RenderedEmail {
+  const hallo = b.vorname ? `Hey ${esc(b.vorname)},` : "Hey,";
+  const pct = Math.max(0, Math.min(100, Math.round(b.percent)));
+  const url = esc(b.resumeUrl);
+  const inner = `
+    <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.2">Du bist fast am Ziel</h1>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.55">
+      ${hallo} du hast deinen Finanz-Check schon zu <strong>${pct}&nbsp;%</strong> geschafft —
+      mit ein paar Minuten bist du fertig. Danach können wir direkt für dich weitermachen.
+    </p>
+    <div style="margin:16px 0;background:#F1F5F9;border-radius:999px;height:10px;overflow:hidden">
+      <div style="width:${pct}%;height:10px;background:#1e3a5f"></div>
+    </div>
+    <p style="margin:18px 0 6px">
+      <a href="${url}" style="display:inline-block;background:#1e3a5f;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px">Jetzt fertig machen</a>
+    </p>
+    <p style="margin:8px 0 0;font-size:12px;color:#64748B;line-height:1.5">
+      Du landest direkt an der Stelle, an der du aufgehört hast — kein Login nötig. Falls der Button nicht funktioniert, kopiere diese Adresse in den Browser:<br/>
+      <span style="word-break:break-all;color:#475569">${url}</span>
+    </p>`;
+  return {
+    subject: "Mach weiter bei deinem Finanz-Check",
+    html: shell("Dein Finanz-Check", "#1e3a5f", inner, "Erfolg mit Immobilien · Dein Kundenportal"),
+    text:
+      `${b.vorname ? `Hey ${b.vorname},` : "Hey,"} du hast deinen Finanz-Check schon zu ${pct} % geschafft — ` +
+      `mit ein paar Minuten bist du fertig.\n\nHier weitermachen (kein Login nötig): ${b.resumeUrl}`,
   };
 }
 

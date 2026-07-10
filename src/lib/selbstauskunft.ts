@@ -408,3 +408,183 @@ export function validatePersonStep(p: PersonData, step: number): string | null {
   }
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Fortschritt / Vollständigkeit — für den gamifizierten Hub + Reminder.
+// Ein Bereich statt linearer Schritte: pro Bereich leer / teilweise / fertig.
+// Baut auf validatePersonStep (Pflicht-Bereiche) auf → keine Semantik-Drift.
+// ---------------------------------------------------------------------------
+
+export type SelbstauskunftAreaKey =
+  | "persoenlich"
+  | "taetigkeit"
+  | "einkommen"
+  | "vermoegen"
+  | "ausgaben"
+  | "verbindlichkeiten"
+  | "immobilien"
+  | "abschluss";
+
+export type AreaStatus = "leer" | "teilweise" | "fertig";
+
+export interface AreaProgress {
+  key: SelbstauskunftAreaKey;
+  status: AreaStatus;
+  /** Zählt in die Gesamt-% und blockiert den Abschluss. */
+  required: boolean;
+}
+
+export interface SelbstauskunftProgress {
+  areas: AreaProgress[];
+  requiredTotal: number;
+  requiredDone: number;
+  /** 0..100 über die Pflichtbereiche. */
+  percent: number;
+  /** Alle Pflichtbereiche fertig? (Unterschrift wird beim Absenden geprüft.) */
+  submittable: boolean;
+}
+
+const PERSOENLICH_KEYS: (keyof PersonData)[] = [
+  "vorname", "nachname", "email", "telefon", "geburtsdatum", "strasse", "ort",
+  "plz", "wohnsituation", "wohnhaft_seit", "familienstand", "kinder_anzahl",
+  "staatsangehoerigkeit",
+];
+const TAETIGKEIT_KEYS: (keyof PersonData)[] = [
+  "beschaeftigung", "beruf", "arbeitgeber", "taetig_seit", "dauer", "befristet_bis",
+];
+const EINKOMMEN_KEYS: (keyof PersonData)[] = [
+  "lohn_netto_monat", "anzahl_gehaelter", "selbststaendig_jahr", "nebenberuf_jahr",
+  "nebenberuf_beginn", "renten_monat", "mieteinnahmen_monat", "kindergeld_monat",
+  "unterhalt_monat", "sonstige_einkuenfte_jahr", "sonstige_einkuenfte_art",
+];
+const VERMOEGEN_KEYS: (keyof PersonData)[] = [
+  "bank_sparguthaben", "wertpapiere", "lebensversicherung", "bausparen_guthaben",
+  "bausparen_rate", "sonstiges_vermoegen", "sonstiges_vermoegen_art",
+];
+const AUSGABEN_KEYS: (keyof PersonData)[] = [
+  "lebenshaltung_monat", "kv_status", "pkv_beitrag_monat", "warmmiete_monat",
+];
+const VERBINDLICHKEIT_KEYS: (keyof PersonData)[] = [
+  "kreditrate_monat", "restschuld", "unterhaltsverpflichtung_monat",
+  "sonstige_verbindlichkeit_monat", "verbindlichkeit_art",
+];
+
+const LIABILITY_POSTEN = [
+  "Kredite / Leasing / 0% Finanzierungen",
+  "Unterhaltsverpflichtungen",
+  "sonstige Verbindlichkeiten",
+];
+
+function anyFilled(p: PersonData, keys: (keyof PersonData)[]): boolean {
+  return keys.some((k) => {
+    const v = p[k];
+    return typeof v === "string" ? v.trim() !== "" : false;
+  });
+}
+
+function personStarted(p: PersonData, key: SelbstauskunftAreaKey): boolean {
+  switch (key) {
+    case "persoenlich":
+      return anyFilled(p, PERSOENLICH_KEYS);
+    case "taetigkeit":
+      return anyFilled(p, TAETIGKEIT_KEYS) || p.arbeitgeber_deutschland;
+    case "einkommen":
+      return p.einnahmequellen.length > 0 || anyFilled(p, EINKOMMEN_KEYS);
+    case "vermoegen":
+      return p.vermoegenswerte.length > 0 || anyFilled(p, VERMOEGEN_KEYS);
+    case "ausgaben":
+      return anyFilled(p, AUSGABEN_KEYS) || p.ausgabenposten.includes("Wohnkosten");
+    case "verbindlichkeiten":
+      return (
+        anyFilled(p, VERBINDLICHKEIT_KEYS) ||
+        p.ausgabenposten.some((x) => LIABILITY_POSTEN.includes(x))
+      );
+    default:
+      return false;
+  }
+}
+
+const STEP_FOR_AREA: Partial<Record<SelbstauskunftAreaKey, number>> = {
+  persoenlich: 1, taetigkeit: 2, einkommen: 3, vermoegen: 4, ausgaben: 6,
+};
+
+function personArea(p: PersonData, key: SelbstauskunftAreaKey): AreaStatus {
+  const step = STEP_FOR_AREA[key];
+  if (step != null) {
+    if (validatePersonStep(p, step) == null) return "fertig";
+    return personStarted(p, key) ? "teilweise" : "leer";
+  }
+  if (key === "verbindlichkeiten") {
+    const selected = p.ausgabenposten.filter((x) => LIABILITY_POSTEN.includes(x));
+    // Nichts anzugeben → erledigt, sobald der Ausgaben-Bereich steht.
+    if (selected.length === 0)
+      return validatePersonStep(p, 6) == null ? "fertig" : "leer";
+    const strFilled = (v: string) => v.trim() !== "";
+    const ok =
+      (!selected.includes("Kredite / Leasing / 0% Finanzierungen") ||
+        strFilled(p.kreditrate_monat)) &&
+      (!selected.includes("Unterhaltsverpflichtungen") ||
+        strFilled(p.unterhaltsverpflichtung_monat)) &&
+      (!selected.includes("sonstige Verbindlichkeiten") ||
+        strFilled(p.sonstige_verbindlichkeit_monat));
+    return ok ? "fertig" : "teilweise";
+  }
+  return "leer";
+}
+
+function combineStatus(a: AreaStatus, b: AreaStatus): AreaStatus {
+  if (a === "fertig" && b === "fertig") return "fertig";
+  if (a === "leer" && b === "leer") return "leer";
+  return "teilweise";
+}
+
+function immobilienStatus(d: SelbstauskunftData): AreaStatus {
+  if (d.immobilienvermoegen === "") return "leer";
+  if (d.immobilienvermoegen === "nein") return "fertig";
+  if (d.immobilien.length === 0) return "teilweise";
+  const allOk = d.immobilien.every(
+    (im) => im.objektart.trim() !== "" && im.adresse.trim() !== "",
+  );
+  return allOk ? "fertig" : "teilweise";
+}
+
+function abschlussStatus(d: SelbstauskunftData): AreaStatus {
+  const filled = d.datenschutz && d.ort.trim() !== "";
+  if (filled) return "fertig";
+  if (d.datenschutz || d.ort.trim() !== "") return "teilweise";
+  return "leer";
+}
+
+/** Bereichs-Fortschritt über Haupt- (+ ggf. Mit-)antragsteller. */
+export function selbstauskunftProgress(
+  d: SelbstauskunftData,
+): SelbstauskunftProgress {
+  const persons = relevantePersonen(d);
+  const perPerson = (key: SelbstauskunftAreaKey): AreaStatus =>
+    persons.map((p) => personArea(p, key)).reduce(combineStatus);
+
+  const areas: AreaProgress[] = [
+    { key: "persoenlich", status: perPerson("persoenlich"), required: true },
+    { key: "taetigkeit", status: perPerson("taetigkeit"), required: true },
+    { key: "einkommen", status: perPerson("einkommen"), required: true },
+    { key: "vermoegen", status: perPerson("vermoegen"), required: true },
+    { key: "ausgaben", status: perPerson("ausgaben"), required: true },
+    { key: "verbindlichkeiten", status: perPerson("verbindlichkeiten"), required: false },
+    { key: "immobilien", status: immobilienStatus(d), required: false },
+    { key: "abschluss", status: abschlussStatus(d), required: false },
+  ];
+
+  const requiredAreas = areas.filter((a) => a.required);
+  const requiredDone = requiredAreas.filter((a) => a.status === "fertig").length;
+  const requiredTotal = requiredAreas.length;
+  const percent =
+    requiredTotal === 0 ? 0 : Math.round((requiredDone / requiredTotal) * 100);
+
+  return {
+    areas,
+    requiredTotal,
+    requiredDone,
+    percent,
+    submittable: requiredDone === requiredTotal,
+  };
+}

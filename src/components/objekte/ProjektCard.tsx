@@ -105,12 +105,12 @@ export function ProjektCard({ data }: { data: ProjektCardData }) {
               ? `${fmtRange(agg.zimmer_min, agg.zimmer_max, (n) => formatNumber(n))} Zimmer`
               : null}
             {(agg.zimmer_min != null || agg.zimmer_max != null) && baujahr ? (
-              <span className="mx-1.5">|</span>
+              <span className="mx-1.5">·</span>
             ) : null}
             {baujahr ? `Baujahr ${baujahr}` : null}
             {(agg.zimmer_min != null || agg.zimmer_max != null || baujahr) &&
             (agg.afa_min != null || agg.afa_max != null) ? (
-              <span className="mx-1.5">|</span>
+              <span className="mx-1.5">·</span>
             ) : null}
             {agg.afa_min != null || agg.afa_max != null
               ? `AfA ${fmtRange(agg.afa_min, agg.afa_max, (n) => formatNumber(n))} %`

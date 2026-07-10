@@ -4,6 +4,12 @@
 // getPortalDashboard in portal.functions.ts. Keeps the exact selects + RPC names.
 import "server-only";
 import { requireUser } from "@/lib/auth";
+import {
+  emptySelbstauskunft,
+  selbstauskunftProgress,
+  type SelbstauskunftData,
+  type SelbstauskunftProgress,
+} from "@/lib/selbstauskunft";
 
 export interface PortalDashboard {
   kunde: {
@@ -56,6 +62,25 @@ export interface PortalDashboard {
   }>;
   /** Distinct (non-deleted) document categories the kunde has uploaded. */
   dokumentKategorien: string[];
+  /** Bereichs-Fortschritt des Finanz-Checks (Selbstauskunft), aus dem Draft. */
+  selbstauskunft: SelbstauskunftProgress;
+  /** Wurde die Selbstauskunft bereits (rechtlich) eingereicht? */
+  selbstauskunftEingereicht: boolean;
+}
+
+/** Rehydriert eine gespeicherte Selbstauskunft defensiv gegen leere Defaults. */
+function rehydrateSelbstauskunft(raw: unknown): SelbstauskunftData {
+  const base = emptySelbstauskunft();
+  if (!raw || typeof raw !== "object") return base;
+  const d = raw as Partial<SelbstauskunftData>;
+  return {
+    ...base,
+    ...d,
+    haupt: { ...base.haupt, ...(d.haupt ?? {}) },
+    mit: { ...base.mit, ...(d.mit ?? {}) },
+    immobilien: Array.isArray(d.immobilien) ? d.immobilien : [],
+    mitantragsteller: Boolean(d.mitantragsteller),
+  };
 }
 
 /** Portal dashboard for the signed-in kunde: own profile, assigned VP, einheiten + status. */
@@ -73,10 +98,18 @@ export async function getPortalDashboard(): Promise<PortalDashboard> {
     .eq("user_id", userId)
     .maybeSingle();
 
+  const emptyProgress = selbstauskunftProgress(emptySelbstauskunft());
   if (!kunde)
-    return { kunde: null, vp: null, einheiten: [], dokumentKategorien: [] };
+    return {
+      kunde: null,
+      vp: null,
+      einheiten: [],
+      dokumentKategorien: [],
+      selbstauskunft: emptyProgress,
+      selbstauskunftEingereicht: false,
+    };
 
-  const [vpRes, zuwRes, resRes, dokRes] = await Promise.all([
+  const [vpRes, zuwRes, resRes, dokRes, saRes] = await Promise.all([
     supabase.rpc("get_my_vp"),
     supabase
       .from("objekt_kunde_zuweisungen")
@@ -98,7 +131,18 @@ export async function getPortalDashboard(): Promise<PortalDashboard> {
       .select("kategorie")
       .eq("kunde_id", kunde.id)
       .is("deleted_at", null),
+    supabase
+      .from("selbstauskuenfte")
+      .select("status, daten")
+      .eq("kunde_id", kunde.id)
+      .maybeSingle(),
   ]);
+
+  const saRow = saRes.data as { status: string; daten: unknown } | null;
+  const selbstauskunft = saRow?.daten
+    ? selbstauskunftProgress(rehydrateSelbstauskunft(saRow.daten))
+    : emptyProgress;
+  const selbstauskunftEingereicht = saRow?.status === "eingereicht";
 
   const dokumentKategorien = [
     ...new Set(
@@ -164,5 +208,7 @@ export async function getPortalDashboard(): Promise<PortalDashboard> {
     vp: ((vpRes.data ?? [])[0] ?? null) as PortalDashboard["vp"],
     einheiten,
     dokumentKategorien,
+    selbstauskunft,
+    selbstauskunftEingereicht,
   };
 }

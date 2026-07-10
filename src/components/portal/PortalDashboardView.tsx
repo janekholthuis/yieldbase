@@ -20,7 +20,9 @@ import {
   CalendarCheck,
   CheckCircle2,
   Banknote,
+  Gauge,
 } from "lucide-react";
+import type { SelbstauskunftAreaKey } from "@/lib/selbstauskunft";
 
 const statusBadge = (
   s: string | null,
@@ -67,6 +69,17 @@ function statusLabel(value: string | null | undefined): string {
   return STATUS_LABEL[value] ?? value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+const AREA_LABEL: Record<SelbstauskunftAreaKey, string> = {
+  persoenlich: "Persönliche Daten",
+  taetigkeit: "Deine Tätigkeit",
+  einkommen: "Deine Einnahmen",
+  vermoegen: "Dein Vermögen",
+  ausgaben: "Deine Ausgaben",
+  verbindlichkeiten: "Verbindlichkeiten",
+  immobilien: "Immobilien",
+  abschluss: "Abschluss & Unterschrift",
+};
+
 export function PortalDashboardView({
   data,
   cases,
@@ -107,6 +120,17 @@ export function PortalDashboardView({
     (e) => e.reservierung_status === "reserviert",
   );
 
+  // Finanz-Check (Selbstauskunft) — gamifizierter Bereichs-Fortschritt.
+  const sa = data.selbstauskunft;
+  const saDone = data.selbstauskunftEingereicht;
+  const saPct = saDone ? 100 : sa.percent;
+  const nextArea =
+    sa.areas.find((a) => a.required && a.status !== "fertig") ??
+    sa.areas.find((a) => a.status !== "fertig");
+  const nextAreaLabel = nextArea ? AREA_LABEL[nextArea.key] : null;
+  const saCta =
+    saPct === 0 ? "Finanz-Check starten" : saDone ? "Ansehen" : "Weitermachen";
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10">
       {/* Hero */}
@@ -123,6 +147,53 @@ export function PortalDashboardView({
           </p>
         </div>
       </header>
+
+      {/* Finanz-Check (Selbstauskunft) */}
+      <section className="mb-8">
+        <SectionCard
+          icon={<Gauge className="h-5 w-5" />}
+          title="Dein Finanz-Check"
+          subtitle={
+            saDone
+              ? "Vollständig eingereicht"
+              : "Fülle deine Selbstauskunft in deinem Tempo aus"
+          }
+          action={
+            <Button asChild size="sm" className="rounded-2xl">
+              <Link href="/portal/selbstauskunft">
+                {saCta}
+                <ArrowRight className="ml-1 h-3 w-3" />
+              </Link>
+            </Button>
+          }
+        >
+          <div className="flex items-end justify-between gap-3">
+            <div className="text-sm text-muted-foreground">
+              {saDone ? (
+                <span className="inline-flex items-center gap-1.5 text-brand-success">
+                  <CheckCircle2 className="h-4 w-4" /> Alles erledigt — vielen Dank!
+                </span>
+              ) : nextAreaLabel ? (
+                <>
+                  Als Nächstes:{" "}
+                  <span className="font-medium text-brand-ink">{nextAreaLabel}</span>
+                </>
+              ) : (
+                "Bereit zum Abschluss."
+              )}
+            </div>
+            <div className="font-display text-2xl font-semibold tabular-nums tracking-tight text-brand-accent">
+              {saPct}%
+            </div>
+          </div>
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-brand-surfaceMuted">
+            <div
+              className="h-full rounded-full bg-brand-accent transition-all"
+              style={{ width: `${saPct}%` }}
+            />
+          </div>
+        </SectionCard>
+      </section>
 
       {/* 3 KPI-Kacheln */}
       <section className="grid gap-4 md:grid-cols-3">
@@ -438,10 +509,10 @@ export function PortalDashboardView({
               cta="Jetzt starten"
             />
             <NextStep
-              done={!!data.kunde?.persoenlicher_steuersatz}
+              done={saDone}
               label="Vervollständige deine Selbstauskunft"
               href="/portal/selbstauskunft"
-              cta="Selbstauskunft öffnen"
+              cta="Finanz-Check öffnen"
             />
             <NextStep
               done={!!reservierteEinheit?.reservierung_status}

@@ -3,7 +3,7 @@
 // nötig. Login folgt erst ab Reservierung. Guard: /selbstauskunft ist in
 // proxy.ts (PUBLIC_PREFIXES) freigegeben.
 import { getSelbstauskunftByToken } from "@/lib/actions/selbstauskunft-public";
-import { SelbstauskunftWizard } from "@/components/portal/SelbstauskunftWizard";
+import { SelbstauskunftHub } from "@/components/portal/SelbstauskunftHub";
 import {
   emptySelbstauskunft,
   emptyPerson,
@@ -70,7 +70,7 @@ export default async function PublicSelbstauskunftPage({
   };
 
   return (
-    <SelbstauskunftWizard
+    <SelbstauskunftHub
       initialData={data}
       alreadySubmitted={ctx.existing?.status === "eingereicht"}
       submittedAt={ctx.existing?.submitted_at ?? null}

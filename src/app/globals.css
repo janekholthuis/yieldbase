@@ -1,13 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /*
- * Objektpilot Design System — DealOS Re-Theme
- * Navy #0A2E4F · Gold #B8893E · Inter only
- * Editorial-premium, banken-tauglich, ruhig.
+ * Design System — "Erfolg mit Immobilien"
+ * Navy #0A2E4F · Gold #B8893E · Inter (UI) + Schibsted Grotesk (Display)
+ * Editorial-kantig, banken-tauglich, ruhig. Fonts via next/font (layout.tsx).
  *
  * Tokens stored as raw OKLCH channels (no oklch() wrapper) so Tailwind v3
  * can apply `/opacity` modifiers via `oklch(var(--token) / <alpha-value>)`.
@@ -15,8 +13,10 @@
 
 @layer base {
   :root {
-    /* design: radius dialed back — base 0.75rem (12px), leicht kantig */
-    --radius: 0.75rem;
+    /* design: editorial-kantig — Basis 0.25rem (4px). Die gesamte abgeleitete
+       Radius-Skala (sm..4xl) rechnet relativ hierzu → App-weit scharfe Ecken,
+       angeglichen an die Marketing-Landing (0px). */
+    --radius: 0.25rem;
 
     /* Brand primary/accent as RGB channels — default = Objektpilot navy/gold.
        The active organisation overrides these at runtime (see lib/branding.ts). */

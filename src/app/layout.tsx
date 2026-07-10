@@ -1,6 +1,22 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { Inter, Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
+
+// Self-hosted via next/font (no render-blocking Google @import, no FOUT).
+// Inter = UI/Fließtext/Tabellenzahlen; Schibsted Grotesk = Display-Sans für
+// Titel & Hero-Zahlen (editorial, sober, distinktiv — kein Inter-Default-Look).
+// Opt-in via Tailwind `font-display`.
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+const display = Schibsted_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+});
 import { Providers } from "@/components/providers";
 import {
   getActiveOrganisation,
@@ -32,7 +48,11 @@ export default async function RootLayout({
   const themeCss = buildOrgThemeCss(org);
 
   return (
-    <html lang="de" suppressHydrationWarning>
+    <html
+      lang="de"
+      className={`${inter.variable} ${display.variable}`}
+      suppressHydrationWarning
+    >
       <body className="antialiased">
         {themeCss ? (
           <style id="org-theme" dangerouslySetInnerHTML={{ __html: themeCss }} />

@@ -10,8 +10,8 @@ const config: Config = {
   theme: {
   	extend: {
   		fontFamily: {
-  			sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-  			display: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+  			sans: ['var(--font-sans)', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+  			display: ['var(--font-display)', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
   		},
   		colors: {
   			background: 'oklch(var(--background) / <alpha-value>)',

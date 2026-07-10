@@ -3,7 +3,7 @@ import { getMyTeam, listPendingInvites } from "@/lib/data/team";
 import { TeamView } from "@/components/team/TeamView";
 
 export const metadata: Metadata = {
-  title: "Mein Team · Objektpilot",
+  title: "Mein Team · Erfolg mit Immobilien",
 };
 
 export default async function TeamPage() {

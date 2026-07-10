@@ -288,7 +288,7 @@ export function PraesentationView({
             O
           </div>
           <span className="font-display font-semibold tracking-tight">
-            Objektpilot
+            Erfolg mit Immobilien
           </span>
         </div>
         <div className="font-display text-sm text-brand-body">
@@ -446,12 +446,12 @@ function SlideCover({
       ) : (
         <div className="absolute inset-0 bg-brand-primaryTint" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-anthrazit via-anthrazit/65 to-anthrazit/10" />
-      <div className="relative flex h-full flex-col justify-end p-8 md:p-14">
-        <h1 className="font-display text-3xl font-bold leading-tight md:text-6xl">
+      <div className="absolute inset-0 bg-gradient-to-t from-anthrazit via-anthrazit/80 to-anthrazit/25" />
+      <div className="relative flex h-full flex-col justify-end p-8 md:p-14 [text-shadow:0_1px_24px_rgba(0,0,0,0.45)]">
+        <h1 className="font-display text-3xl font-bold leading-tight tracking-tight text-white md:text-6xl">
           {begruessung}
         </h1>
-        <p className="mt-3 font-display text-lg text-white/80 md:text-2xl">
+        <p className="mt-3 font-display text-lg text-white/85 md:text-2xl">
           {formatAddress(einheit.adresse, einheit.plz, einheit.stadt)}
         </p>
         {/* Kennzahlen-Strip — sofortiger Eindruck */}

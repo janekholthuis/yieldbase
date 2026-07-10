@@ -1,7 +1,7 @@
 import { PortalNachrichtenView } from "@/components/portal/PortalNachrichtenView";
 
 export const metadata = {
-  title: "Nachrichten · Objektpilot",
+  title: "Nachrichten · Erfolg mit Immobilien",
 };
 
 export default function PortalNachrichtenPage() {

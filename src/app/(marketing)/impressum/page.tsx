@@ -6,7 +6,7 @@ import { MarketingNav, MarketingFooter } from "@/components/marketing/marketing-
 // bestehenden Enablence-Impressum übernommen (2026-06-28).
 
 export const metadata: Metadata = {
-  title: "Impressum — Objekt Pilot",
+  title: "Impressum — Erfolg mit Immobilien",
 };
 
 export default function ImpressumPage() {

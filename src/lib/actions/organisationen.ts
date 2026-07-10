@@ -1,7 +1,7 @@
 "use server";
 
-// Client-invokable server actions for multi-tenant Organisationen: create, brand,
-// switch the active org, and manage members. Each action authenticates via
+// Client-invokable server actions for Organisationen: brand, switch the active
+// org, and manage members. Each action authenticates via
 // requireUser()/requireRole() and runs RLS-scoped queries as the signed-in user.
 // The SQL helpers is_org_member / is_org_admin back the underlying policies, so
 // these actions surface clear errors when RLS blocks a write.
@@ -24,13 +24,6 @@ import {
 const hexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "Farbe muss im Format #RRGGBB sein");
-
-const createSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  logoUrl: z.string().trim().url().max(2000).optional().nullable(),
-  primaryColor: hexColor.optional(),
-  accentColor: hexColor.optional(),
-});
 
 const brandingSchema = z.object({
   orgId: z.string().uuid(),
@@ -59,24 +52,6 @@ const addMemberByEmailSchema = z.object({
   rolle: z.enum(["admin", "member"]).default("member"),
 });
 
-// ───────────── Helpers ─────────────
-/** ASCII slugify: lowercase, hyphen-separated, alphanumerics only. */
-function slugify(name: string): string {
-  const base = name
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "") // strip combining diacritical marks
-    .replace(/ß/g, "ss") // ß → ss
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 50);
-  return base || "org";
-}
-
-function randomSuffix(): string {
-  return Math.random().toString(36).slice(2, 8);
-}
-
 // ───────────── Actions ─────────────
 
 /**
@@ -95,77 +70,6 @@ export async function getMyOrganisations(): Promise<MyOrganisation[]> {
 export async function getActiveOrganisationId(): Promise<string | null> {
   const active = await getActiveOrganisation();
   return active?.id ?? null;
-}
-
-/**
- * Create a new organisation, make the caller its owner, and switch to it.
- * Only admins / Vertriebsleiter may create orgs.
- */
-export async function createOrganisation(input: {
-  name: string;
-  logoUrl?: string | null;
-  primaryColor?: string;
-  accentColor?: string;
-}): Promise<ActiveOrg> {
-  const { name, logoUrl, primaryColor, accentColor } = createSchema.parse(input);
-  const { supabase, userId } = await requireRole("admin", "vertriebsleiter");
-
-  // Find a free slug — try the plain slug, then append random suffixes.
-  const baseSlug = slugify(name);
-  let slug = baseSlug;
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const candidate = attempt === 0 ? baseSlug : `${baseSlug}-${randomSuffix()}`;
-    const { data: existing, error: lookupErr } = await supabase
-      .from("organisationen")
-      .select("id")
-      .eq("slug", candidate)
-      .maybeSingle();
-    if (lookupErr) throw new Error(lookupErr.message);
-    if (!existing) {
-      slug = candidate;
-      break;
-    }
-    if (attempt === 5) slug = `${baseSlug}-${randomSuffix()}`;
-  }
-
-  const { data: org, error: insertErr } = await supabase
-    .from("organisationen")
-    .insert({
-      name,
-      slug,
-      owner_id: userId,
-      logo_url: logoUrl ?? null,
-      primary_color: primaryColor ?? null,
-      accent_color: accentColor ?? null,
-    })
-    .select("id,name,slug,logo_url,primary_color,accent_color,entitlements")
-    .single();
-  if (insertErr || !org) {
-    throw new Error(insertErr?.message ?? "Organisation konnte nicht erstellt werden");
-  }
-
-  const { error: memberErr } = await supabase
-    .from("organisation_members")
-    .insert({ organisation_id: org.id, user_id: userId, rolle: "owner" });
-  if (memberErr) throw new Error(memberErr.message);
-
-  const { error: profileErr } = await supabase
-    .from("profiles")
-    .update({ active_organisation_id: org.id })
-    .eq("id", userId);
-  if (profileErr) throw new Error(profileErr.message);
-
-  revalidatePath("/", "layout");
-
-  return {
-    id: org.id,
-    name: org.name,
-    slug: org.slug,
-    logoUrl: org.logo_url,
-    primaryColor: org.primary_color,
-    accentColor: org.accent_color,
-    entitlements: (org.entitlements ?? {}) as EntitlementOverrides,
-  };
 }
 
 /**

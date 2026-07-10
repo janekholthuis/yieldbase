@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Search, Plus, LogOut, UserCircle, Settings } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
-import { OrgSwitcher } from "@/components/organisation/OrgSwitcher";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -85,10 +84,6 @@ export function Topbar() {
         >
           <Search className="h-4 w-4" />
         </button>
-
-        <div className="ml-2">
-          <OrgSwitcher />
-        </div>
 
         <div className="ml-auto flex items-center gap-2">
           {showNewCustomer && (

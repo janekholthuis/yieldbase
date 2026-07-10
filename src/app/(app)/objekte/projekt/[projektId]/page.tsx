@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ProjektDetailView } from "@/components/objekte/ProjektDetailView";
 
 export const metadata = {
-  title: "Projekt-Detail · Objektpilot",
+  title: "Projekt-Detail · Erfolg mit Immobilien",
 };
 
 export default async function ProjektDetailPage({

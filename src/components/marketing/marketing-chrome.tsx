@@ -28,7 +28,7 @@ export function MarketingNav() {
         <Link href="/" className="flex items-center gap-2.5">
           <BrandMark className="h-8 w-8" />
           <span className="text-[15px] font-semibold tracking-tight text-brand-ink">
-            Objekt&nbsp;Pilot
+            Erfolg&nbsp;mit&nbsp;Immobilien
           </span>
         </Link>
 
@@ -70,10 +70,10 @@ export function MarketingFooter() {
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-10 sm:flex-row">
         <div className="flex items-center gap-2.5">
           <BrandMark className="h-7 w-7" />
-          <span className="text-sm font-semibold text-brand-ink">Objekt Pilot</span>
+          <span className="text-sm font-semibold text-brand-ink">Erfolg mit Immobilien</span>
         </div>
         <p className="text-sm text-brand-muted">
-          © 2026 Objekt Pilot · Ein Produkt der Enablence Ltd.
+          © 2026 Erfolg mit Immobilien · Ein Produkt der Enablence Ltd.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-brand-body">
           <Link href="/roadmap" className="hover:text-brand-ink">

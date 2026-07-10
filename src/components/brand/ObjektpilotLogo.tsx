@@ -84,8 +84,8 @@ export function ObjektpilotWordmark({
         className={`font-bold tracking-tight ${textClassName}`}
         style={{ letterSpacing: "-0.02em" }}
       >
-        <span className="text-brand-primary">Objekt</span>
-        <span className="text-brand-accent">pilot</span>
+        <span className="text-brand-primary">Erfolg mit </span>
+        <span className="text-brand-accent">Immobilien</span>
       </span>
     </span>
   );

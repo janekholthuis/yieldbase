@@ -4,7 +4,7 @@ import { ProvisionenListView } from "@/components/provision/ProvisionenListView"
 import { requireEntitlementPage } from "@/lib/entitlements-server";
 
 export const metadata: Metadata = {
-  title: "Provisionen · Objektpilot",
+  title: "Provisionen · Erfolg mit Immobilien",
 };
 
 export default async function ProvisionenPage() {

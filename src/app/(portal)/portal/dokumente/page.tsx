@@ -5,7 +5,7 @@ import { FolderClosed } from "lucide-react";
 import { KundenDokumenteListe } from "@/components/kunden-dokumente/KundenDokumenteListe";
 
 export const metadata = {
-  title: "Meine Unterlagen · Objektpilot",
+  title: "Meine Unterlagen · Erfolg mit Immobilien",
 };
 
 export default async function PortalDokumentePage() {

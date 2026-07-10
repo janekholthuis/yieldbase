@@ -7,9 +7,9 @@ import { LandingPage } from "@/components/marketing/landing-page";
 import { OrgLanding } from "@/components/marketing/org-landing";
 
 const SAAS = {
-  title: "Objekt Pilot — Eine Plattform statt zehn Tools",
+  title: "Erfolg mit Immobilien — Eine Plattform statt zehn Tools",
   description:
-    "Objekt Pilot bündelt Objekte, Kunden, Kalkulation, Reservierung und Finanzierung in einer Plattform.",
+    "Erfolg mit Immobilien bündelt Objekte, Kunden, Kalkulation, Reservierung und Finanzierung in einer Plattform.",
 };
 
 // Host-aware: a request on an org's custom domain (e.g. emi-hub.de) is titled

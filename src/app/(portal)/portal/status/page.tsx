@@ -3,7 +3,7 @@ import { getMyKundeCases } from "@/lib/data/finanzierung";
 import { PortalStatusView } from "@/components/portal/PortalStatusView";
 
 export const metadata = {
-  title: "Mein Status · Objektpilot",
+  title: "Mein Status · Erfolg mit Immobilien",
 };
 
 export default async function PortalStatusPage() {

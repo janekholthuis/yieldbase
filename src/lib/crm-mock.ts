@@ -25,26 +25,29 @@ export interface PipelineStage {
   emoji: string;
   /** Tailwind dot-color for the status pill/dot. */
   dot: string;
+  /** Pastel bg+text for the Close-style UPPERCASE status pill. */
+  soft: string;
 }
 
 /** Vertriebs-Pipeline — exakt die Stufen aus der Vorlage. */
 export const PIPELINE: PipelineStage[] = [
-  { key: "neue_leads", label: "Neue Leads", emoji: "👋", dot: "bg-slate-400" },
-  { key: "follow_up", label: "Follow Up", emoji: "💬", dot: "bg-sky-500" },
-  { key: "neu_terminieren", label: "Neu Terminieren", emoji: "📌", dot: "bg-rose-500" },
-  { key: "gespraech_terminiert", label: "Gespräch terminiert", emoji: "📅", dot: "bg-indigo-500" },
-  { key: "warte_selbstauskunft", label: "Warte auf Selbstauskunft", emoji: "⏰", dot: "bg-amber-500" },
+  { key: "neue_leads", label: "Neue Leads", emoji: "👋", dot: "bg-slate-400", soft: "bg-slate-100 text-slate-600" },
+  { key: "follow_up", label: "Follow Up", emoji: "💬", dot: "bg-sky-500", soft: "bg-sky-100 text-sky-700" },
+  { key: "neu_terminieren", label: "Neu Terminieren", emoji: "📌", dot: "bg-rose-500", soft: "bg-rose-100 text-rose-700" },
+  { key: "gespraech_terminiert", label: "Gespräch terminiert", emoji: "📅", dot: "bg-indigo-500", soft: "bg-indigo-100 text-indigo-700" },
+  { key: "warte_selbstauskunft", label: "Warte auf Selbstauskunft", emoji: "⏰", dot: "bg-amber-500", soft: "bg-red-100 text-red-600" },
   {
     key: "selbstauskunft_erhalten",
     label: "Selbstauskunft Erhalten (Finanzierungsprüfung)",
     emoji: "📥",
     dot: "bg-cyan-500",
+    soft: "bg-blue-100 text-blue-700",
   },
-  { key: "reservierungsprozess", label: "Reservierungsprozess", emoji: "📄", dot: "bg-violet-500" },
-  { key: "angebotsbesprechung", label: "Angebotsbesprechung", emoji: "🏆", dot: "bg-emerald-500" },
-  { key: "notarauftrag", label: "Notarauftrag Unterschrieben", emoji: "✍️", dot: "bg-teal-500" },
-  { key: "notartermin", label: "Notartermin", emoji: "✅", dot: "bg-green-600" },
-  { key: "verloren", label: "Verloren (salesprozess)", emoji: "❌", dot: "bg-red-500" },
+  { key: "reservierungsprozess", label: "Reservierungsprozess", emoji: "📄", dot: "bg-violet-500", soft: "bg-violet-100 text-violet-700" },
+  { key: "angebotsbesprechung", label: "Angebotsbesprechung", emoji: "🏆", dot: "bg-emerald-500", soft: "bg-emerald-100 text-emerald-700" },
+  { key: "notarauftrag", label: "Notarauftrag Unterschrieben", emoji: "✍️", dot: "bg-teal-500", soft: "bg-teal-100 text-teal-700" },
+  { key: "notartermin", label: "Notartermin", emoji: "✅", dot: "bg-green-600", soft: "bg-green-100 text-green-700" },
+  { key: "verloren", label: "Verloren (salesprozess)", emoji: "❌", dot: "bg-red-500", soft: "bg-red-100 text-red-700" },
 ];
 
 export const STAGE_BY_KEY: Record<StageKey, PipelineStage> = Object.fromEntries(
@@ -85,6 +88,8 @@ export interface CustomField {
   href?: string;
   /** Externer Link (Drive etc.). */
   external?: boolean;
+  /** Person-Feld (z.B. Zuständiger) → Avatar-Chip. */
+  person?: boolean;
 }
 
 export interface LinkedObjekt {
@@ -149,18 +154,20 @@ export const CONTACTS: CrmContact[] = [
       kaufpreis: "224.000 €",
       wohnung: "WE 12",
     },
-    customFields: fullFields({
-      objekt: "2-Zimmer ETW Essen",
-      beruf: "Beamtin – Gymnasiallehrerin",
-      netto: "4.000 € netto/Monat",
-      ek: "50.000 €",
-      ziel: "Altersvorsorge",
-      quelle: "Facebook Ad",
-      gebdat: "14.03.1989",
-      sa: "Eingereicht (18. Jun)",
-      res: "In Bearbeitung",
-      rec: "recssEoaeUIO1qHBQ",
-    }),
+    customFields: [
+      { label: "Airtable Record ID", value: "recssEoaeUIO1qHBQ" },
+      { label: "Angefragtes Objekt", value: "2-Zimmer ETW Essen", href: "/objekte" },
+      { label: "Berufssituation", value: "Beamtin – Gymnasiallehrerin" },
+      { label: "Drive Link", value: "https://drive.google.com/drive/…", external: true },
+      { label: "Eigenkapital", value: "50.000 €" },
+      { label: "Empfehlungsgeber", value: "Facebook Ad" },
+      { label: "Investment Ziel", value: "Altersvorsorge" },
+      { label: "Nettoeinkommen", value: "4.000 € netto/Monat" },
+      { label: "Resi Link", value: "https://forms.fillout.com/t/25d…", external: true },
+      { label: "SA Link", value: "https://forms.fillout.com/t/visci…", external: true },
+      { label: "Startzeitpunkt", value: "In 3-6 Monaten" },
+      { label: "Zuständiger", value: "Janek Holthuis", person: true },
+    ],
     activities: [
       {
         id: "a1",

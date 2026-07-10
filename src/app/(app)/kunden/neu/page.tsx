@@ -1,7 +1,7 @@
 import { KundeNeuForm } from "@/components/kunden/KundeNeuForm";
 
 export const metadata = {
-  title: "Neuer Kunde · Objektpilot",
+  title: "Neuer Kunde · Erfolg mit Immobilien",
 };
 
 // Prefill aus Close.io: der Berater öffnet eine Lead-URL mit Query-Parametern

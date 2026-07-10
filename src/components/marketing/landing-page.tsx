@@ -122,7 +122,7 @@ function BeforeAfter() {
           </h2>
           <p className="mt-4 text-lg text-brand-body">
             Ihr Vertrieb verliert Zeit zwischen Postfächern, Tabellen und Chats.
-            Objekt Pilot führt alles zusammen.
+            Erfolg mit Immobilien führt alles zusammen.
           </p>
         </div>
 
@@ -225,7 +225,7 @@ function AfterPanel() {
           <span className="h-2.5 w-2.5 rounded-full bg-brand-border" />
           <span className="h-2.5 w-2.5 rounded-full bg-brand-border" />
           <span className="ml-2 text-xs font-medium text-brand-muted">
-            app.objekt-pilot.de
+            app.emi-hub.de
           </span>
         </div>
         <div className="grid grid-cols-[112px_1fr]">
@@ -323,7 +323,7 @@ function ReplaceStack() {
             </h2>
             <p className="mt-5 max-w-md text-lg leading-relaxed text-white/70">
               Kein Wechseln, kein Kopieren, kein Suchen. Was Ihr Vertrieb heute
-              auf sechs Tools verteilt, läuft in Objekt Pilot an einem Ort —
+              auf sechs Tools verteilt, läuft in Erfolg mit Immobilien an einem Ort —
               nachvollziehbar und revisionssicher.
             </p>
             <Link
@@ -484,7 +484,7 @@ function FinalCta() {
               Bringen Sie Ihren Vertrieb auf eine Plattform.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-lg text-white/75">
-              Sehen Sie in einer kurzen Demo, wie Objekt Pilot Objekte, Kunden und
+              Sehen Sie in einer kurzen Demo, wie Erfolg mit Immobilien Objekte, Kunden und
               Finanzierung zusammenführt.
             </p>
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">

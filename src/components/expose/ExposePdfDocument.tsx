@@ -259,7 +259,7 @@ function PageFooter({ einheit, page, total }: { einheit: any; page: number; tota
   return (
     <View style={s.footer} fixed>
       <Text>
-        Objektpilot · Wohnung {einheit.wohnungsnummer}
+        Erfolg mit Immobilien · Wohnung {einheit.wohnungsnummer}
         {einheit.projekt_name ? ` · ${einheit.projekt_name}` : ""}
       </Text>
       <Text>
@@ -285,14 +285,14 @@ export function ExposePdfDocument({ data }: { data: ExposeData }) {
   return (
     <Document
       title={`Exposé Wohnung ${e.wohnungsnummer}`}
-      author={data.vp.name ?? "Objektpilot"}
+      author={data.vp.name ?? "Erfolg mit Immobilien"}
     >
       {/* Seite 1: Cover */}
       <Page size="A4" style={s.page}>
         <View style={s.cover}>
           <View>
             <Text style={[s.small, { color: colors.accent, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase" }]}>
-              Objektpilot · Exposé
+              Erfolg mit Immobilien · Exposé
             </Text>
             <View style={[s.accentBar, { marginTop: 12 }]} />
             <Text style={s.h1}>{greeting}</Text>
@@ -571,7 +571,7 @@ export function ExposePdfDocument({ data }: { data: ExposeData }) {
             Dein Berater
           </Text>
           <Text style={{ fontSize: 16, fontWeight: 700, color: "#FFFFFF", marginTop: 8, fontFamily: HEAD_FONT }}>
-            {[data.vp.vorname, data.vp.nachname].filter(Boolean).join(" ") || data.vp.name || "Objektpilot"}
+            {[data.vp.vorname, data.vp.nachname].filter(Boolean).join(" ") || data.vp.name || "Erfolg mit Immobilien"}
           </Text>
           {data.vp.email && (
             <Text style={[s.smallOnDark, { marginTop: 6 }]}>E-Mail: {data.vp.email}</Text>
@@ -582,7 +582,7 @@ export function ExposePdfDocument({ data }: { data: ExposeData }) {
         </View>
 
         <View style={[s.footer, { color: "#B8C5D6" }]} fixed>
-          <Text>Objektpilot · Exposé</Text>
+          <Text>Erfolg mit Immobilien · Exposé</Text>
           <Text>Seite 9 / 9</Text>
         </View>
       </Page>

@@ -4,7 +4,7 @@ import { FinanzierungenListView } from "@/components/finanzierung/Finanzierungen
 import { requireEntitlementPage } from "@/lib/entitlements-server";
 
 export const metadata = {
-  title: "Finanzierungen · Objektpilot",
+  title: "Finanzierungen · Erfolg mit Immobilien",
 };
 
 export default async function FinanzierungenPage() {

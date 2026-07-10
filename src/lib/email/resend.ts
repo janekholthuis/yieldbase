@@ -6,7 +6,7 @@ import "server-only";
 // (send-invite/portal/reservation), die ein separates Supabase-Secret bräuchten.
 
 const RESEND_URL = "https://api.resend.com/emails";
-const DEFAULT_FROM = "Objektpilot <onboarding@resend.dev>";
+const DEFAULT_FROM = "Erfolg mit Immobilien <onboarding@resend.dev>";
 
 export function getResendKey(): string | null {
   return process.env.RESEND_API_KEY ?? null;

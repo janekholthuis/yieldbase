@@ -12,7 +12,6 @@ import {
   UsersRound,
   UserCircle,
   Settings,
-  Send,
   type LucideIcon,
 } from "lucide-react";
 
@@ -72,13 +71,6 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/team",
     icon: UsersRound,
     roles: ["admin", "support", "vertriebsleiter", "vp_l1", "vp_l2"],
-  },
-  {
-    title: "Demo-Links",
-    to: "/demo-links",
-    icon: Send,
-    roles: ["admin", "support"],
-    requiresFeature: "demo_links",
   },
   {
     title: "Einstellungen",

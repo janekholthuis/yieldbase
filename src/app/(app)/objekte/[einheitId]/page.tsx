@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
-  title: "Objekt-Detail · Objektpilot",
+  title: "Objekt-Detail · Erfolg mit Immobilien",
 };
 
 // Die frühere komplizierte Einheiten-Unterseite ist in die Projektseite

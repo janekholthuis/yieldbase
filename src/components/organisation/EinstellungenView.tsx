@@ -1,11 +1,11 @@
 "use client";
 
-// Settings UI for multi-tenant organisation branding & membership.
+// Settings UI for organisation branding & membership.
 //
-// Composes three cards:
+// Composes:
 //  1. Branding (owner/admin) — name, logo upload, primary/accent colors.
-//  2. Mitglieder — list + remove (owner/admin).
-//  3. Neue Organisation (admin / vertriebsleiter) — create dialog.
+//  2. Mitglieder — list + add/remove (owner/admin).
+//  3. Investagon-Sync (admin/support).
 //
 // Data arrives as props from the Server Component; every mutation goes through a
 // `"use server"` action, followed by a toast and `router.refresh()`.
@@ -14,7 +14,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Building2,
-  Plus,
   Trash2,
   Loader2,
   UserPlus,
@@ -35,17 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -55,23 +44,14 @@ import {
 } from "@/components/ui/select";
 import { FileUpload } from "@/components/dokumente/FileUpload";
 import { BrandingExtractDialog } from "@/components/organisation/BrandingExtractDialog";
-import { DomainCard } from "@/components/organisation/DomainCard";
 import { rehostLogoFromUrl } from "@/lib/actions/branding-extract";
 import { useAuth } from "@/lib/auth-context";
 import type { ActiveOrg, OrganisationMember } from "@/lib/data/organisationen";
 import {
-  createOrganisation,
   removeOrganisationMember,
   updateOrganisationBranding,
   addOrgMemberByEmail,
-  updateOrganisationEntitlements,
 } from "@/lib/actions/organisationen";
-import {
-  ENTITLEMENT_CATALOG,
-  resolveEntitlements,
-  type EntitlementKey,
-  type EntitlementOverrides,
-} from "@/lib/entitlements";
 import {
   getInvestagonStatus,
   syncInvestagon,
@@ -105,12 +85,7 @@ export function EinstellungenView({
 }: EinstellungenViewProps) {
   const { roles } = useAuth();
   const canManageOrg = activeRole === "owner" || activeRole === "admin";
-  const canCreateOrg =
-    roles.includes("admin") || roles.includes("vertriebsleiter");
   const canSyncInvestagon = roles.includes("admin") || roles.includes("support");
-  // PROJ-31: only platform operators set which features a customer org has.
-  const canManageEntitlements =
-    roles.includes("admin") || roles.includes("support");
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 md:px-6">
@@ -127,9 +102,6 @@ export function EinstellungenView({
         <Card className="rounded-xl">
           <CardContent className="py-10 text-center text-sm text-brand-muted">
             Keine aktive Organisation ausgewählt.
-            {canCreateOrg
-              ? " Erstellen Sie unten eine neue Organisation, um loszulegen."
-              : ""}
           </CardContent>
         </Card>
       ) : (
@@ -149,10 +121,6 @@ export function EinstellungenView({
             </Card>
           )}
 
-          {canManageOrg && <DomainCard orgId={activeOrg.id} />}
-
-          {canManageEntitlements && <EntitlementsCard org={activeOrg} />}
-
           <MembersCard
             orgId={activeOrg.id}
             members={members}
@@ -162,8 +130,6 @@ export function EinstellungenView({
           {canSyncInvestagon && <InvestagonSyncCard />}
         </>
       )}
-
-      {canCreateOrg && <CreateOrgCard />}
     </div>
   );
 }
@@ -348,80 +314,6 @@ function BrandingCard({ org }: { org: ActiveOrg }) {
 
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={!canSave}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Speichern
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ───────────── Feature-Freischaltung (PROJ-31, admin/support) ─────────────
-
-function EntitlementsCard({ org }: { org: ActiveOrg }) {
-  const router = useRouter();
-  const [state, setState] = useState<EntitlementOverrides>(() =>
-    resolveEntitlements(org.entitlements),
-  );
-  const [saving, setSaving] = useState(false);
-
-  // Dirty-Check gegen den aufgelösten Ausgangszustand.
-  const initial = resolveEntitlements(org.entitlements);
-  const dirty = ENTITLEMENT_CATALOG.some((d) => state[d.key] !== initial[d.key]);
-
-  function toggle(key: EntitlementKey, value: boolean) {
-    setState((prev) => ({ ...prev, [key]: value }));
-  }
-
-  async function handleSave() {
-    if (!dirty || saving) return;
-    setSaving(true);
-    try {
-      await updateOrganisationEntitlements({
-        orgId: org.id,
-        entitlements: state,
-      });
-      toast.success("Funktionen gespeichert");
-      router.refresh();
-    } catch (e) {
-      toast.error("Funktionen konnten nicht gespeichert werden", {
-        description: e instanceof Error ? e.message : "Fehlgeschlagen",
-      });
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Card className="rounded-xl">
-      <CardHeader>
-        <CardTitle className="text-base">Funktionen (Freischaltung)</CardTitle>
-        <CardDescription>
-          Steuern Sie pro Organisation, welche Funktionen verfügbar sind. Nur für
-          Plattform-Administration sichtbar.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ul className="divide-y divide-brand-border">
-          {ENTITLEMENT_CATALOG.map((d) => (
-            <li key={d.key} className="flex items-center gap-4 py-3">
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium text-brand-primary">
-                  {d.label}
-                </div>
-                <p className="text-xs text-brand-muted">{d.description}</p>
-              </div>
-              <Switch
-                checked={state[d.key] ?? false}
-                onCheckedChange={(v) => toggle(d.key, v)}
-                aria-label={d.label}
-              />
-            </li>
-          ))}
-        </ul>
-        <div className="mt-4 flex justify-end">
-          <Button onClick={handleSave} disabled={!dirty || saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Speichern
           </Button>
@@ -934,185 +826,3 @@ function InvestagonSyncCard() {
   );
 }
 
-// ───────────── Neue Organisation ─────────────
-
-function CreateOrgCard() {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [primary, setPrimary] = useState(DEFAULT_PRIMARY);
-  const [accent, setAccent] = useState(DEFAULT_ACCENT);
-  const [creating, setCreating] = useState(false);
-  const [extractOpen, setExtractOpen] = useState(false);
-
-  const primaryValid = HEX_RE.test(primary);
-  const accentValid = HEX_RE.test(accent);
-  const nameValid = name.trim().length >= 2;
-  const canCreate = nameValid && primaryValid && accentValid && !creating;
-
-  function reset() {
-    setName("");
-    setLogoUrl(null);
-    setPrimary(DEFAULT_PRIMARY);
-    setAccent(DEFAULT_ACCENT);
-  }
-
-  async function handleCreate() {
-    if (!canCreate) return;
-    setCreating(true);
-    try {
-      // Org zuerst (mit dem extrahierten Hotlink als initialem Logo) anlegen, dann
-      // — sobald die Org-ID existiert — das Logo serverseitig in den Branding-Bucket
-      // re-hosten und die Bucket-URL nachziehen. Schlägt das Re-Hosting fehl, bleibt
-      // der Hotlink bestehen (Flow bricht nie).
-      const created = await createOrganisation({
-        name: name.trim(),
-        logoUrl,
-        primaryColor: primary,
-        accentColor: accent,
-      });
-      if (logoUrl) {
-        try {
-          const r = await rehostLogoFromUrl({
-            orgId: created.id,
-            sourceUrl: logoUrl,
-          });
-          if (r.rehosted) {
-            await updateOrganisationBranding({
-              orgId: created.id,
-              logoUrl: r.logoUrl,
-            });
-          }
-        } catch {
-          /* graceful: initialer Hotlink bleibt am Org-Datensatz */
-        }
-      }
-      toast.success("Organisation erstellt");
-      setOpen(false);
-      reset();
-      router.refresh();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Erstellen fehlgeschlagen";
-      toast.error("Organisation konnte nicht erstellt werden", {
-        description: msg,
-      });
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  return (
-    <Card className="rounded-xl">
-      <CardHeader>
-        <CardTitle className="text-base">Neue Organisation</CardTitle>
-        <CardDescription>
-          Erstellen Sie eine weitere Organisation. Sie werden automatisch deren
-          Inhaber und aktive Organisation.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline">
-              <Plus className="mr-2 h-4 w-4" /> Organisation erstellen
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="rounded-xl">
-            <DialogHeader>
-              <DialogTitle>Neue Organisation</DialogTitle>
-              <DialogDescription>
-                Geben Sie einen Namen und optional Markenfarben an.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => setExtractOpen(true)}
-              >
-                <Globe className="mr-2 h-4 w-4" /> Branding aus Website übernehmen
-              </Button>
-              <BrandingExtractDialog
-                open={extractOpen}
-                onOpenChange={setExtractOpen}
-                onApply={(s) => {
-                  if (s.primaryColor) setPrimary(s.primaryColor);
-                  if (s.accentColor) setAccent(s.accentColor);
-                  // Logo als Hotlink vormerken — re-gehostet wird es nach dem
-                  // Anlegen (dann existiert die Org-ID), siehe handleCreate.
-                  if (s.logoUrl) setLogoUrl(s.logoUrl);
-                }}
-              />
-              {logoUrl && (
-                <div className="flex items-center gap-3 rounded-lg border border-brand-border bg-brand-surface p-3">
-                  <Avatar className="h-10 w-10 rounded-lg">
-                    <AvatarImage
-                      src={logoUrl}
-                      alt="Logo-Vorschau"
-                      className="object-contain"
-                    />
-                    <AvatarFallback className="rounded-lg bg-brand-primaryTint text-brand-primary">
-                      {name.trim().charAt(0).toUpperCase() || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="flex-1 text-sm text-brand-muted">
-                    Logo erkannt
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setLogoUrl(null)}
-                    className="text-xs text-brand-muted underline-offset-2 hover:underline"
-                  >
-                    Entfernen
-                  </button>
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="new-org-name">Name</Label>
-                <Input
-                  id="new-org-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="z. B. Muster Vertrieb GmbH"
-                  autoFocus
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <ColorField
-                  id="new-org-primary"
-                  label="Primärfarbe"
-                  value={primary}
-                  onChange={setPrimary}
-                  valid={primaryValid}
-                />
-                <ColorField
-                  id="new-org-accent"
-                  label="Akzentfarbe"
-                  value={accent}
-                  onChange={setAccent}
-                  valid={accentValid}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setOpen(false)}
-                disabled={creating}
-              >
-                Abbrechen
-              </Button>
-              <Button onClick={handleCreate} disabled={!canCreate}>
-                {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Erstellen
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
-  );
-}

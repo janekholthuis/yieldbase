@@ -3,7 +3,7 @@ import { getContact } from "@/lib/crm-mock";
 import { CrmContactDetail } from "@/components/crm/CrmContactDetail";
 
 export const metadata = {
-  title: "Kontakt · CRM · Objektpilot",
+  title: "Kontakt · CRM · Erfolg mit Immobilien",
 };
 
 export default async function CrmContactPage({

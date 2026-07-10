@@ -10,7 +10,7 @@ import { MarketingNav, MarketingFooter } from "@/components/marketing/marketing-
 // der US-Anbieter sind vor seriösem Go-Live anwaltlich zu bestätigen.
 
 export const metadata: Metadata = {
-  title: "Datenschutzerklärung — Objekt Pilot",
+  title: "Datenschutzerklärung — Erfolg mit Immobilien",
 };
 
 function H2({ children }: { children: React.ReactNode }) {

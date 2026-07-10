@@ -321,7 +321,7 @@ export function ReservierungPdfDocument({ data }: { data: ReservierungPdfData })
 
         <View style={s.footer} fixed>
           <Text>
-            Objektpilot · Audit-Trail · Reservierungs-ID {data.reservierungId} · Signiert {dtDE(data.audit.timestamp)}
+            Erfolg mit Immobilien · Audit-Trail · Reservierungs-ID {data.reservierungId} · Signiert {dtDE(data.audit.timestamp)}
             {data.audit.ip ? ` · IP ${data.audit.ip}` : ""}
           </Text>
           <Text>{data.audit.userAgent ?? ""}</Text>

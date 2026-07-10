@@ -10,7 +10,7 @@ import { getSessionUser } from "@/lib/auth";
 import { buildOrgThemeCss } from "@/lib/branding";
 
 export const metadata: Metadata = {
-  title: "Objekt Pilot",
+  title: "Erfolg mit Immobilien",
   description: "Die Vertriebsplattform für den Immobilienvertrieb.",
 };
 

@@ -67,11 +67,11 @@ export function ProjektCard({ data }: { data: ProjektCardData }) {
             </div>
           )}
           {data.isNew && (
-            <span className="absolute left-3 top-3 rounded bg-primary px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-primary-foreground shadow-sm">
+            <span className="absolute left-3 top-3 rounded-md bg-primary px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-primary-foreground shadow-sm">
               Neu
             </span>
           )}
-          <span className="absolute right-3 top-3 rounded bg-background/90 px-2 py-0.5 text-xs font-medium text-foreground shadow-sm">
+          <span className="absolute right-3 top-3 rounded-md bg-background/90 px-2 py-0.5 text-xs font-medium text-foreground shadow-sm">
             {agg.count} {agg.count === 1 ? "Einheit" : "Einheiten"}
           </span>
         </div>
@@ -119,7 +119,7 @@ export function ProjektCard({ data }: { data: ProjektCardData }) {
 
 function Spec({ icon: Icon, value }: { icon: LucideIcon; value: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded border bg-background px-2 py-1 text-xs text-muted-foreground">
+    <span className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs text-muted-foreground">
       <Icon className="h-3.5 w-3.5 shrink-0" />
       <span className="tabular-nums">{value}</span>
     </span>

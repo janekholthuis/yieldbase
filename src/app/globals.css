@@ -13,10 +13,9 @@
 
 @layer base {
   :root {
-    /* design: editorial-kantig — Basis 0.25rem (4px). Die gesamte abgeleitete
-       Radius-Skala (sm..4xl) rechnet relativ hierzu → App-weit scharfe Ecken,
-       angeglichen an die Marketing-Landing (0px). */
-    --radius: 0.25rem;
+    /* design: abgerundet — Basis 0.75rem (12px). Die gesamte abgeleitete
+       Radius-Skala (sm..4xl) rechnet relativ hierzu. */
+    --radius: 0.75rem;
 
     /* Brand primary/accent as RGB channels — default = Objektpilot navy/gold.
        The active organisation overrides these at runtime (see lib/branding.ts). */

@@ -31,6 +31,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -89,14 +90,10 @@ export function EinstellungenView({
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 md:px-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-brand-primary">
-          Einstellungen
-        </h1>
-        <p className="mt-1 text-sm text-brand-muted">
-          Verwalten Sie das Branding und die Mitglieder Ihrer Organisation.
-        </p>
-      </header>
+      <PageHeader
+        title="Einstellungen"
+        description="Verwalten Sie das Branding und die Mitglieder Ihrer Organisation."
+      />
 
       {!activeOrg ? (
         <Card className="rounded-xl">

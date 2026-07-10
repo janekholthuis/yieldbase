@@ -15,6 +15,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -228,19 +229,16 @@ export function TeamView({ members, invites }: TeamViewProps) {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-2xl font-semibold text-brand-ink">Mein Team</h1>
-        <Badge variant="secondary">{members.length}</Badge>
+      <PageHeader
+        title="Mein Team"
+        description={`${members.length} ${members.length === 1 ? "Mitglied" : "Mitglieder"}`}
+      >
         {canInvite && (
-          <Button
-            size="sm"
-            className="ml-auto"
-            onClick={() => setInviteOpen(true)}
-          >
+          <Button size="sm" onClick={() => setInviteOpen(true)}>
             <UserPlus className="mr-1 h-4 w-4" /> Sub-VP einladen
           </Button>
         )}
-      </div>
+      </PageHeader>
 
       {members.length === 0 ? (
         <div className="rounded-lg border border-dashed border-brand-border p-10 text-center">

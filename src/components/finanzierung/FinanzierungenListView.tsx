@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Banknote, ArrowRight, Building2 } from "lucide-react";
+import { ArrowRight, Building2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatEUR } from "@/lib/objekt-format";
 import { CASE_STATUS_LABEL, type CaseStatus } from "@/lib/finanzierung-status";
 import type { CaseListItem } from "@/lib/data/finanzierung";
@@ -56,23 +57,16 @@ export function FinanzierungenListView({
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
-      <header className="flex items-center gap-3">
-        <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-brand-primaryTint text-brand-primary">
-          <Banknote className="h-5 w-5" />
-        </span>
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-brand-primary">
-            Finanzierungen
-          </h1>
-          <p className="text-sm text-brand-muted">
-            {isFin
-              ? "Eingehende Anfragen und laufende Cases"
-              : isAdminLike
-                ? "Alle Cases im Überblick"
-                : "Cases sind in der jeweiligen Kunden-Akte sichtbar"}
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Finanzierungen"
+        description={
+          isFin
+            ? "Eingehende Anfragen und laufende Cases"
+            : isAdminLike
+              ? "Alle Cases im Überblick"
+              : "Cases sind in der jeweiligen Kunden-Akte sichtbar"
+        }
+      />
 
       {!showList ? <VpHint /> : <CaseList cases={cases} />}
     </div>

@@ -13,6 +13,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -256,10 +257,10 @@ export function ReservierungenListView({
 
   return (
     <div className="space-y-4 p-4 md:p-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-2xl font-semibold text-brand-ink">Reservierungen</h1>
-        <Badge variant="secondary">{rows.length}</Badge>
-      </div>
+      <PageHeader
+        title="Reservierungen"
+        description={`${rows.length} ${rows.length === 1 ? "Reservierung" : "Reservierungen"}`}
+      />
 
       {/* Status-Tabs */}
       <div className="flex gap-1 overflow-x-auto rounded-lg border border-brand-border bg-brand-surfaceMuted/40 p-1">

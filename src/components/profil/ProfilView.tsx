@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -113,22 +114,16 @@ export function ProfilView({ profile }: { profile: MyProfile }) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-brand-ink">Profil</h1>
-          <p className="text-sm text-brand-muted">{profile.email ?? "—"}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {profile.roles.map((r) => (
-            <Badge key={r} variant="secondary">
-              {ROLE_LABEL[r] ?? r}
-            </Badge>
-          ))}
-          <Button variant="outline" size="sm" onClick={() => signOut()}>
-            <LogOut className="mr-1 h-4 w-4" /> Abmelden
-          </Button>
-        </div>
-      </div>
+      <PageHeader title="Profil" description={profile.email ?? "—"}>
+        {profile.roles.map((r) => (
+          <Badge key={r} variant="secondary">
+            {ROLE_LABEL[r] ?? r}
+          </Badge>
+        ))}
+        <Button variant="outline" size="sm" onClick={() => signOut()}>
+          <LogOut className="mr-1 h-4 w-4" /> Abmelden
+        </Button>
+      </PageHeader>
 
       {/* Persönliche Daten */}
       <Card className="space-y-4 p-5">

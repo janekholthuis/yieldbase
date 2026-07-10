@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -175,14 +176,14 @@ export function ProvisionenListView({
 
   return (
     <div className="space-y-4 p-4 md:p-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-2xl font-semibold text-brand-ink">Provisionen</h1>
-        <Badge variant="secondary">{rows.length}</Badge>
+      <PageHeader
+        title="Provisionen"
+        description={`${rows.length} ${rows.length === 1 ? "Eintrag" : "Einträge"}`}
+      >
         {canManage && (
           <Button
             size="sm"
             variant="outline"
-            className="ml-auto"
             onClick={doGenerate}
             disabled={generating}
           >
@@ -194,7 +195,7 @@ export function ProvisionenListView({
             Provisionen berechnen
           </Button>
         )}
-      </div>
+      </PageHeader>
 
       {/* Summen-Karten */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

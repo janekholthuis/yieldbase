@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Plus, Search, LayoutGrid, Rows3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -71,17 +72,16 @@ export function KundenListView({ kunden }: { kunden: KundeListItem[] }) {
 
   return (
     <div className="space-y-4 p-4 md:p-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-2xl font-semibold">Kunden</h1>
-        <Badge variant="secondary">{kunden.length}</Badge>
-        <div className="ml-auto flex gap-2">
-          <Button asChild>
-            <Link href="/kunden/neu">
-              <Plus className="mr-1 h-4 w-4" /> Neuer Kunde
-            </Link>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Kunden"
+        description={`${kunden.length} ${kunden.length === 1 ? "Kunde" : "Kunden"}`}
+      >
+        <Button asChild>
+          <Link href="/kunden/neu">
+            <Plus className="mr-1 h-4 w-4" /> Neuer Kunde
+          </Link>
+        </Button>
+      </PageHeader>
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px] max-w-md">

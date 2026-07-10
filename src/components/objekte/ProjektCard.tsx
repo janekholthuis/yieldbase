@@ -1,13 +1,8 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import type { ProjektAggregat, EinheitStatus } from "@/lib/data/objekte";
-import {
-  STATUS_BADGE_CLASS,
-  STATUS_LABELS,
-  formatEUR,
-  formatNumber,
-} from "@/lib/objekt-format";
-import { Building2, MapPin } from "lucide-react";
+import type { ProjektAggregat } from "@/lib/data/objekte";
+import { formatEUR, formatNumber } from "@/lib/objekt-format";
+import { Building2, MapPin, Maximize, BedDouble, type LucideIcon } from "lucide-react";
 
 export interface ProjektCardData {
   projekt_id: string;
@@ -32,46 +27,32 @@ function fmtRange(
   if (lo == null && hi == null) return "—";
   const a = lo ?? hi!;
   const b = hi ?? lo!;
-  return a === b ? fmt(a) : `${fmt(a)} bis ${fmt(b)}`;
+  return a === b ? fmt(a) : `${fmt(a)} – ${fmt(b)}`;
 }
-
-const TYP_LABEL: Record<"mfh" | "etw_einzeln", string> = {
-  mfh: "Mehrfamilienhaus",
-  etw_einzeln: "Eigentumswohnung",
-};
-
-// Status-Reihenfolge für die dezente Verteilungs-Anzeige (verkaufte zuletzt).
-const STATUS_ORDER: EinheitStatus[] = [
-  "frei",
-  "auf_anfrage",
-  "reserviert",
-  "notarvorbereitung",
-  "notartermin",
-  "verkauft",
-];
 
 export function ProjektCard({ data }: { data: ProjektCardData }) {
   const agg = data.aggregat;
-  const baujahr = data.baujahr;
 
-  const adresse =
-    data.adresse ??
-    [data.stadt, data.plz].filter(Boolean).join(" · ") ??
-    "—";
-  const stadtZeile = [data.plz, data.stadt].filter(Boolean).join(" ");
+  const lage =
+    [data.plz, data.stadt].filter(Boolean).join(" ") || data.adresse || "—";
 
-  const statusEntries = STATUS_ORDER.map((s) => ({
-    status: s,
-    count: agg.status_counts?.[s] ?? 0,
-  })).filter((e) => e.count > 0);
+  // Headline-Preis: "ab X" bei Spanne, sonst exakt (Referenz zeigt eine Zahl).
+  const lo = agg.kaufpreis_min;
+  const hi = agg.kaufpreis_max;
+  const priceLabel =
+    lo == null && hi == null
+      ? "Auf Anfrage"
+      : lo != null && hi != null && lo !== hi
+        ? `ab ${formatEUR(lo)}`
+        : formatEUR((lo ?? hi)!);
 
   const href = `/objekte/projekt/${data.projekt_id}`;
 
   return (
     <Link href={href} prefetch={false} className="group block focus:outline-none">
-      <Card className="overflow-hidden transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg group-focus-visible:ring-2 group-focus-visible:ring-ring h-full flex flex-col">
+      <Card className="flex h-full flex-col overflow-hidden transition-all duration-ds-short ease-ds-out group-hover:-translate-y-0.5 group-hover:shadow-md group-focus-visible:ring-2 group-focus-visible:ring-ring">
         {/* Cover */}
-        <div className="relative h-48 w-full overflow-hidden bg-muted">
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
           {data.cover_image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -86,99 +67,49 @@ export function ProjektCard({ data }: { data: ProjektCardData }) {
             </div>
           )}
           {data.isNew && (
-            <span className="absolute left-3 top-3 rounded-md bg-primary px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-primary-foreground shadow">
+            <span className="absolute left-3 top-3 rounded bg-primary px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-primary-foreground shadow-sm">
               Neu
             </span>
           )}
-          <span className="absolute right-3 top-3 rounded-md bg-background/90 px-2.5 py-1 text-xs font-semibold text-foreground shadow">
+          <span className="absolute right-3 top-3 rounded bg-background/90 px-2 py-0.5 text-xs font-medium text-foreground shadow-sm">
             {agg.count} {agg.count === 1 ? "Einheit" : "Einheiten"}
           </span>
         </div>
 
-        {/* Preis + Eckdaten */}
-        <div className="px-5 pt-5">
-          <div className="text-2xl font-bold leading-tight">
-            {fmtRange(agg.kaufpreis_min, agg.kaufpreis_max, (n) => formatEUR(n))}
-          </div>
-          <div className="mt-1 text-sm text-muted-foreground">
-            {agg.zimmer_min != null || agg.zimmer_max != null
-              ? `${fmtRange(agg.zimmer_min, agg.zimmer_max, (n) => formatNumber(n))} Zimmer`
-              : null}
-            {(agg.zimmer_min != null || agg.zimmer_max != null) && baujahr ? (
-              <span className="mx-1.5">·</span>
-            ) : null}
-            {baujahr ? `Baujahr ${baujahr}` : null}
-            {(agg.zimmer_min != null || agg.zimmer_max != null || baujahr) &&
-            (agg.afa_min != null || agg.afa_max != null) ? (
-              <span className="mx-1.5">·</span>
-            ) : null}
-            {agg.afa_min != null || agg.afa_max != null
-              ? `AfA ${fmtRange(agg.afa_min, agg.afa_max, (n) => formatNumber(n))} %`
-              : null}
+        {/* Body */}
+        <div className="flex flex-1 flex-col p-4">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="min-w-0 truncate font-display text-base font-semibold leading-tight text-foreground">
+              {data.projekt_name ?? "Projekt"}
+            </h3>
+            <div className="shrink-0 font-display text-base font-semibold tabular-nums text-foreground">
+              {priceLabel}
+            </div>
           </div>
 
-          {/* Status-Verteilung */}
-          {statusEntries.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {statusEntries.map((e) => (
-                <span
-                  key={e.status}
-                  className={`rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_BADGE_CLASS[e.status]}`}
-                >
-                  {e.count} {STATUS_LABELS[e.status].toLowerCase()}
-                </span>
-              ))}
-            </div>
-          )}
+          <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{lage}</span>
+          </div>
 
-          {/* Highlights */}
-          {data.highlights && data.highlights.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {data.highlights.map((h) => (
-                <span
-                  key={h}
-                  className="rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary"
-                >
-                  {h}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Spannen */}
-        <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 px-5">
-          <Metric
-            label="Größe"
-            value={fmtRange(agg.wohnflaeche_min, agg.wohnflaeche_max, (n) =>
-              formatNumber(n),
+          {/* Spec-Chips (Referenz-Stil) */}
+          <div className="mt-auto flex flex-wrap gap-2 pt-4">
+            <Spec
+              icon={Maximize}
+              value={`${fmtRange(agg.wohnflaeche_min, agg.wohnflaeche_max, (n) => formatNumber(n))} m²`}
+            />
+            {(agg.zimmer_min != null || agg.zimmer_max != null) && (
+              <Spec
+                icon={BedDouble}
+                value={`${fmtRange(agg.zimmer_min, agg.zimmer_max, (n) => formatNumber(n))} Zi.`}
+              />
             )}
-            unit="m²"
-          />
-          <Metric
-            label="Kaufpreis"
-            value={fmtRange(agg.ppsm_min, agg.ppsm_max, (n) =>
-              formatEUR(Math.round(n)),
+            {(agg.ppsm_min != null || agg.ppsm_max != null) && (
+              <Spec
+                icon={Building2}
+                value={`${fmtRange(agg.ppsm_min, agg.ppsm_max, (n) => formatEUR(Math.round(n)))} / m²`}
+              />
             )}
-            unit="/ m²"
-          />
-          <Metric
-            label="Kaltmiete"
-            value={fmtRange(agg.miete_sqm_min, agg.miete_sqm_max, (n) =>
-              formatEUR(Math.round(n)),
-            )}
-            unit="/ m²"
-          />
-          <Metric label="Anlageklasse" value={TYP_LABEL[data.projekt_typ]} />
-        </dl>
-
-        {/* Footer Adresse */}
-        <div className="mt-5 flex items-start gap-2 border-t px-5 py-4">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-          <div className="text-sm text-muted-foreground leading-snug">
-            {data.adresse && <div>{data.adresse}</div>}
-            {stadtZeile && <div>{stadtZeile}</div>}
-            {!data.adresse && !stadtZeile && <div>{adresse}</div>}
           </div>
         </div>
       </Card>
@@ -186,26 +117,11 @@ export function ProjektCard({ data }: { data: ProjektCardData }) {
   );
 }
 
-function Metric({
-  label,
-  value,
-  unit,
-}: {
-  label: string;
-  value: string;
-  unit?: string;
-}) {
+function Spec({ icon: Icon, value }: { icon: LucideIcon; value: string }) {
   return (
-    <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 text-sm font-semibold">
-        {value}
-        {unit && (
-          <span className="ml-1 text-xs font-normal text-muted-foreground">
-            {unit}
-          </span>
-        )}
-      </dd>
-    </div>
+    <span className="inline-flex items-center gap-1.5 rounded border bg-background px-2 py-1 text-xs text-muted-foreground">
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span className="tabular-nums">{value}</span>
+    </span>
   );
 }

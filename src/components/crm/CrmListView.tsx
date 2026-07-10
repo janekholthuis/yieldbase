@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -13,6 +13,8 @@ import {
   MoreHorizontal,
   FileSignature,
   ClipboardList,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -39,6 +41,18 @@ import {
 export function CrmListView() {
   const [stage, setStage] = useState<StageKey | "alle">("alle");
   const [q, setQ] = useState("");
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Einklapp-Zustand über Reloads hinweg merken.
+  useEffect(() => {
+    setCollapsed(localStorage.getItem("crm-smartviews-collapsed") === "1");
+  }, []);
+  const toggleCollapsed = () =>
+    setCollapsed((c) => {
+      const next = !c;
+      localStorage.setItem("crm-smartviews-collapsed", next ? "1" : "0");
+      return next;
+    });
 
   const counts = useMemo(() => {
     const m: Record<string, number> = {};
@@ -63,12 +77,28 @@ export function CrmListView() {
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col lg:flex-row">
       {/* Smart Views — Pipeline-Stufen */}
-      <aside className="shrink-0 border-b bg-card lg:w-72 lg:border-b-0 lg:border-r">
-        <div className="flex items-center justify-between px-4 py-3">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Smart Views
-          </span>
-          <Search className="h-4 w-4 text-muted-foreground" />
+      <aside
+        className={`shrink-0 border-b bg-card transition-[width] duration-ds-short ease-ds-out lg:border-b-0 lg:border-r ${
+          collapsed ? "lg:w-16" : "lg:w-72"
+        }`}
+      >
+        <div className="flex items-center justify-between px-4 py-3 lg:px-3">
+          {!collapsed && (
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Smart Views
+            </span>
+          )}
+          <button
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "Smart Views ausklappen" : "Smart Views einklappen"}
+            className="ml-auto hidden h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition hover:bg-state-hover hover:text-foreground lg:inline-flex"
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-2 pb-2 lg:flex-col lg:overflow-visible lg:pb-4">
           <StageButton
@@ -77,6 +107,7 @@ export function CrmListView() {
             emoji="📇"
             label="Alle Kontakte"
             count={CONTACTS.length}
+            collapsed={collapsed}
           />
           {PIPELINE.map((s) => (
             <StageButton
@@ -86,6 +117,7 @@ export function CrmListView() {
               emoji={s.emoji}
               label={s.label}
               count={counts[s.key] ?? 0}
+              collapsed={collapsed}
             />
           ))}
         </nav>
@@ -142,26 +174,38 @@ function StageButton({
   emoji,
   label,
   count,
+  collapsed,
 }: {
   active: boolean;
   onClick: () => void;
   emoji: string;
   label: string;
   count: number;
+  collapsed: boolean;
 }) {
   return (
     <button
       onClick={onClick}
+      title={collapsed ? `${label} (${count})` : undefined}
       className={`flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition lg:w-full ${
+        collapsed ? "lg:justify-center lg:px-0" : ""
+      } ${
         active
           ? "bg-primary/10 font-medium text-foreground"
           : "text-muted-foreground hover:bg-state-hover hover:text-foreground"
       }`}
     >
-      <span className="text-base leading-none">{emoji}</span>
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span className="relative text-base leading-none">
+        {emoji}
+        {collapsed && count > 0 && (
+          <span className="absolute -right-2 -top-1.5 hidden h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground lg:flex">
+            {count}
+          </span>
+        )}
+      </span>
+      <span className={`min-w-0 flex-1 truncate ${collapsed ? "lg:hidden" : ""}`}>{label}</span>
       <span
-        className={`shrink-0 rounded-full px-1.5 text-xs ${
+        className={`shrink-0 rounded-full px-1.5 text-xs ${collapsed ? "lg:hidden" : ""} ${
           active ? "bg-primary/15 text-foreground" : "bg-muted text-muted-foreground"
         }`}
       >

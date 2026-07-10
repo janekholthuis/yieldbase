@@ -6,6 +6,21 @@
  * und (gemocktem) E-Mail-Sync. KEINE echten Funktionen / keine DB.
  */
 
+import {
+  UserPlus,
+  MessageSquare,
+  CalendarPlus,
+  CalendarCheck,
+  Hourglass,
+  ClipboardCheck,
+  FileSignature,
+  Handshake,
+  PenLine,
+  CheckCircle2,
+  XCircle,
+  type LucideIcon,
+} from "lucide-react";
+
 export type StageKey =
   | "neue_leads"
   | "follow_up"
@@ -22,32 +37,44 @@ export type StageKey =
 export interface PipelineStage {
   key: StageKey;
   label: string;
-  emoji: string;
-  /** Tailwind dot-color for the status pill/dot. */
+  /** Lucide-Icon der Stufe (statt Emoji). */
+  icon: LucideIcon;
+  /** On-brand dot-color (Funnel-Phase). */
   dot: string;
-  /** Pastel bg+text for the Close-style UPPERCASE status pill. */
+  /** On-brand bg+text für die Status-Pill. */
   soft: string;
 }
 
-/** Vertriebs-Pipeline — exakt die Stufen aus der Vorlage. */
+/*
+ * Vertriebs-Pipeline. Farbe = Funnel-PHASE (bewusst gruppiert, nicht pro Stufe
+ * eine Regenbogenfarbe), Icon = konkrete Stufe. Alle Töne on-brand:
+ * neutral · steel (info) · gold (accent) · grün (success) · rot (destructive).
+ */
+const TONE = {
+  neutral: { dot: "bg-brand-subtle", soft: "bg-brand-surfaceMuted text-brand-muted" },
+  info: { dot: "bg-info", soft: "bg-info-soft text-info" },
+  accent: { dot: "bg-brand-accent", soft: "bg-brand-accentSoft text-brand-accentText" },
+  success: { dot: "bg-success", soft: "bg-success-soft text-success" },
+  destructive: { dot: "bg-destructive", soft: "bg-destructive-soft text-destructive" },
+} as const;
+
 export const PIPELINE: PipelineStage[] = [
-  { key: "neue_leads", label: "Neue Leads", emoji: "👋", dot: "bg-slate-400", soft: "bg-slate-100 text-slate-600" },
-  { key: "follow_up", label: "Follow Up", emoji: "💬", dot: "bg-sky-500", soft: "bg-sky-100 text-sky-700" },
-  { key: "neu_terminieren", label: "Neu Terminieren", emoji: "📌", dot: "bg-rose-500", soft: "bg-rose-100 text-rose-700" },
-  { key: "gespraech_terminiert", label: "Gespräch terminiert", emoji: "📅", dot: "bg-indigo-500", soft: "bg-indigo-100 text-indigo-700" },
-  { key: "warte_selbstauskunft", label: "Warte auf Selbstauskunft", emoji: "⏰", dot: "bg-amber-500", soft: "bg-red-100 text-red-600" },
+  { key: "neue_leads", label: "Neue Leads", icon: UserPlus, ...TONE.neutral },
+  { key: "follow_up", label: "Follow Up", icon: MessageSquare, ...TONE.neutral },
+  { key: "neu_terminieren", label: "Neu Terminieren", icon: CalendarPlus, ...TONE.neutral },
+  { key: "gespraech_terminiert", label: "Gespräch terminiert", icon: CalendarCheck, ...TONE.info },
+  { key: "warte_selbstauskunft", label: "Warte auf Selbstauskunft", icon: Hourglass, ...TONE.info },
   {
     key: "selbstauskunft_erhalten",
-    label: "Selbstauskunft Erhalten (Finanzierungsprüfung)",
-    emoji: "📥",
-    dot: "bg-cyan-500",
-    soft: "bg-blue-100 text-blue-700",
+    label: "Selbstauskunft erhalten (Finanzierungsprüfung)",
+    icon: ClipboardCheck,
+    ...TONE.info,
   },
-  { key: "reservierungsprozess", label: "Reservierungsprozess", emoji: "📄", dot: "bg-violet-500", soft: "bg-violet-100 text-violet-700" },
-  { key: "angebotsbesprechung", label: "Angebotsbesprechung", emoji: "🏆", dot: "bg-emerald-500", soft: "bg-emerald-100 text-emerald-700" },
-  { key: "notarauftrag", label: "Notarauftrag Unterschrieben", emoji: "✍️", dot: "bg-teal-500", soft: "bg-teal-100 text-teal-700" },
-  { key: "notartermin", label: "Notartermin", emoji: "✅", dot: "bg-green-600", soft: "bg-green-100 text-green-700" },
-  { key: "verloren", label: "Verloren (salesprozess)", emoji: "❌", dot: "bg-red-500", soft: "bg-red-100 text-red-700" },
+  { key: "reservierungsprozess", label: "Reservierungsprozess", icon: FileSignature, ...TONE.accent },
+  { key: "angebotsbesprechung", label: "Angebotsbesprechung", icon: Handshake, ...TONE.accent },
+  { key: "notarauftrag", label: "Notarauftrag unterschrieben", icon: PenLine, ...TONE.accent },
+  { key: "notartermin", label: "Notartermin", icon: CheckCircle2, ...TONE.success },
+  { key: "verloren", label: "Verloren", icon: XCircle, ...TONE.destructive },
 ];
 
 export const STAGE_BY_KEY: Record<StageKey, PipelineStage> = Object.fromEntries(
@@ -190,7 +217,7 @@ export const CONTACTS: CrmContact[] = [
         type: "note",
         when: "18. Jun",
         actor: "JH",
-        body: "📄 Janek Test hat die Reservierung unterschrieben!\nAlle Bestätigungen liegen vor, Reservierungsgebühr angekündigt.",
+        body: "Janek Test hat die Reservierung unterschrieben. Alle Bestätigungen liegen vor, Reservierungsgebühr angekündigt.",
         important: true,
       },
       {
@@ -199,14 +226,14 @@ export const CONTACTS: CrmContact[] = [
         when: "18. Jun",
         actor: "JH",
         subject: "Reservierung Erfolg mit Immobilien",
-        body: "Hey Janek, Janek hier von Erfolg mit Immobilien. Hier kannst du deine Reservierung ausfüllen: 👉 Hier ausfüllen (forms.fillout.com/t/25d6…)",
+        body: "Hey Janek, Janek hier von Erfolg mit Immobilien. Hier kannst du deine Reservierung ausfüllen: forms.fillout.com/t/25d6…",
       },
       {
         id: "a5",
         type: "note",
         when: "18. Jun",
         actor: "JH",
-        body: "📄 Janek Test hat die Selbstauskunft ausgefüllt!",
+        body: "Janek Test hat die Selbstauskunft ausgefüllt.",
         important: true,
       },
       {
@@ -346,7 +373,7 @@ export const CONTACTS: CrmContact[] = [
         type: "note",
         when: "gestern",
         actor: "JH",
-        body: "📄 Murat hat die Selbstauskunft ausgefüllt! Finanzierungsprüfung läuft.",
+        body: "Murat hat die Selbstauskunft ausgefüllt. Finanzierungsprüfung läuft.",
         important: true,
       },
       {

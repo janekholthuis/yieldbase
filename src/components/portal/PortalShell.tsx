@@ -91,10 +91,10 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-[color:var(--surface-soft)]">
+      <div className="flex min-h-screen w-full bg-muted/40">
         <PortalSidebar pathname={pathname} />
-        <SidebarInset className="flex min-w-0 flex-1 flex-col bg-[color:var(--surface-soft)]">
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-[color:var(--surface-soft)]/80 px-3 backdrop-blur">
+        <SidebarInset className="flex min-w-0 flex-1 flex-col bg-muted/40">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-3 backdrop-blur">
             <SidebarTrigger />
             <div className="ml-auto flex items-center gap-2">
               <DropdownMenu>

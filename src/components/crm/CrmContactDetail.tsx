@@ -111,7 +111,7 @@ export function CrmContactDetail({ contact }: { contact: CrmContact }) {
   }, [activities, filter, q]);
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-[#f7f7f8] dark:bg-background">
+    <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-brand-surfaceMuted dark:bg-background">
       {/* Kopfzeile */}
       <header className="flex flex-wrap items-center gap-3 bg-background px-4 py-3.5 md:px-6">
         <Button variant="ghost" size="icon" asChild className="shrink-0 md:hidden">
@@ -258,7 +258,7 @@ export function CrmContactDetail({ contact }: { contact: CrmContact }) {
                       <dd className="min-w-0 truncate">
                         {f.person ? (
                           <span className="inline-flex items-center gap-1.5">
-                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-orange-100 text-[8px] font-semibold text-orange-700">
+                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/10 text-[8px] font-semibold text-primary">
                               JH
                             </span>
                             {f.value}
@@ -570,7 +570,7 @@ function Rail({
 function Actor({ actor, when }: { actor: string; when: string }) {
   return (
     <div className="ml-auto flex shrink-0 items-center gap-2 pl-2">
-      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 text-[9px] font-semibold text-orange-700">
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[9px] font-semibold text-primary">
         {actor}
       </span>
       <span className="text-xs text-muted-foreground">{when}</span>
@@ -581,7 +581,7 @@ function Actor({ actor, when }: { actor: string; when: string }) {
 function StatusRow({ a }: { a: Activity }) {
   return (
     <li className="flex items-center gap-3 py-2">
-      <Rail icon={Repeat2} tone="bg-slate-100 text-slate-500" />
+      <Rail icon={Repeat2} tone="bg-muted text-muted-foreground" />
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
         <span className="text-sm text-muted-foreground">Status changed from</span>
         {a.from && <StatusPill stage={a.from} />}
@@ -596,7 +596,7 @@ function StatusRow({ a }: { a: Activity }) {
 function ImportedRow({ a }: { a: Activity }) {
   return (
     <li className="flex items-center gap-3 py-2">
-      <Rail icon={Database} tone="bg-slate-100 text-slate-400" />
+      <Rail icon={Database} tone="bg-muted text-muted-foreground" />
       <span className="text-sm text-muted-foreground">{a.title ?? "Imported via API"}</span>
       <Actor actor={a.actor} when={a.when} />
     </li>
@@ -611,7 +611,7 @@ function NoteRow({ a }: { a: Activity }) {
 
   return (
     <li className="flex gap-3 py-2">
-      <Rail icon={StickyNote} square tone="bg-amber-100 text-amber-600" />
+      <Rail icon={StickyNote} square tone="bg-warning-soft text-warning" />
       <div className="min-w-0 flex-1 rounded-xl border bg-background p-3">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Janek Holthuis created a note</span>
@@ -637,7 +637,7 @@ function NoteRow({ a }: { a: Activity }) {
 function EmailRow({ a }: { a: Activity }) {
   return (
     <li className="flex gap-3 py-2">
-      <Rail icon={Mail} tone="bg-sky-100 text-sky-600" />
+      <Rail icon={Mail} tone="bg-info-soft text-info" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-semibold">{a.subject}</span>
@@ -658,11 +658,12 @@ function EmailRow({ a }: { a: Activity }) {
 
 function StatusPill({ stage }: { stage: StageKey }) {
   const s = STAGE_BY_KEY[stage];
+  const Icon = s.icon;
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wide ${s.soft}`}
     >
-      <span className="text-[10px] leading-none">{s.emoji}</span>
+      <Icon className="h-3 w-3" />
       <span className="max-w-[260px] truncate">{s.label}</span>
     </span>
   );

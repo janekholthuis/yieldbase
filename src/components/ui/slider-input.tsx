@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Label (Uppercase) + optionaler Range-Hint rechts +
- * Input mit Suffix + Slider darunter — wie im ZinsMix-Pro-Screenshot.
+ * Input mit Suffix + Slider darunter.
  */
 export interface SliderInputProps {
   label: string;

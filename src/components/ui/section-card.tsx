@@ -2,10 +2,10 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Karten-Baustein im "ZinsMix Pro"-Stil:
+ * Karten-Baustein:
  * - weicher Rand, sehr leichter Schatten
- * - optionaler Icon-Badge in Cyan-Ultra
- * - Titel (Inter semibold) + optionaler Untertitel
+ * - optionaler Icon-Badge im Akzent-Ton
+ * - Titel (semibold) + optionaler Untertitel
  * - optionaler Action-Slot rechts (Buttons etc.)
  */
 export interface SectionCardProps

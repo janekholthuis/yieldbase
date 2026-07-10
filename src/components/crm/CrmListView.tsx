@@ -15,6 +15,8 @@ import {
   ClipboardList,
   PanelLeftClose,
   PanelLeftOpen,
+  Users,
+  type LucideIcon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -104,7 +106,7 @@ export function CrmListView() {
           <StageButton
             active={stage === "alle"}
             onClick={() => setStage("alle")}
-            emoji="📇"
+            icon={Users}
             label="Alle Kontakte"
             count={CONTACTS.length}
             collapsed={collapsed}
@@ -114,7 +116,7 @@ export function CrmListView() {
               key={s.key}
               active={stage === s.key}
               onClick={() => setStage(s.key)}
-              emoji={s.emoji}
+              icon={s.icon}
               label={s.label}
               count={counts[s.key] ?? 0}
               collapsed={collapsed}
@@ -171,14 +173,14 @@ export function CrmListView() {
 function StageButton({
   active,
   onClick,
-  emoji,
+  icon: Icon,
   label,
   count,
   collapsed,
 }: {
   active: boolean;
   onClick: () => void;
-  emoji: string;
+  icon: LucideIcon;
   label: string;
   count: number;
   collapsed: boolean;
@@ -195,8 +197,8 @@ function StageButton({
           : "text-muted-foreground hover:bg-state-hover hover:text-foreground"
       }`}
     >
-      <span className="relative text-base leading-none">
-        {emoji}
+      <span className="relative leading-none">
+        <Icon className="h-4 w-4" />
         {collapsed && count > 0 && (
           <span className="absolute -right-2 -top-1.5 hidden h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground lg:flex">
             {count}

@@ -2,8 +2,8 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Hero-KPI-Box: kleines Label oben (uppercase, cyan), darunter sehr große Zahl.
- * Hintergrund Cyan-Ultra, abgerundet — wie "Gewichteter Mischzins" im Screenshot.
+ * Hero-KPI-Box: kleines Label oben (uppercase), darunter sehr große Zahl auf
+ * getöntem Akzent-Hintergrund, abgerundet.
  */
 export function HighlightStat({
   label,

@@ -1,8 +1,8 @@
 import { getMySelbstauskunftContext } from "@/lib/actions/selbstauskunft";
 import {
-  SelbstauskunftHub,
+  SelbstauskunftWizard,
   type SelbstauskunftDocsContext,
-} from "@/components/portal/SelbstauskunftHub";
+} from "@/components/portal/SelbstauskunftWizard";
 import { requireUser } from "@/lib/auth";
 import { getPortalDashboard } from "@/lib/data/portal";
 import {
@@ -83,7 +83,7 @@ export default async function SelbstauskunftPage({
   };
 
   return (
-    <SelbstauskunftHub
+    <SelbstauskunftWizard
       initialData={data}
       alreadySubmitted={ctx.existing?.status === "eingereicht"}
       submittedAt={ctx.existing?.submitted_at ?? null}

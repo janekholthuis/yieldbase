@@ -1,8 +1,8 @@
 "use client";
 
 // PROJ-7 — Selbstauskunft: geteilte Abschnitts-Renderer.
-// Aus SelbstauskunftWizard.tsx extrahiert. Felder/Bedingungen/Validierungs-Wiring
-// sind unverändert; sowohl der lineare Wizard als auch der Hub rendern hierüber.
+// Felder/Bedingungen/Validierungs-Wiring unverändert; der lineare
+// SelbstauskunftWizard rendert hierüber.
 
 import { useMemo } from "react";
 import { Plus, Trash2 } from "lucide-react";

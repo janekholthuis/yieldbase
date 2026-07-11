@@ -1,9 +1,8 @@
 "use client";
 
 // PROJ-7 — Selbstauskunft: geteilte Feld-Primitive.
-// Aus SelbstauskunftWizard.tsx extrahiert, damit sowohl der lineare Wizard als
-// auch der gamifizierte Hub (SelbstauskunftHub.tsx) dieselben Felder nutzen —
-// Wiring/Validierung/publicMode-Verhalten bleiben unverändert.
+// Vom linearen SelbstauskunftWizard genutzt. Wiring/Validierung/publicMode-
+// Verhalten bleiben unverändert.
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

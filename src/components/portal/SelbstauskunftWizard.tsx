@@ -110,7 +110,7 @@ function HeroBanner() {
   return (
     <div
       aria-hidden
-      className="h-40 w-full bg-neutral-100 bg-cover bg-center md:h-56"
+      className="h-52 w-full bg-neutral-100 bg-cover bg-center md:h-72"
       style={{ backgroundImage: `url(${HERO_SRC})` }}
     />
   );
@@ -379,8 +379,10 @@ export function SelbstauskunftWizard({
       <div className="mx-auto max-w-4xl px-6 pb-20 pt-8 md:pt-10">
         {/* Titel + Trennstrich */}
         <header>
+          {/* Single-Tenant EMI: Markenname im Titel wie im Referenzformular. */}
           <h1 className="text-[2rem] font-semibold leading-[1.1] tracking-[-0.02em] text-neutral-900 md:text-[2.5rem]">
-            Selbstauskunft
+            Selbstauskunft{" "}
+            <span className="text-neutral-400">Erfolg mit Immobilien</span>
           </h1>
           <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-neutral-500">
             Bitte fülle nur aus, was auf dich zutrifft. Du kannst jederzeit

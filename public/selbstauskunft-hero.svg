@@ -1,45 +1,69 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="440" viewBox="0 0 1600 440" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Klassische Wohnhausfassade">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="480" viewBox="0 0 1600 480" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Klassische Wohnhausfassade mit Balkonen">
   <defs>
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f4f1ea"/>
-      <stop offset="0.55" stop-color="#ece7dd"/>
-      <stop offset="1" stop-color="#e2dbcf"/>
+      <stop offset="0" stop-color="#efe8db"/>
+      <stop offset="0.5" stop-color="#e7ddcb"/>
+      <stop offset="1" stop-color="#dcd0ba"/>
+    </linearGradient>
+    <!-- Warmes Streiflicht von oben-rechts, bricht die Kachel-Optik. -->
+    <radialGradient id="light" cx="0.72" cy="0.1" r="0.9">
+      <stop offset="0" stop-color="#fbf7ef" stop-opacity="0.85"/>
+      <stop offset="0.5" stop-color="#fbf7ef" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#fbf7ef" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Schattige Gebäudekante links (wie im Referenzfoto). -->
+    <linearGradient id="leftShade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6b5f49" stop-opacity="0.5"/>
+      <stop offset="0.14" stop-color="#6b5f49" stop-opacity="0.12"/>
+      <stop offset="0.28" stop-color="#6b5f49" stop-opacity="0"/>
     </linearGradient>
     <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="0.82" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0.9"/>
+      <stop offset="0.8" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.92"/>
     </linearGradient>
-    <!-- One facade bay: tall arched window + slim balcony railing. Thin warm-grey
-         strokes, no fill, so the light "sky" reads as a white building. -->
-    <pattern id="facade" width="150" height="230" patternUnits="userSpaceOnUse">
-      <g fill="none" stroke="#c3b6a1" stroke-width="2.4" stroke-opacity="0.6">
-        <path d="M45 30 h60 v96 a30 30 0 0 1 -60 0 z"/>
-        <line x1="75" y1="30" x2="75" y2="126"/>
-        <line x1="45" y1="70" x2="105" y2="70"/>
+
+    <!-- Eine Fassaden-Achse: hohes Rundbogenfenster mit Laibungs-Schatten +
+         Pariser Balkon (gebauchtes Geländer mit Balustern). -->
+    <pattern id="facade" width="200" height="260" patternUnits="userSpaceOnUse">
+      <!-- Laibungs-Schatten (Tiefe) -->
+      <path d="M58 78 A42 42 0 0 1 142 78 L142 150 L58 150 Z"
+            fill="#7c6d51" fill-opacity="0.07"/>
+      <!-- Fensterrahmen -->
+      <path d="M58 78 A42 42 0 0 1 142 78 L142 150 L58 150 Z"
+            fill="none" stroke="#a8926f" stroke-width="2.6" stroke-opacity="0.7"/>
+      <!-- Sprossen -->
+      <g stroke="#a8926f" stroke-width="1.8" stroke-opacity="0.55">
+        <line x1="100" y1="40" x2="100" y2="150"/>
+        <line x1="58" y1="100" x2="142" y2="100"/>
       </g>
-      <g fill="none" stroke="#bcae97" stroke-width="2.2" stroke-opacity="0.5">
-        <line x1="30" y1="150" x2="120" y2="150"/>
-        <line x1="30" y1="176" x2="120" y2="176"/>
-        <line x1="38" y1="150" x2="38" y2="176"/>
-        <line x1="54" y1="150" x2="54" y2="176"/>
-        <line x1="70" y1="150" x2="70" y2="176"/>
-        <line x1="86" y1="150" x2="86" y2="176"/>
-        <line x1="102" y1="150" x2="102" y2="176"/>
-        <line x1="118" y1="150" x2="118" y2="176"/>
+      <!-- Fenstersims -->
+      <line x1="50" y1="152" x2="150" y2="152" stroke="#9c855f" stroke-width="3" stroke-opacity="0.6"/>
+      <!-- Pariser Balkon: gebauchte Ober-/Unterschiene -->
+      <g fill="none" stroke="#8f7a56" stroke-width="2.2" stroke-opacity="0.62">
+        <path d="M44 160 C 70 150 130 150 156 160"/>
+        <path d="M44 190 C 70 182 130 182 156 190"/>
+        <!-- Baluster -->
+        <line x1="56" y1="157" x2="56" y2="188"/>
+        <line x1="68" y1="155" x2="68" y2="187"/>
+        <line x1="80" y1="154" x2="80" y2="186"/>
+        <line x1="92" y1="153" x2="92" y2="186"/>
+        <line x1="108" y1="153" x2="108" y2="186"/>
+        <line x1="120" y1="154" x2="120" y2="186"/>
+        <line x1="132" y1="155" x2="132" y2="187"/>
+        <line x1="144" y1="157" x2="144" y2="188"/>
       </g>
     </pattern>
-    <linearGradient id="vignette" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#d8cfbf" stop-opacity="0.35"/>
-      <stop offset="0.2" stop-color="#d8cfbf" stop-opacity="0"/>
-      <stop offset="0.8" stop-color="#d8cfbf" stop-opacity="0"/>
-      <stop offset="1" stop-color="#d8cfbf" stop-opacity="0.35"/>
-    </linearGradient>
   </defs>
 
-  <rect width="1600" height="440" fill="url(#sky)"/>
-  <rect x="0" y="70" width="1600" height="370" fill="url(#facade)"/>
-  <rect width="1600" height="440" fill="url(#vignette)"/>
-  <line x1="0" y1="72" x2="1600" y2="72" stroke="#c3b6a1" stroke-width="3" stroke-opacity="0.55"/>
-  <rect width="1600" height="440" fill="url(#fade)"/>
+  <rect width="1600" height="480" fill="url(#sky)"/>
+  <!-- Gesims oben -->
+  <rect x="0" y="0" width="1600" height="60" fill="#d8cbb2" fill-opacity="0.35"/>
+  <line x1="0" y1="60" x2="1600" y2="60" stroke="#a8926f" stroke-width="3" stroke-opacity="0.5"/>
+  <!-- Fassade -->
+  <rect x="0" y="62" width="1600" height="418" fill="url(#facade)"/>
+  <!-- Licht + Schatten + Ausblendung -->
+  <rect width="1600" height="480" fill="url(#light)"/>
+  <rect width="1600" height="480" fill="url(#leftShade)"/>
+  <rect width="1600" height="480" fill="url(#fade)"/>
 </svg>

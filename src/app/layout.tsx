@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Inter, Schibsted_Grotesk } from "next/font/google";
+import { Inter, Schibsted_Grotesk, Instrument_Sans } from "next/font/google";
 import "./globals.css";
 
 // Self-hosted via next/font (no render-blocking Google @import, no FOUT).
@@ -15,6 +15,15 @@ const inter = Inter({
 const display = Schibsted_Grotesk({
   subsets: ["latin"],
   variable: "--font-display",
+  display: "swap",
+});
+// Instrument Sans — cleane, editorial Formular-Schrift (deckt sich mit dem
+// Fillout-„EMI"-Theme). Aktuell nur auf der Selbstauskunft aktiv (Opt-in via
+// Tailwind `font-instrument`); der geplante App-weite Restyle zieht sie später
+// breiter (siehe docs/DESIGN-RESTYLE-PLAN.md).
+const instrument = Instrument_Sans({
+  subsets: ["latin"],
+  variable: "--font-instrument",
   display: "swap",
 });
 import { Providers } from "@/components/providers";
@@ -50,7 +59,7 @@ export default async function RootLayout({
   return (
     <html
       lang="de"
-      className={`${inter.variable} ${display.variable}`}
+      className={`${inter.variable} ${display.variable} ${instrument.variable}`}
       suppressHydrationWarning
     >
       <body className="antialiased">

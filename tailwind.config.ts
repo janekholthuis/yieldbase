@@ -12,6 +12,7 @@ const config: Config = {
   		fontFamily: {
   			sans: ['var(--font-sans)', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
   			display: ['var(--font-display)', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+  			instrument: ['var(--font-instrument)', 'var(--font-sans)', 'Inter', 'system-ui', 'sans-serif'],
   		},
   		colors: {
   			background: 'oklch(var(--background) / <alpha-value>)',

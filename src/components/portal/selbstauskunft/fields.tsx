@@ -16,7 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export const Star = () => <span className="ml-0.5 text-brand-accent">*</span>;
+export const Star = () => (
+  <span className="ml-0.5 text-neutral-400" aria-hidden>
+    *
+  </span>
+);
 
 export function Wrap({
   label,
@@ -29,11 +33,11 @@ export function Wrap({
 }) {
   return (
     <div>
-      <Label className="text-sm font-medium text-brand-ink">
+      <Label className="text-sm font-medium text-neutral-800">
         {label}
         {req ? <Star /> : null}
       </Label>
-      <div className="mt-1.5">{children}</div>
+      <div className="mt-2">{children}</div>
     </div>
   );
 }
@@ -45,6 +49,8 @@ export function TextField({
   onChange,
   type = "text",
   inputMode,
+  icon: Icon,
+  placeholder,
 }: {
   label: string;
   req?: boolean;
@@ -52,15 +58,26 @@ export function TextField({
   onChange: (v: string) => void;
   type?: string;
   inputMode?: "numeric" | "text";
+  icon?: React.ComponentType<{ className?: string }>;
+  placeholder?: string;
 }) {
   return (
     <Wrap label={label} req={req}>
-      <Input
-        type={type}
-        inputMode={inputMode}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
+      <div className="relative">
+        {Icon ? (
+          <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+        ) : null}
+        <Input
+          type={type}
+          inputMode={inputMode}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className={`h-11 rounded-lg border-neutral-200 bg-white text-neutral-900 placeholder:text-neutral-400 focus-visible:ring-neutral-900/15 ${
+            Icon ? "pl-9" : ""
+          }`}
+        />
+      </div>
     </Wrap>
   );
 }
@@ -84,9 +101,9 @@ export function EuroField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="0,00"
-          className="pr-7"
+          className="h-11 rounded-lg border-neutral-200 bg-white pr-8 text-neutral-900 placeholder:text-neutral-400 focus-visible:ring-neutral-900/15"
         />
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-brand-muted">
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">
           €
         </span>
       </div>
@@ -107,7 +124,12 @@ export function DateField({
 }) {
   return (
     <Wrap label={label} req={req}>
-      <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} />
+      <Input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-11 rounded-lg border-neutral-200 bg-white text-neutral-900 focus-visible:ring-neutral-900/15"
+      />
     </Wrap>
   );
 }
@@ -128,7 +150,7 @@ export function SelectField({
   return (
     <Wrap label={label} req={req}>
       <Select value={value || undefined} onValueChange={onChange}>
-        <SelectTrigger className="rounded-2xl">
+        <SelectTrigger className="h-11 rounded-lg border-neutral-200 bg-white text-neutral-900 focus:ring-neutral-900/15 data-[placeholder]:text-neutral-400">
           <SelectValue placeholder="Bitte wählen" />
         </SelectTrigger>
         <SelectContent>
@@ -153,8 +175,8 @@ export function SwitchField({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex items-center justify-between gap-3 rounded-2xl border border-brand-border px-4 py-3 text-sm">
-      <span className="font-medium text-brand-ink">{label}</span>
+    <label className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-4 py-3 text-sm">
+      <span className="font-medium text-neutral-800">{label}</span>
       <Switch checked={checked} onCheckedChange={onChange} />
     </label>
   );
@@ -177,7 +199,7 @@ export function CheckboxGroup({
     onChange(selected.includes(o) ? selected.filter((x) => x !== o) : [...selected, o]);
   return (
     <div>
-      <Label className="text-sm font-medium text-brand-ink">
+      <Label className="text-sm font-medium text-neutral-800">
         {label}
         {req ? <Star /> : null}
       </Label>
@@ -185,14 +207,14 @@ export function CheckboxGroup({
         {options.map((o) => (
           <label
             key={o}
-            className="flex items-start gap-3 rounded-xl border border-brand-border px-3 py-2 text-sm"
+            className="flex items-start gap-3 rounded-lg border border-neutral-200 px-3.5 py-2.5 text-sm transition-colors hover:border-neutral-300 has-[:checked]:border-neutral-900 has-[:checked]:bg-neutral-50"
           >
             <Checkbox
               checked={selected.includes(o)}
               onCheckedChange={() => toggle(o)}
-              className="mt-0.5"
+              className="mt-0.5 data-[state=checked]:border-neutral-900 data-[state=checked]:bg-neutral-900"
             />
-            <span className="text-brand-body">{o}</span>
+            <span className="text-neutral-700">{o}</span>
           </label>
         ))}
       </div>

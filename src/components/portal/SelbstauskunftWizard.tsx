@@ -1,11 +1,13 @@
 "use client";
 
-// PROJ-7 — Selbstauskunft: durchgehender linearer Wizard (ersetzt den
-// gamifizierten Bereichs-Hub). Ein Schritt nach dem anderen wie ein Formular,
-// mit Fortschrittsbalken und Autosave (jederzeit pausierbar/zwischenspeicherbar).
-// Rendert über die geteilten Section-/Feld-Renderer (components/portal/
-// selbstauskunft) — keine Duplizierung. Öffentlicher Token-Modus (ohne Login)
-// bleibt vollständig erhalten; der Unterlagen-Schritt nur im eingeloggten Portal.
+// PROJ-7 — Selbstauskunft: durchgehender linearer Wizard im „EMI"-Look
+// (angelehnt an das Fillout-Referenzformular): Foto-Hero-Banner, monochrome
+// editorial Fläche, Instrument-Sans-Titel, luftige Felder, Haupt-/Mitantrag-
+// steller nebeneinander. Ein Schritt nach dem anderen mit Fortschrittsbalken
+// und Autosave (jederzeit pausierbar/zwischenspeicherbar). Rendert über die
+// geteilten Section-/Feld-Renderer (components/portal/selbstauskunft).
+// Öffentlicher Token-Modus (ohne Login) bleibt vollständig erhalten; der
+// Unterlagen-Schritt nur im eingeloggten Portal.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -37,6 +39,10 @@ import {
   submitSelbstauskunftByToken,
 } from "@/lib/actions/selbstauskunft-public";
 
+// Foto-Banner oben. Standard = mitgeliefertes Fassaden-SVG; für ein echtes Foto
+// die Datei public/selbstauskunft-hero.jpg ablegen und HERO_SRC hier umbiegen.
+const HERO_SRC = "/selbstauskunft-hero.svg";
+
 export interface SelbstauskunftCrm {
   close_lead_id: string | null;
   close_opportunity_id: string | null;
@@ -59,8 +65,7 @@ export interface SelbstauskunftWizardProps {
   /** Persistierter Schritt aus einem früheren Entwurf (Resume-Position). */
   startStep: number;
   crm: SelbstauskunftCrm;
-  /** Token-Modus (öffentlicher Link, ohne Login): save/submit token-basiert,
-   *  nach dem Absenden gibt es einen Dank-Screen statt Portal-Redirect. */
+  /** Token-Modus (öffentlicher Link, ohne Login). */
   token?: string;
   /** Unterlagen-Schritt nur im eingeloggten Portal. */
   docs?: SelbstauskunftDocsContext;
@@ -100,6 +105,16 @@ const fmtDate = (iso: string) =>
     month: "2-digit",
     year: "numeric",
   });
+
+function HeroBanner() {
+  return (
+    <div
+      aria-hidden
+      className="h-40 w-full bg-neutral-100 bg-cover bg-center md:h-56"
+      style={{ backgroundImage: `url(${HERO_SRC})` }}
+    />
+  );
+}
 
 export function SelbstauskunftWizard({
   initialData,
@@ -289,13 +304,14 @@ export function SelbstauskunftWizard({
   // ── Token-Modus: Dank-Screen nach dem Absenden ───────────────────────
   if (publicDone) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-10 md:py-16">
-        <div className="rounded-3xl border border-brand-border bg-brand-surface p-8 text-center shadow-card">
-          <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-brand-success" />
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-brand-ink">
+      <div className="min-h-screen bg-white font-instrument">
+        <HeroBanner />
+        <div className="mx-auto max-w-2xl px-6 py-12 text-center md:py-16">
+          <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-neutral-900" />
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
             Vielen Dank!
           </h1>
-          <p className="mt-2 text-sm text-brand-body">
+          <p className="mt-2 text-sm text-neutral-600">
             Deine Selbstauskunft wurde übermittelt. Dein Ansprechpartner meldet
             sich bei dir zu den nächsten Schritten. Du kannst dieses Fenster
             schließen.
@@ -308,18 +324,19 @@ export function SelbstauskunftWizard({
   // ── „Eingereicht"-Screen vor dem erneuten Bearbeiten ─────────────────
   if (alreadySubmitted && !editMode) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-8 md:py-12">
-        <div className="rounded-3xl border border-brand-border bg-brand-surface p-8 shadow-card">
-          <div className="mb-3 flex items-center gap-2 text-brand-success">
+      <div className="min-h-screen bg-white font-instrument">
+        <HeroBanner />
+        <div className="mx-auto max-w-2xl px-6 py-12">
+          <div className="mb-3 flex items-center gap-2 text-neutral-900">
             <CheckCircle2 className="h-5 w-5" />
             <span className="text-xs font-semibold uppercase tracking-[0.2em]">
               Eingereicht
             </span>
           </div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-brand-ink">
+          <h1 className="text-3xl font-semibold tracking-tight text-neutral-900">
             Deine Selbstauskunft
           </h1>
-          <p className="mt-2 text-sm text-brand-body">
+          <p className="mt-2 text-sm text-neutral-600">
             {submittedAt ? (
               <>
                 Eingereicht am <strong>{fmtDate(submittedAt)}</strong>.{" "}
@@ -333,12 +350,16 @@ export function SelbstauskunftWizard({
                 setStep(0);
                 setEditMode(true);
               }}
-              className="rounded-2xl"
+              className="rounded-lg bg-neutral-900 text-white hover:bg-neutral-800"
             >
               Daten bearbeiten
             </Button>
             {!publicMode && (
-              <Button asChild variant="outline" className="rounded-2xl">
+              <Button
+                asChild
+                variant="outline"
+                className="rounded-lg border-neutral-300 text-neutral-700"
+              >
                 <Link href="/portal">Zurück zum Dashboard</Link>
               </Button>
             )}
@@ -349,28 +370,35 @@ export function SelbstauskunftWizard({
   }
 
   const percent = Math.round(((step + 1) / total) * 100);
+  const twoColumns = data.mitantragsteller && current.section != null;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 md:py-10">
-      <header className="mb-6">
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-brand-ink md:text-3xl">
-          Deine Selbstauskunft
-        </h1>
-        <p className="mt-2 text-sm text-brand-body">
-          Bitte fülle nur aus, was auf dich zutrifft. Du kannst jederzeit
-          pausieren — dein Fortschritt wird automatisch gespeichert.
-        </p>
+    <div className="min-h-screen bg-white font-instrument">
+      <HeroBanner />
+
+      <div className="mx-auto max-w-4xl px-6 pb-20 pt-8 md:pt-10">
+        {/* Titel + Trennstrich */}
+        <header>
+          <h1 className="text-3xl font-semibold tracking-tight text-neutral-900 md:text-4xl">
+            Selbstauskunft
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-neutral-500">
+            Bitte fülle nur aus, was auf dich zutrifft. Du kannst jederzeit
+            pausieren — dein Fortschritt wird automatisch gespeichert.
+          </p>
+          <div className="mt-5 border-t border-neutral-200" />
+        </header>
+
+        {/* Fortschritt */}
         <div className="mt-6">
-          <div className="mb-2 flex items-center justify-between gap-3 text-xs uppercase tracking-[0.2em] text-brand-muted">
-            <span>
+          <div className="mb-2 flex items-center justify-between gap-3 text-xs text-neutral-500">
+            <span className="font-medium text-neutral-700">
               Schritt {step + 1} von {total}: {current.title}
             </span>
             <span className="flex items-center gap-3">
-              {saveState === "saving" && (
-                <span className="normal-case tracking-normal">Speichern …</span>
-              )}
+              {saveState === "saving" && <span>Speichern …</span>}
               {saveState === "saved" && (
-                <span className="inline-flex items-center gap-1 normal-case tracking-normal text-brand-success">
+                <span className="inline-flex items-center gap-1 text-neutral-700">
                   <Check className="h-3 w-3" /> Gespeichert
                 </span>
               )}
@@ -381,97 +409,115 @@ export function SelbstauskunftWizard({
             {steps.map((s, i) => (
               <div
                 key={s.key}
-                className={`h-1.5 flex-1 rounded-full transition-colors duration-ds-short ease-ds-out ${
-                  i <= step ? "bg-brand-accent" : "bg-brand-surfaceMuted"
+                className={`h-1 flex-1 rounded-full transition-colors duration-ds-short ease-ds-out ${
+                  i <= step ? "bg-neutral-900" : "bg-neutral-200"
                 }`}
               />
             ))}
           </div>
         </div>
-      </header>
 
-      <div className="space-y-6 rounded-3xl border border-brand-border bg-brand-surface p-6 shadow-card md:p-8">
-        {/* Mitantragsteller-Toggle nur auf dem ersten Schritt */}
-        {current.key === "persoenlich" && (
-          <label className="flex items-center justify-between gap-3 rounded-2xl border border-brand-border bg-brand-surfaceMuted px-4 py-3">
-            <span className="text-sm font-medium text-brand-ink">
-              Gibt es einen Mitantragsteller?
-            </span>
-            <Switch
-              checked={data.mitantragsteller}
-              onCheckedChange={(v) =>
-                setData((d) => ({ ...d, mitantragsteller: v }))
-              }
-            />
-          </label>
-        )}
-
-        {current.key === "immobilien" ? (
-          <ImmobilienStep data={data} setData={setData} />
-        ) : current.key === "unterlagen" && docs ? (
-          <div className="space-y-3">
-            <p className="text-sm text-brand-body">
-              Lade deine Nachweise sicher hoch. Du kannst diesen Schritt auch
-              später im Portal vervollständigen.
-            </p>
-            <KundenDokumenteListe
-              kundeId={docs.kundeId}
-              berufStatus={docs.berufStatus}
-              canUpload
-              currentUserId={docs.currentUserId}
-            />
-          </div>
-        ) : current.key === "unterschrift" ? (
-          <UnterschriftStep
-            data={data}
-            setData={setData}
-            sigHaupt={sigHaupt}
-            sigMit={sigMit}
-          />
-        ) : current.section != null ? (
-          <div className="space-y-8">
-            <PersonBlock
-              title={data.mitantragsteller ? "Hauptantragsteller" : undefined}
-              person={data.haupt}
-              set={setHaupt}
-              section={current.section}
-            />
-            {data.mitantragsteller && (
-              <PersonBlock
-                title="Mitantragsteller"
-                person={data.mit}
-                set={setMit}
-                section={current.section}
+        {/* Schritt-Inhalt */}
+        <div className="mt-9 space-y-7">
+          {current.key === "persoenlich" && (
+            <label className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3">
+              <span className="text-sm font-medium text-neutral-800">
+                Gibt es einen Mitantragsteller?
+              </span>
+              <Switch
+                checked={data.mitantragsteller}
+                onCheckedChange={(v) =>
+                  setData((d) => ({ ...d, mitantragsteller: v }))
+                }
               />
-            )}
-          </div>
-        ) : null}
-      </div>
+            </label>
+          )}
 
-      <div className="mt-6 flex items-center justify-between gap-3">
-        <Button
-          variant="outline"
-          onClick={prev}
-          disabled={step === 0 || saving || submitting}
-          className="rounded-2xl"
-        >
-          <ArrowLeft className="mr-1 h-4 w-4" /> Zurück
-        </Button>
-        {step < total - 1 ? (
-          <Button onClick={next} disabled={saving} className="rounded-2xl">
-            {saving ? "Speichern …" : "Weiter"}
-            <ArrowRight className="ml-1 h-4 w-4" />
-          </Button>
-        ) : (
+          <h2 className="text-2xl font-semibold tracking-tight text-neutral-900">
+            {current.title}
+          </h2>
+
+          {current.key === "immobilien" ? (
+            <ImmobilienStep data={data} setData={setData} />
+          ) : current.key === "unterlagen" && docs ? (
+            <div className="space-y-3">
+              <p className="text-sm text-neutral-600">
+                Lade deine Nachweise sicher hoch. Du kannst diesen Schritt auch
+                später im Portal vervollständigen.
+              </p>
+              <KundenDokumenteListe
+                kundeId={docs.kundeId}
+                berufStatus={docs.berufStatus}
+                canUpload
+                currentUserId={docs.currentUserId}
+              />
+            </div>
+          ) : current.key === "unterschrift" ? (
+            <UnterschriftStep
+              data={data}
+              setData={setData}
+              sigHaupt={sigHaupt}
+              sigMit={sigMit}
+            />
+          ) : current.section != null ? (
+            twoColumns ? (
+              <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
+                <PersonBlock
+                  title="Hauptantragsteller"
+                  person={data.haupt}
+                  set={setHaupt}
+                  section={current.section}
+                  cols={1}
+                />
+                <PersonBlock
+                  title="Mitantragsteller"
+                  person={data.mit}
+                  set={setMit}
+                  section={current.section}
+                  cols={1}
+                />
+              </div>
+            ) : (
+              <PersonBlock
+                person={data.haupt}
+                set={setHaupt}
+                section={current.section}
+                cols={2}
+              />
+            )
+          ) : null}
+        </div>
+
+        {/* Navigation */}
+        <div className="mt-10 flex items-center justify-between gap-3">
           <Button
-            onClick={onSubmit}
-            disabled={submitting}
-            size="lg"
-            className="rounded-2xl bg-brand-accent text-white hover:bg-brand-accent/90"
+            variant="outline"
+            onClick={prev}
+            disabled={step === 0 || saving || submitting}
+            className="rounded-lg border-neutral-300 text-neutral-700"
           >
-            {submitting ? "Wird eingereicht …" : "Selbstauskunft einreichen"}
+            <ArrowLeft className="mr-1 h-4 w-4" /> Zurück
           </Button>
-        )}
+          {step < total - 1 ? (
+            <Button
+              onClick={next}
+              disabled={saving}
+              className="rounded-lg bg-neutral-900 px-6 text-white hover:bg-neutral-800"
+            >
+              {saving ? "Speichern …" : "Weiter"}
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              onClick={onSubmit}
+              disabled={submitting}
+              size="lg"
+              className="rounded-lg bg-neutral-900 px-6 text-white hover:bg-neutral-800"
+            >
+              {submitting ? "Wird eingereicht …" : "Selbstauskunft einreichen"}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

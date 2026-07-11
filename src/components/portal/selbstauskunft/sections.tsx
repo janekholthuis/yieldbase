@@ -5,7 +5,7 @@
 // SelbstauskunftWizard rendert hierüber.
 
 import { useMemo } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Mail, Phone, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -50,38 +50,47 @@ export function PersonBlock({
   person,
   set,
   section,
+  cols = 2,
 }: {
   title?: string;
   person: PersonData;
   set: (patch: Partial<PersonData>) => void;
   section: number;
+  /** 2 = interne Felder zweispaltig; 1 = einspaltig (für Haupt+Mit nebeneinander). */
+  cols?: 1 | 2;
 }) {
   return (
     <div className="space-y-5">
       {title && (
-        <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-muted">
-          {title}
-        </h3>
+        <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
       )}
-      {section === 1 && <SectionPersoenlich person={person} set={set} />}
-      {section === 2 && <SectionTaetigkeit person={person} set={set} />}
-      {section === 3 && <SectionEinnahmen person={person} set={set} />}
-      {section === 4 && <SectionVermoegen person={person} set={set} />}
-      {section === 6 && <SectionAusgaben person={person} set={set} />}
+      {section === 1 && <SectionPersoenlich person={person} set={set} cols={cols} />}
+      {section === 2 && <SectionTaetigkeit person={person} set={set} cols={cols} />}
+      {section === 3 && <SectionEinnahmen person={person} set={set} cols={cols} />}
+      {section === 4 && <SectionVermoegen person={person} set={set} cols={cols} />}
+      {section === 6 && <SectionAusgaben person={person} set={set} cols={cols} />}
     </div>
   );
 }
 
-type PS = { person: PersonData; set: (patch: Partial<PersonData>) => void };
+type PS = {
+  person: PersonData;
+  set: (patch: Partial<PersonData>) => void;
+  cols?: 1 | 2;
+};
 
-export function SectionPersoenlich({ person, set }: PS) {
+/** Tailwind-Klasse für ein 2er-Raster, das bei cols=1 einspaltig bleibt. */
+const grid2 = (cols: 1 | 2) =>
+  `grid gap-5 ${cols === 2 ? "md:grid-cols-2" : ""}`;
+
+export function SectionPersoenlich({ person, set, cols = 2 }: PS) {
   return (
     <div className="space-y-5">
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className={grid2(cols)}>
         <TextField label="Vorname" req value={person.vorname} onChange={(v) => set({ vorname: v })} />
         <TextField label="Nachname" req value={person.nachname} onChange={(v) => set({ nachname: v })} />
-        <TextField label="E-Mail" req type="email" value={person.email} onChange={(v) => set({ email: v })} />
-        <TextField label="Telefon" req type="tel" value={person.telefon} onChange={(v) => set({ telefon: v })} />
+        <TextField label="E-Mail" req type="email" icon={Mail} value={person.email} onChange={(v) => set({ email: v })} />
+        <TextField label="Telefon" req type="tel" icon={Phone} value={person.telefon} onChange={(v) => set({ telefon: v })} />
         <DateField label="Geburtsdatum" req value={person.geburtsdatum} onChange={(v) => set({ geburtsdatum: v })} />
         <TextField label="Staatsangehörigkeit" req value={person.staatsangehoerigkeit} onChange={(v) => set({ staatsangehoerigkeit: v })} />
       </div>
@@ -93,7 +102,7 @@ export function SectionPersoenlich({ person, set }: PS) {
         />
         <TextField label="Ort" req value={person.ort} onChange={(v) => set({ ort: v })} />
       </div>
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className={grid2(cols)}>
         <SelectField label="Wohnsituation" req options={WOHNSITUATION} value={person.wohnsituation} onChange={(v) => set({ wohnsituation: v })} />
         <DateField label="Dort wohnhaft seit" value={person.wohnhaft_seit} onChange={(v) => set({ wohnhaft_seit: v })} />
         <SelectField label="Familienstand" req options={FAMILIENSTAND} value={person.familienstand} onChange={(v) => set({ familienstand: v })} />
@@ -103,19 +112,19 @@ export function SectionPersoenlich({ person, set }: PS) {
   );
 }
 
-export function SectionTaetigkeit({ person, set }: PS) {
+export function SectionTaetigkeit({ person, set, cols = 2 }: PS) {
   const erwerbstaetig = ["Angestellt", "Beamter", "Freiberufler"].includes(person.beschaeftigung);
   return (
     <div className="space-y-5">
       <SelectField label="Beschäftigungsverhältnis" req options={BESCHAEFTIGUNG} value={person.beschaeftigung} onChange={(v) => set({ beschaeftigung: v })} />
       {erwerbstaetig && (
         <>
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className={grid2(cols)}>
             <TextField label="Beruf / Tätigkeit" req value={person.beruf} onChange={(v) => set({ beruf: v })} />
             <TextField label="Arbeitgeber" value={person.arbeitgeber} onChange={(v) => set({ arbeitgeber: v })} />
           </div>
           <SwitchField label="Arbeitgeber in Deutschland ansässig?" checked={person.arbeitgeber_deutschland} onChange={(v) => set({ arbeitgeber_deutschland: v })} />
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className={grid2(cols)}>
             <DateField label="Tätig seit" value={person.taetig_seit} onChange={(v) => set({ taetig_seit: v })} />
             <SelectField label="Dauer" req options={DAUER} value={person.dauer} onChange={(v) => set({ dauer: v })} />
           </div>
@@ -128,7 +137,7 @@ export function SectionTaetigkeit({ person, set }: PS) {
   );
 }
 
-export function SectionEinnahmen({ person, set }: PS) {
+export function SectionEinnahmen({ person, set, cols = 2 }: PS) {
   const has = (q: string) => person.einnahmequellen.includes(q);
   return (
     <div className="space-y-5">
@@ -137,7 +146,7 @@ export function SectionEinnahmen({ person, set }: PS) {
         selected={person.einnahmequellen} onChange={(v) => set({ einnahmequellen: v })}
       />
       {has("Lohn / Gehalt / Bezüge") && (
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className={grid2(cols)}>
           <EuroField label="Lohn / Gehalt netto pro Monat" req value={person.lohn_netto_monat} onChange={(v) => set({ lohn_netto_monat: v })} />
           <TextField label="Anzahl Gehälter pro Jahr" req inputMode="numeric" value={person.anzahl_gehaelter} onChange={(v) => set({ anzahl_gehaelter: v.replace(/\D/g, "") })} />
         </div>
@@ -146,7 +155,7 @@ export function SectionEinnahmen({ person, set }: PS) {
         <EuroField label="Einnahmen selbstständig pro Jahr" req value={person.selbststaendig_jahr} onChange={(v) => set({ selbststaendig_jahr: v })} />
       )}
       {has("Einnahmen aus nebenberuflicher Tätigkeit") && (
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className={grid2(cols)}>
           <EuroField label="Einnahmen Nebenberuf pro Jahr" req value={person.nebenberuf_jahr} onChange={(v) => set({ nebenberuf_jahr: v })} />
           <DateField label="Beginn Nebenberuf" value={person.nebenberuf_beginn} onChange={(v) => set({ nebenberuf_beginn: v })} />
         </div>
@@ -164,7 +173,7 @@ export function SectionEinnahmen({ person, set }: PS) {
         <EuroField label="Unterhalt pro Monat" req value={person.unterhalt_monat} onChange={(v) => set({ unterhalt_monat: v })} />
       )}
       {has("sonstige Einkünfte") && (
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className={grid2(cols)}>
           <EuroField label="Sonstige Einkünfte pro Jahr" req value={person.sonstige_einkuenfte_jahr} onChange={(v) => set({ sonstige_einkuenfte_jahr: v })} />
           <TextField label="Art der Einkünfte" req value={person.sonstige_einkuenfte_art} onChange={(v) => set({ sonstige_einkuenfte_art: v })} />
         </div>
@@ -173,7 +182,7 @@ export function SectionEinnahmen({ person, set }: PS) {
   );
 }
 
-export function SectionVermoegen({ person, set }: PS) {
+export function SectionVermoegen({ person, set, cols = 2 }: PS) {
   const has = (q: string) => person.vermoegenswerte.includes(q);
   return (
     <div className="space-y-5">
@@ -191,13 +200,13 @@ export function SectionVermoegen({ person, set }: PS) {
         <EuroField label="Lebens-/Rentenversicherungen (Rückkaufswert)" req value={person.lebensversicherung} onChange={(v) => set({ lebensversicherung: v })} />
       )}
       {has("Bausparvertrag") && (
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className={grid2(cols)}>
           <EuroField label="Bausparvertrag: Guthaben" req value={person.bausparen_guthaben} onChange={(v) => set({ bausparen_guthaben: v })} />
           <EuroField label="Bausparvertrag: Sparrate pro Monat" value={person.bausparen_rate} onChange={(v) => set({ bausparen_rate: v })} />
         </div>
       )}
       {has("Sonstiges Vermögen") && (
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className={grid2(cols)}>
           <EuroField label="Sonstiges Vermögen" req value={person.sonstiges_vermoegen} onChange={(v) => set({ sonstiges_vermoegen: v })} />
           <TextField label="Art des sonstigen Vermögens" req value={person.sonstiges_vermoegen_art} onChange={(v) => set({ sonstiges_vermoegen_art: v })} />
         </div>
@@ -206,7 +215,7 @@ export function SectionVermoegen({ person, set }: PS) {
   );
 }
 
-export function SectionAusgaben({ person, set }: PS) {
+export function SectionAusgaben({ person, set, cols = 2 }: PS) {
   const has = (q: string) => person.ausgabenposten.includes(q);
   return (
     <div className="space-y-5">
@@ -223,7 +232,7 @@ export function SectionAusgaben({ person, set }: PS) {
         <EuroField label="Warmmiete pro Monat" req value={person.warmmiete_monat} onChange={(v) => set({ warmmiete_monat: v })} />
       )}
       {has("Kredite / Leasing / 0% Finanzierungen") && (
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className={grid2(cols)}>
           <EuroField label="Kreditrate pro Monat" req value={person.kreditrate_monat} onChange={(v) => set({ kreditrate_monat: v })} />
           <EuroField label="Restschuld" value={person.restschuld} onChange={(v) => set({ restschuld: v })} />
         </div>
@@ -232,7 +241,7 @@ export function SectionAusgaben({ person, set }: PS) {
         <EuroField label="Unterhaltsverpflichtungen pro Monat" req value={person.unterhaltsverpflichtung_monat} onChange={(v) => set({ unterhaltsverpflichtung_monat: v })} />
       )}
       {has("sonstige Verbindlichkeiten") && (
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className={grid2(cols)}>
           <EuroField label="Sonstige Verbindlichkeiten pro Monat" req value={person.sonstige_verbindlichkeit_monat} onChange={(v) => set({ sonstige_verbindlichkeit_monat: v })} />
           <TextField label="Art der Verbindlichkeit" req value={person.verbindlichkeit_art} onChange={(v) => set({ verbindlichkeit_art: v })} />
         </div>
@@ -261,9 +270,9 @@ export function ImmobilienStep({
   return (
     <div className="space-y-5">
       <div>
-        <Label className="text-sm font-medium text-brand-ink">
+        <Label className="text-sm font-medium text-neutral-900">
           Ist bereits Immobilienvermögen vorhanden?
-          <span className="ml-0.5 text-brand-accent">*</span>
+          <span className="ml-0.5 text-neutral-400">*</span>
         </Label>
         <RadioGroup
           className="mt-2 flex gap-6"
@@ -289,9 +298,9 @@ export function ImmobilienStep({
       {data.immobilienvermoegen === "ja" && (
         <div className="space-y-4">
           {data.immobilien.map((im, idx) => (
-            <div key={idx} className="space-y-4 rounded-2xl border border-brand-border p-4">
+            <div key={idx} className="space-y-4 rounded-lg border border-neutral-200 p-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-muted">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
                   Immobilie {idx + 1}
                 </span>
                 <Button
@@ -314,7 +323,7 @@ export function ImmobilienStep({
           <Button
             type="button" variant="outline"
             onClick={() => setData((d) => ({ ...d, immobilien: [...d.immobilien, emptyImmobilie()] }))}
-            className="rounded-2xl"
+            className="rounded-lg"
           >
             <Plus className="mr-1 h-4 w-4" /> Immobilie erfassen
           </Button>
@@ -342,13 +351,13 @@ export function UnterschriftStep({
   const today = useMemo(() => data.datum, [data.datum]);
   return (
     <div className="space-y-5">
-      <label className="flex items-start gap-3 rounded-2xl border border-brand-border bg-brand-surfaceMuted px-4 py-3">
+      <label className="flex items-start gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3">
         <Checkbox
           checked={data.datenschutz}
           onCheckedChange={(c) => setData((d) => ({ ...d, datenschutz: Boolean(c) }))}
           className="mt-0.5"
         />
-        <span className="text-sm text-brand-body">
+        <span className="text-sm text-neutral-700">
           Ich bestätige die Richtigkeit meiner Angaben und die Datenschutzerklärung.
         </span>
       </label>
@@ -357,9 +366,9 @@ export function UnterschriftStep({
         <DateField label="Datum" value={today} onChange={(v) => setData((d) => ({ ...d, datum: v }))} />
       </div>
       <div>
-        <Label className="text-sm font-medium text-brand-ink">
+        <Label className="text-sm font-medium text-neutral-900">
           Unterschrift {data.mitantragsteller ? "Hauptantragsteller" : ""}
-          <span className="ml-0.5 text-brand-accent">*</span>
+          <span className="ml-0.5 text-neutral-400">*</span>
         </Label>
         <div className="mt-2">
           <SignaturePad ref={sigHaupt} />
@@ -367,8 +376,8 @@ export function UnterschriftStep({
       </div>
       {data.mitantragsteller && (
         <div>
-          <Label className="text-sm font-medium text-brand-ink">
-            Unterschrift Mitantragsteller<span className="ml-0.5 text-brand-accent">*</span>
+          <Label className="text-sm font-medium text-neutral-900">
+            Unterschrift Mitantragsteller<span className="ml-0.5 text-neutral-400">*</span>
           </Label>
           <div className="mt-2">
             <SignaturePad ref={sigMit} />

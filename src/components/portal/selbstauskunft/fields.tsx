@@ -1,8 +1,8 @@
 "use client";
 
-// PROJ-7 — Selbstauskunft: geteilte Feld-Primitive.
-// Vom linearen SelbstauskunftWizard genutzt. Wiring/Validierung/publicMode-
-// Verhalten bleiben unverändert.
+// PROJ-7 — Selbstauskunft: geteilte Feld-Primitive im „EMI/Fillout"-Look.
+// Monochrom, luftig, ein gemeinsamer Feld-Stil (Höhe/Radius/Fokus-Halo) über
+// alle Eingaben. Wiring/Validierung unverändert.
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+// Ein Stil für alle Text-/Zahl-/Datums-/Select-Felder: 48px hoch, 15px Text,
+// weicher Fokus-Halo (Fillout-Anmutung), ruhige Ränder.
+export const FIELD =
+  "h-12 rounded-lg border-neutral-200 bg-white px-3.5 text-[15px] text-neutral-900 shadow-none " +
+  "placeholder:text-neutral-400 transition-colors focus-visible:border-neutral-400 " +
+  "focus-visible:ring-4 focus-visible:ring-neutral-900/5 focus-visible:ring-offset-0 " +
+  "md:text-[15px]";
 
 export const Star = () => (
   <span className="ml-0.5 text-neutral-400" aria-hidden>
@@ -33,11 +41,11 @@ export function Wrap({
 }) {
   return (
     <div>
-      <Label className="text-sm font-medium text-neutral-800">
+      <Label className="mb-2 block text-[13px] font-medium text-neutral-600">
         {label}
         {req ? <Star /> : null}
       </Label>
-      <div className="mt-2">{children}</div>
+      {children}
     </div>
   );
 }
@@ -65,7 +73,7 @@ export function TextField({
     <Wrap label={label} req={req}>
       <div className="relative">
         {Icon ? (
-          <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+          <Icon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
         ) : null}
         <Input
           type={type}
@@ -73,9 +81,7 @@ export function TextField({
           value={value}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
-          className={`h-11 rounded-lg border-neutral-200 bg-white text-neutral-900 placeholder:text-neutral-400 focus-visible:ring-neutral-900/15 ${
-            Icon ? "pl-9" : ""
-          }`}
+          className={`${FIELD} ${Icon ? "pl-10" : ""}`}
         />
       </div>
     </Wrap>
@@ -101,9 +107,9 @@ export function EuroField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="0,00"
-          className="h-11 rounded-lg border-neutral-200 bg-white pr-8 text-neutral-900 placeholder:text-neutral-400 focus-visible:ring-neutral-900/15"
+          className={`${FIELD} pr-8`}
         />
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">
+        <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[15px] text-neutral-400">
           €
         </span>
       </div>
@@ -128,7 +134,7 @@ export function DateField({
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-11 rounded-lg border-neutral-200 bg-white text-neutral-900 focus-visible:ring-neutral-900/15"
+        className={FIELD}
       />
     </Wrap>
   );
@@ -150,12 +156,14 @@ export function SelectField({
   return (
     <Wrap label={label} req={req}>
       <Select value={value || undefined} onValueChange={onChange}>
-        <SelectTrigger className="h-11 rounded-lg border-neutral-200 bg-white text-neutral-900 focus:ring-neutral-900/15 data-[placeholder]:text-neutral-400">
+        <SelectTrigger
+          className={`${FIELD} data-[placeholder]:text-neutral-400 [&>span]:truncate`}
+        >
           <SelectValue placeholder="Bitte wählen" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="rounded-lg border-neutral-200">
           {options.map((o) => (
-            <SelectItem key={o} value={o}>
+            <SelectItem key={o} value={o} className="text-[15px]">
               {o}
             </SelectItem>
           ))}
@@ -175,9 +183,13 @@ export function SwitchField({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-4 py-3 text-sm">
+    <label className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-4 py-3 text-[15px]">
       <span className="font-medium text-neutral-800">{label}</span>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <Switch
+        checked={checked}
+        onCheckedChange={onChange}
+        className="data-[state=checked]:bg-neutral-900"
+      />
     </label>
   );
 }
@@ -199,15 +211,15 @@ export function CheckboxGroup({
     onChange(selected.includes(o) ? selected.filter((x) => x !== o) : [...selected, o]);
   return (
     <div>
-      <Label className="text-sm font-medium text-neutral-800">
+      <Label className="mb-2 block text-[13px] font-medium text-neutral-600">
         {label}
         {req ? <Star /> : null}
       </Label>
-      <div className="mt-2 space-y-2">
+      <div className="space-y-2">
         {options.map((o) => (
           <label
             key={o}
-            className="flex items-start gap-3 rounded-lg border border-neutral-200 px-3.5 py-2.5 text-sm transition-colors hover:border-neutral-300 has-[:checked]:border-neutral-900 has-[:checked]:bg-neutral-50"
+            className="flex cursor-pointer items-start gap-3 rounded-lg border border-neutral-200 px-4 py-3 text-[15px] transition-colors hover:border-neutral-300 has-[:checked]:border-neutral-900 has-[:checked]:bg-neutral-50"
           >
             <Checkbox
               checked={selected.includes(o)}

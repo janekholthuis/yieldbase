@@ -60,7 +60,7 @@ export function PersonBlock({
   cols?: 1 | 2;
 }) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {title && (
         <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
       )}
@@ -81,11 +81,11 @@ type PS = {
 
 /** Tailwind-Klasse für ein 2er-Raster, das bei cols=1 einspaltig bleibt. */
 const grid2 = (cols: 1 | 2) =>
-  `grid gap-5 ${cols === 2 ? "md:grid-cols-2" : ""}`;
+  `grid gap-6 ${cols === 2 ? "md:grid-cols-2" : ""}`;
 
 export function SectionPersoenlich({ person, set, cols = 2 }: PS) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className={grid2(cols)}>
         <TextField label="Vorname" req value={person.vorname} onChange={(v) => set({ vorname: v })} />
         <TextField label="Nachname" req value={person.nachname} onChange={(v) => set({ nachname: v })} />
@@ -95,7 +95,7 @@ export function SectionPersoenlich({ person, set, cols = 2 }: PS) {
         <TextField label="Staatsangehörigkeit" req value={person.staatsangehoerigkeit} onChange={(v) => set({ staatsangehoerigkeit: v })} />
       </div>
       <TextField label="Straße & Hausnr." req value={person.strasse} onChange={(v) => set({ strasse: v })} />
-      <div className="grid gap-5 md:grid-cols-[160px_1fr]">
+      <div className="grid gap-6 md:grid-cols-[160px_1fr]">
         <TextField
           label="PLZ" req inputMode="numeric" value={person.plz}
           onChange={(v) => set({ plz: v.replace(/\D/g, "").slice(0, 5) })}
@@ -115,7 +115,7 @@ export function SectionPersoenlich({ person, set, cols = 2 }: PS) {
 export function SectionTaetigkeit({ person, set, cols = 2 }: PS) {
   const erwerbstaetig = ["Angestellt", "Beamter", "Freiberufler"].includes(person.beschaeftigung);
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <SelectField label="Beschäftigungsverhältnis" req options={BESCHAEFTIGUNG} value={person.beschaeftigung} onChange={(v) => set({ beschaeftigung: v })} />
       {erwerbstaetig && (
         <>
@@ -140,7 +140,7 @@ export function SectionTaetigkeit({ person, set, cols = 2 }: PS) {
 export function SectionEinnahmen({ person, set, cols = 2 }: PS) {
   const has = (q: string) => person.einnahmequellen.includes(q);
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <CheckboxGroup
         label="Einnahmequellen" req options={EINNAHMEQUELLEN}
         selected={person.einnahmequellen} onChange={(v) => set({ einnahmequellen: v })}
@@ -185,7 +185,7 @@ export function SectionEinnahmen({ person, set, cols = 2 }: PS) {
 export function SectionVermoegen({ person, set, cols = 2 }: PS) {
   const has = (q: string) => person.vermoegenswerte.includes(q);
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <CheckboxGroup
         label="Liquide Vermögenswerte" req options={VERMOEGENSWERTE}
         selected={person.vermoegenswerte} onChange={(v) => set({ vermoegenswerte: v })}
@@ -218,7 +218,7 @@ export function SectionVermoegen({ person, set, cols = 2 }: PS) {
 export function SectionAusgaben({ person, set, cols = 2 }: PS) {
   const has = (q: string) => person.ausgabenposten.includes(q);
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <EuroField label="Lebenshaltungskosten (ca.) pro Monat" req value={person.lebenshaltung_monat} onChange={(v) => set({ lebenshaltung_monat: v })} />
       <SelectField label="Krankenversicherungsstatus" req options={KV_STATUS} value={person.kv_status} onChange={(v) => set({ kv_status: v })} />
       {person.kv_status === "Privat krankenversichert" && (
@@ -268,14 +268,14 @@ export function ImmobilienStep({
     }));
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
-        <Label className="text-sm font-medium text-neutral-900">
+        <Label className="mb-2 block text-[13px] font-medium text-neutral-600">
           Ist bereits Immobilienvermögen vorhanden?
           <span className="ml-0.5 text-neutral-400">*</span>
         </Label>
         <RadioGroup
-          className="mt-2 flex gap-6"
+          className="flex gap-3"
           value={data.immobilienvermoegen || undefined}
           onValueChange={(v) =>
             setData((d) => ({
@@ -286,12 +286,19 @@ export function ImmobilienStep({
             }))
           }
         >
-          <label className="flex items-center gap-2 text-sm">
-            <RadioGroupItem value="ja" id="imm-ja" /> Ja
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <RadioGroupItem value="nein" id="imm-nein" /> Nein
-          </label>
+          {(["ja", "nein"] as const).map((v) => (
+            <label
+              key={v}
+              className="flex flex-1 cursor-pointer items-center gap-2.5 rounded-lg border border-neutral-200 px-4 py-3 text-[15px] transition-colors hover:border-neutral-300 has-[:checked]:border-neutral-900 has-[:checked]:bg-neutral-50"
+            >
+              <RadioGroupItem
+                value={v}
+                id={`imm-${v}`}
+                className="border-neutral-300 text-neutral-900"
+              />
+              {v === "ja" ? "Ja" : "Nein"}
+            </label>
+          ))}
         </RadioGroup>
       </div>
 
@@ -310,7 +317,7 @@ export function ImmobilienStep({
                   <Trash2 className="h-4 w-4" /> Entfernen
                 </Button>
               </div>
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid gap-6 md:grid-cols-2">
                 <SelectField label="Objektart" options={IMMOBILIEN_OBJEKTART} value={im.objektart} onChange={(v) => setImm(idx, { objektart: v })} />
                 <TextField label="Adresse" value={im.adresse} onChange={(v) => setImm(idx, { adresse: v })} />
                 <EuroField label="Verkehrswert" value={im.verkehrswert} onChange={(v) => setImm(idx, { verkehrswert: v })} />
@@ -323,7 +330,7 @@ export function ImmobilienStep({
           <Button
             type="button" variant="outline"
             onClick={() => setData((d) => ({ ...d, immobilien: [...d.immobilien, emptyImmobilie()] }))}
-            className="rounded-lg"
+            className="rounded-lg border-neutral-300 text-neutral-800 hover:bg-neutral-50"
           >
             <Plus className="mr-1 h-4 w-4" /> Immobilie erfassen
           </Button>
@@ -350,36 +357,36 @@ export function UnterschriftStep({
 }) {
   const today = useMemo(() => data.datum, [data.datum]);
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <label className="flex items-start gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3">
         <Checkbox
           checked={data.datenschutz}
           onCheckedChange={(c) => setData((d) => ({ ...d, datenschutz: Boolean(c) }))}
-          className="mt-0.5"
+          className="mt-0.5 data-[state=checked]:border-neutral-900 data-[state=checked]:bg-neutral-900"
         />
-        <span className="text-sm text-neutral-700">
+        <span className="text-[15px] text-neutral-700">
           Ich bestätige die Richtigkeit meiner Angaben und die Datenschutzerklärung.
         </span>
       </label>
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         <TextField label="Ort" req value={data.ort} onChange={(v) => setData((d) => ({ ...d, ort: v }))} />
         <DateField label="Datum" value={today} onChange={(v) => setData((d) => ({ ...d, datum: v }))} />
       </div>
       <div>
-        <Label className="text-sm font-medium text-neutral-900">
+        <Label className="mb-2 block text-[13px] font-medium text-neutral-600">
           Unterschrift {data.mitantragsteller ? "Hauptantragsteller" : ""}
           <span className="ml-0.5 text-neutral-400">*</span>
         </Label>
-        <div className="mt-2">
+        <div>
           <SignaturePad ref={sigHaupt} />
         </div>
       </div>
       {data.mitantragsteller && (
         <div>
-          <Label className="text-sm font-medium text-neutral-900">
+          <Label className="mb-2 block text-[13px] font-medium text-neutral-600">
             Unterschrift Mitantragsteller<span className="ml-0.5 text-neutral-400">*</span>
           </Label>
-          <div className="mt-2">
+          <div>
             <SignaturePad ref={sigMit} />
           </div>
         </div>

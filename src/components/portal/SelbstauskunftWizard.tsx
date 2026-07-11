@@ -379,14 +379,14 @@ export function SelbstauskunftWizard({
       <div className="mx-auto max-w-4xl px-6 pb-20 pt-8 md:pt-10">
         {/* Titel + Trennstrich */}
         <header>
-          <h1 className="text-3xl font-semibold tracking-tight text-neutral-900 md:text-4xl">
+          <h1 className="text-[2rem] font-semibold leading-[1.1] tracking-[-0.02em] text-neutral-900 md:text-[2.5rem]">
             Selbstauskunft
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-neutral-500">
+          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-neutral-500">
             Bitte fülle nur aus, was auf dich zutrifft. Du kannst jederzeit
             pausieren — dein Fortschritt wird automatisch gespeichert.
           </p>
-          <div className="mt-5 border-t border-neutral-200" />
+          <div className="mt-6 border-t border-neutral-200" />
         </header>
 
         {/* Fortschritt */}
@@ -418,7 +418,7 @@ export function SelbstauskunftWizard({
         </div>
 
         {/* Schritt-Inhalt */}
-        <div className="mt-9 space-y-7">
+        <div className="mt-10 space-y-8">
           {current.key === "persoenlich" && (
             <label className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3">
               <span className="text-sm font-medium text-neutral-800">
@@ -433,7 +433,7 @@ export function SelbstauskunftWizard({
             </label>
           )}
 
-          <h2 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <h2 className="text-xl font-semibold tracking-tight text-neutral-900 md:text-[1.6rem]">
             {current.title}
           </h2>
 
@@ -489,12 +489,12 @@ export function SelbstauskunftWizard({
         </div>
 
         {/* Navigation */}
-        <div className="mt-10 flex items-center justify-between gap-3">
+        <div className="mt-12 flex items-center justify-between gap-3">
           <Button
             variant="outline"
             onClick={prev}
             disabled={step === 0 || saving || submitting}
-            className="rounded-lg border-neutral-300 text-neutral-700"
+            className="h-11 rounded-lg border-neutral-300 px-5 text-[15px] font-medium text-neutral-700 hover:bg-neutral-50"
           >
             <ArrowLeft className="mr-1 h-4 w-4" /> Zurück
           </Button>
@@ -502,7 +502,7 @@ export function SelbstauskunftWizard({
             <Button
               onClick={next}
               disabled={saving}
-              className="rounded-lg bg-neutral-900 px-6 text-white hover:bg-neutral-800"
+              className="h-11 rounded-lg bg-neutral-900 px-7 text-[15px] font-medium text-white hover:bg-neutral-800"
             >
               {saving ? "Speichern …" : "Weiter"}
               <ArrowRight className="ml-1 h-4 w-4" />
@@ -511,8 +511,7 @@ export function SelbstauskunftWizard({
             <Button
               onClick={onSubmit}
               disabled={submitting}
-              size="lg"
-              className="rounded-lg bg-neutral-900 px-6 text-white hover:bg-neutral-800"
+              className="h-11 rounded-lg bg-neutral-900 px-7 text-[15px] font-medium text-white hover:bg-neutral-800"
             >
               {submitting ? "Wird eingereicht …" : "Selbstauskunft einreichen"}
             </Button>

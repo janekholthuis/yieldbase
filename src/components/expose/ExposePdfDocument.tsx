@@ -1,6 +1,6 @@
 // @react-pdf/renderer Exposé document. CLIENT-SIDE ONLY — never import this from
 // a Server Component; it is lazily imported inside the ExposeModal handler.
-// Ported from the OLD APP, rebranded Yieldbase → Objektpilot.
+// Ported from the OLD APP, branded Erfolg mit Immobilien.
 import {
   Document,
   Page,

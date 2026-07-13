@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ObjektpilotWordmark } from "@/components/brand/ObjektpilotLogo";
+import { BrandWordmark } from "@/components/brand/BrandLogo";
 
 /**
  * design (PROJ-25): clean, ruhig — kein Gradient-Wash, keine Marketing-Eyebrow.
@@ -21,7 +21,7 @@ export function AuthShell({
       <div className="w-full max-w-md">
         <div className="rounded-2xl border border-brand-borderSoft bg-brand-surface p-8 shadow-card">
           <div className="mb-7">
-            <ObjektpilotWordmark logoSize={30} textClassName="text-xl" />
+            <BrandWordmark logoSize={30} textClassName="text-xl" />
           </div>
 
           <div className="mb-6">

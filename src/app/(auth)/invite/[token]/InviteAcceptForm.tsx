@@ -46,7 +46,7 @@ export function InviteAcceptForm({
         password: pw,
       });
       if (signErr) throw signErr;
-      toast.success("Willkommen bei Yieldbase!");
+      toast.success("Willkommen bei Erfolg mit Immobilien!");
       // Hard navigation so the server immediately sees the fresh auth cookie.
       if (data.session) {
         window.location.href = "/dashboard";

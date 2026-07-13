@@ -1,7 +1,7 @@
 {
-  "name": "ai-coding-starter-kit",
+  "name": "erfolg-mit-immobilien",
   "version": "1.0.0",
-  "description": "AI Coding Starter Kit with AI Agent Team System for Claude Code",
+  "description": "Erfolg mit Immobilien — B2B-Vertriebs- und Finanzierungsplattform für Kapitalanlage-Immobilien",
   "private": true,
   "scripts": {
     "dev": "next dev",

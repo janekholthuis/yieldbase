@@ -45,7 +45,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { ObjektpilotWordmark } from "@/components/brand/ObjektpilotLogo";
+import { BrandWordmark } from "@/components/brand/BrandLogo";
 
 const PORTAL_NAV: Array<{
   to: string;
@@ -176,9 +176,9 @@ function PortalSidebar({ pathname }: { pathname: string }) {
       <SidebarHeader>
         <Link href="/portal" className="flex items-center gap-2 px-2 py-1.5">
           {collapsed ? (
-            <ObjektpilotWordmark logoSize={28} className="[&>span:last-child]:hidden" />
+            <BrandWordmark logoSize={28} className="[&>span:last-child]:hidden" />
           ) : (
-            <ObjektpilotWordmark logoSize={28} textClassName="text-base" />
+            <BrandWordmark logoSize={28} textClassName="text-base" />
           )}
         </Link>
       </SidebarHeader>

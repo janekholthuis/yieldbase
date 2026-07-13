@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react";
 
 /* Geteilte Marketing-Navigation + Footer für Landing (`/`) und Roadmap. */
 
-/** Objekt-Pilot-Logo-Mark — navy Quadrat mit weißem Navigations-/Piloten-Pfeil. */
+/** Erfolg-mit-Immobilien-Logo-Mark — navy Quadrat mit weißem Navigations-/Piloten-Pfeil. */
 function BrandMark({ className }: { className?: string }) {
   return (
     <span

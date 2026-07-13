@@ -103,7 +103,7 @@ async function fetchText(rawUrl: string, accept: string): Promise<string> {
       const r = await fetch(currentUrl, {
         signal: ctrl.signal,
         redirect: "manual",
-        headers: { accept, "user-agent": "ObjektpilotBrandingBot/1.0" },
+        headers: { accept, "user-agent": "ErfolgMitImmobilienBrandingBot/1.0" },
       });
       if (r.status >= 300 && r.status < 400) {
         const loc = r.headers.get("location");
@@ -158,7 +158,7 @@ async function fetchBinary(
       const r = await fetch(currentUrl, {
         signal: ctrl.signal,
         redirect: "manual",
-        headers: { accept, "user-agent": "ObjektpilotBrandingBot/1.0" },
+        headers: { accept, "user-agent": "ErfolgMitImmobilienBrandingBot/1.0" },
       });
       if (r.status >= 300 && r.status < 400) {
         const loc = r.headers.get("location");

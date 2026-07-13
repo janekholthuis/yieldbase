@@ -7,7 +7,7 @@ type BrandTooltipExtra = {
   valueFmt?: (value: number) => string;
 };
 
-/** Yieldbase-Tooltip: weiße Karte, brand-border, tabular-nums Werte. */
+/** Brand-Tooltip: weiße Karte, brand-border, tabular-nums Werte. */
 export function BrandTooltip(
   props: Partial<TooltipContentProps<number, string>> & BrandTooltipExtra,
 ) {

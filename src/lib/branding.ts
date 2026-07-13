@@ -63,7 +63,7 @@ export function hexToOklchChannels(hex: string): string | null {
 
 /**
  * Build the `:root` CSS override for an organisation's branding, or "" when the
- * org has no custom colors (falls back to the Objektpilot default theme).
+ * org has no custom colors (falls back to the Erfolg-mit-Immobilien default theme).
  */
 export function buildOrgThemeCss(org: Pick<ActiveOrg, "primaryColor" | "accentColor"> | null): string {
   if (!org) return "";

@@ -13,7 +13,7 @@ const SAAS = {
 };
 
 // Host-aware: a request on an org's custom domain (e.g. emi-hub.de) is titled
-// after the org; the neutral Vercel URL gets the Objekt-Pilot SaaS metadata.
+// after the org; the neutral Vercel URL gets the Erfolg-mit-Immobilien SaaS metadata.
 export async function generateMetadata(): Promise<Metadata> {
   const org = await resolveOrgForHost((await headers()).get("host"));
   if (org) {
@@ -31,7 +31,7 @@ export default async function Home() {
     redirect(isKundeOnly(session.roles) ? "/portal" : "/dashboard");
   }
   // Logged-out: an org custom domain shows the branded role-login landing
-  // (PROJ-30); the neutral domain shows the Objekt-Pilot SaaS marketing page.
+  // (PROJ-30); the neutral domain shows the Erfolg-mit-Immobilien SaaS marketing page.
   const org = await resolveOrgForHost((await headers()).get("host"));
   return org ? <OrgLanding org={org} /> : <LandingPage />;
 }

@@ -17,7 +17,7 @@ import {
 import { MarketingNav, MarketingFooter } from "@/components/marketing/marketing-chrome";
 
 /* ------------------------------------------------------------------ */
-/*  Objekt Pilot — SaaS-Marketing-Landingpage (neutrale Domain)        */
+/*  Erfolg mit Immobilien — SaaS-Marketing-Landingpage (neutrale Domain) */
 /*  Hell, seriös, kantig. Navy/Gold. Keine verspielten Verläufe.       */
 /*  Gerendert unter `/` (neutrale Domain, logged-out) und `/start`.    */
 /*  Auf einer Org-Custom-Domain rendert `/` stattdessen OrgLanding.    */

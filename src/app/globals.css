@@ -17,7 +17,7 @@
        Radius-Skala (sm..4xl) rechnet relativ hierzu. */
     --radius: 0.75rem;
 
-    /* Brand primary/accent as RGB channels — default = Objektpilot navy/gold.
+    /* Brand primary/accent as RGB channels — default = Erfolg mit Immobilien navy/gold.
        The active organisation overrides these at runtime (see lib/branding.ts). */
     --brand-primary: 10 46 79;
     --brand-accent: 184 137 62;

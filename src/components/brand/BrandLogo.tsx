@@ -3,10 +3,10 @@
 import { useActiveOrg } from "@/components/providers";
 
 /**
- * Objektpilot fallback mark — navy chevron rising under a gold dot.
+ * Erfolg-mit-Immobilien fallback mark — navy chevron rising under a gold dot.
  * Used when the active organisation has no custom logo.
  */
-export function ObjektpilotLogo({
+export function BrandLogo({
   size = 32,
   className,
 }: {
@@ -40,9 +40,9 @@ export function ObjektpilotLogo({
 
 /**
  * Brand wordmark. Shows the active organisation's logo + name when set,
- * otherwise the default Objektpilot mark. Colors follow the active theme.
+ * otherwise the default Erfolg-mit-Immobilien mark. Colors follow the active theme.
  */
-export function ObjektpilotWordmark({
+export function BrandWordmark({
   className,
   logoSize = 28,
   textClassName = "text-lg",
@@ -65,7 +65,7 @@ export function ObjektpilotWordmark({
             className="object-contain"
           />
         ) : (
-          <ObjektpilotLogo size={logoSize} />
+          <BrandLogo size={logoSize} />
         )}
         <span
           className={`font-bold tracking-tight text-brand-primary ${textClassName}`}
@@ -79,7 +79,7 @@ export function ObjektpilotWordmark({
 
   return (
     <span className={`inline-flex items-center gap-2.5 ${className ?? ""}`}>
-      <ObjektpilotLogo size={logoSize} />
+      <BrandLogo size={logoSize} />
       <span
         className={`font-bold tracking-tight ${textClassName}`}
         style={{ letterSpacing: "-0.02em" }}

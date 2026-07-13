@@ -20,14 +20,14 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useEntitlements } from "@/components/providers";
 import { visibleNav } from "@/lib/navigation";
-import { ObjektpilotLogo, ObjektpilotWordmark } from "@/components/brand/ObjektpilotLogo";
+import { BrandLogo, BrandWordmark } from "@/components/brand/BrandLogo";
 
 /**
  * design: navy+gold token-map for Sidebar
  * - bg-brand-surface + border-r-brand-border
  * - Active: bg-brand-primaryTint + text-brand-primary + rounded-lg (KEIN L-Border)
  * - Group-Label: uppercase tracking-widest text-brand-subtle
- * - Header: ObjektpilotWordmark
+ * - Header: BrandWordmark
  */
 export function AppSidebar() {
   const { roles } = useAuth();
@@ -45,9 +45,9 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-brand-divider">
         <Link href="/dashboard" prefetch={false} className="flex items-center px-2 py-1.5">
           {collapsed ? (
-            <ObjektpilotLogo size={26} className="shrink-0" />
+            <BrandLogo size={26} className="shrink-0" />
           ) : (
-            <ObjektpilotWordmark logoSize={28} textClassName="text-base" />
+            <BrandWordmark logoSize={28} textClassName="text-base" />
           )}
         </Link>
       </SidebarHeader>
